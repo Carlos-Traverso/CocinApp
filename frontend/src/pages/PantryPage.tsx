@@ -1,11 +1,14 @@
-import { AlertTriangle, CalendarClock, Check, ClipboardList, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { AlertTriangle, CalendarClock, Check, ClipboardList, Pencil, Plus, Search, ShoppingCart, Trash2, X } from 'lucide-react'
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { readPantryItems, writePantryItems } from '../features/pantry/data/localPantryStore'
 import {
   filterPantryItems, formatPantryAmount, getPantryFlags, getPantryStatus,
   hasDuplicateItem, pantryCategories, pantryExpiryText,
   type PantryCategory, type PantryFilters, type PantryItem, type PantryStatus, type PantryUnit,
 } from '../features/pantry/domain/pantry'
+import { appendShoppingSuggestions } from '../features/shopping/data/localShoppingStore'
+import { suggestPantryRestock } from '../features/shopping/domain/shopping'
 
 type SortOrder = 'name' | 'expiry' | 'quantity'
 
@@ -108,6 +111,7 @@ function PantryConfirmation({ title, message, actionLabel, danger = false, onClo
 }
 
 export function PantryPage() {
+  const navigate = useNavigate()
   const [items, setItems] = useState<PantryItem[]>(() => readPantryItems())
   const [filters, setFilters] = useState<PantryFilters>(emptyFilters)
   const [sortOrder, setSortOrder] = useState<SortOrder>('name')
@@ -171,10 +175,17 @@ export function PantryPage() {
     return true
   }
 
+  function sendRestockToShopping() {
+    const suggestions = suggestPantryRestock(items)
+    if (suggestions.length === 0) { setNotice('No hay productos para reponer.'); return }
+    try { appendShoppingSuggestions(suggestions); navigate('/shopping') }
+    catch { setStorageError('No se pudo guardar la lista de compras en este navegador.') }
+  }
+
   return <div className="page pantry-page">
     <header className="page-heading pantry-heading">
       <div><p className="eyebrow">TUS INGREDIENTES</p><h1>Mi despensa</h1><p className="page-lead">Registrá cantidades y vencimientos para saber qué tenés disponible.</p></div>
-      <div className="pantry-head-actions"><button className="button button-quiet" onClick={(event) => { focusBeforeDialog.current = event.currentTarget; setConfirmExamples(true) }} type="button"><ClipboardList size={17} /> Kit de ejemplo</button><button className="button button-primary" onClick={(event) => { focusBeforeDialog.current = event.currentTarget; setEditor({ id: crypto.randomUUID(), name: '', category: pantryCategories[0], quantity: Number.NaN, unit: 'g', minimum: 0, expiry: '' }) }} ref={addButtonRef} type="button"><Plus size={18} /> Añadir ingrediente</button></div>
+      <div className="pantry-head-actions"><button className="button button-quiet" onClick={sendRestockToShopping} type="button"><ShoppingCart size={17} /> Reponer</button><button className="button button-quiet" onClick={(event) => { focusBeforeDialog.current = event.currentTarget; setConfirmExamples(true) }} type="button"><ClipboardList size={17} /> Kit de ejemplo</button><button className="button button-primary" onClick={(event) => { focusBeforeDialog.current = event.currentTarget; setEditor({ id: crypto.randomUUID(), name: '', category: pantryCategories[0], quantity: Number.NaN, unit: 'g', minimum: 0, expiry: '' }) }} ref={addButtonRef} type="button"><Plus size={18} /> Añadir ingrediente</button></div>
     </header>
 
     <section aria-label="Resumen de la despensa" className="pantry-summary">

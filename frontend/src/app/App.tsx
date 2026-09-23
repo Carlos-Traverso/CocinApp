@@ -8,6 +8,7 @@ import { PlannerPage } from '../pages/PlannerPage'
 import { ProfilePage } from '../pages/ProfilePage'
 import { RecipesPage } from '../pages/RecipesPage'
 import { RecipeDetailPage } from '../pages/RecipeDetailPage'
+import { ShoppingPage } from '../pages/ShoppingPage'
 import { WelcomePage } from '../pages/WelcomePage'
 
 export function App() {
@@ -24,6 +25,7 @@ export function App() {
           <Route path="profile" element={<ProfilePage />} />
           <Route path="pantry" element={<PantryPage />} />
           <Route path="planner" element={<PlannerPage />} />
+          <Route path="shopping" element={<ShoppingPage />} />
           <Route path=":section" element={<FeaturePage />} />
         </Route>
         <Route path="*" element={<Navigate replace to="/" />} />
