@@ -12,6 +12,7 @@
     "test:recipes": "node --import jiti/register --test tests/recipes.test.ts",
     "test:planner": "node --import jiti/register --test tests/planner.test.ts",
     "test:shopping": "node --import jiti/register --test tests/shopping.test.ts",
+    "test:cooking": "node --import jiti/register --test tests/cooking.test.ts",
     "lint": "oxlint",
     "preview": "vite preview"
   },

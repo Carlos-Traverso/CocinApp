@@ -2,6 +2,7 @@ import {
   CalendarDays,
   CookingPot,
   Heart,
+  History,
   LayoutDashboard,
   Refrigerator,
   ShieldCheck,
@@ -11,14 +12,15 @@ import {
 import { NavLink, Outlet } from 'react-router-dom'
 
 const navigation = [
-  { to: '/panel', label: 'Panel', Icon: LayoutDashboard, end: true },
-  { to: '/recipes', label: 'Recetas', Icon: CookingPot },
-  { to: '/pantry', label: 'Despensa', Icon: Refrigerator },
-  { to: '/planner', label: 'Planificador', Icon: CalendarDays },
-  { to: '/shopping', label: 'Compras', Icon: ShoppingCart },
-  { to: '/favorites', label: 'Favoritos', Icon: Heart },
-  { to: '/profile', label: 'Perfil', Icon: UserRound },
-  { to: '/admin', label: 'Administración', Icon: ShieldCheck },
+  { to: '/panel', label: 'Panel', mobileLabel: 'Panel', Icon: LayoutDashboard, end: true },
+  { to: '/recipes', label: 'Recetas', mobileLabel: 'Recetas', Icon: CookingPot },
+  { to: '/pantry', label: 'Despensa', mobileLabel: 'Despensa', Icon: Refrigerator },
+  { to: '/planner', label: 'Planificador', mobileLabel: 'Plan', Icon: CalendarDays },
+  { to: '/shopping', label: 'Compras', mobileLabel: 'Compras', Icon: ShoppingCart },
+  { to: '/favorites', label: 'Favoritos', mobileLabel: 'Favoritos', Icon: Heart },
+  { to: '/history', label: 'Historial', mobileLabel: 'Historial', Icon: History },
+  { to: '/profile', label: 'Perfil', mobileLabel: 'Perfil', Icon: UserRound },
+  { to: '/admin', label: 'Administración', mobileLabel: 'Admin', Icon: ShieldCheck },
 ]
 
 export function AppShell() {
@@ -30,7 +32,7 @@ export function AppShell() {
         </NavLink>
         <p className="sidebar-label">TU COCINA</p>
         <nav className="primary-nav" aria-label="Navegación principal">
-          {navigation.map(({ to, label, Icon, end }) => (
+          {navigation.map(({ to, label, mobileLabel, Icon, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -38,7 +40,7 @@ export function AppShell() {
               className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
             >
               <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
-              <span>{label}</span>
+              <span className="nav-label-desktop">{label}</span><span className="nav-label-mobile">{mobileLabel}</span>
             </NavLink>
           ))}
         </nav>

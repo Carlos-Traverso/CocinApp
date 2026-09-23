@@ -1,0 +1,59 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+import { sampleRecipes } from '../src/mocks/recipes'
+import { completeStep, createSession, moveStep, recordPreparation, scaleIngredients, deductIngredients, type CookingSession } from '../src/features/cooking/domain/cooking'
+import { clearCookingSession, readCookingSession, readHistory, saveCookingSession, writeHistory } from '../src/features/cooking/data/localCookingStore'
+import type { PantryItem } from '../src/features/pantry/domain/pantry'
+
+const recipe = sampleRecipes[0]
+const now = new Date('2026-09-23T15:00:00.000Z')
+
+test('sessions navigate within steps and track completed steps independently', () => {
+  const start = createSession(recipe, now)
+  assert.equal(start.stepIndex, 0)
+  assert.deepEqual(start.completed, [])
+  assert.equal(moveStep(start, -1, recipe.steps.length).stepIndex, 0)
+  assert.equal(moveStep(start, 1, recipe.steps.length).stepIndex, 1)
+  assert.deepEqual(completeStep(start, 0, recipe.steps.length).completed, [0])
+  assert.deepEqual(completeStep(completeStep(start, 0, recipe.steps.length), 0, recipe.steps.length).completed, [])
+  assert.equal(moveStep(start, 99, recipe.steps.length).stepIndex, recipe.steps.length - 1)
+})
+
+test('history records each preparation with date and portions', () => {
+  const start = { ...createSession(recipe, now), portions: 4 }
+  const events = recordPreparation([], start, now)
+  assert.equal(events.length, 1)
+  assert.deepEqual(events[0], { id: events[0].id, recipeId: recipe.id, cookedAt: now.toISOString(), portions: 4 })
+  assert.equal(recordPreparation(events, start, new Date('2026-09-24T15:00:00.000Z')).length, 2)
+})
+
+test('ingredient scaling and pantry deduction skip expired stock and never go negative', () => {
+  assert.equal(scaleIngredients(recipe, 4)[0].quantity, recipe.ingredients[0].quantity * 2)
+  const pantry: PantryItem[] = [
+    { id: 'old', name: 'Quinoa', category: 'Granos y legumbres', quantity: 200, unit: 'g', minimum: 0, expiry: '2026-09-22' },
+    { id: 'fresh', name: 'Quinoa', category: 'Granos y legumbres', quantity: 100, unit: 'g', minimum: 0, expiry: '' },
+  ]
+  const updated = deductIngredients(pantry, recipe, 2, new Date(2026, 8, 23))
+  assert.equal(updated[0].quantity, 200)
+  assert.equal(updated[1].quantity, 0)
+  assert.equal(pantry[1].quantity, 100)
+})
+
+test('storage persists valid progress and history, and clears one session', () => {
+  const values = new Map<string, string>()
+  const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value) } }
+  const session: CookingSession = { ...createSession(recipe, now), completed: [0], stepIndex: 1 }
+  saveCookingSession(session, storage)
+  assert.deepEqual(readCookingSession(recipe.id, storage), session)
+  const other = createSession(sampleRecipes[1], now)
+  saveCookingSession(other, storage)
+  assert.deepEqual(readCookingSession(other.recipeId, storage), other)
+  clearCookingSession(recipe.id, storage)
+  assert.equal(readCookingSession(recipe.id, storage), null)
+  assert.deepEqual(readCookingSession(other.recipeId, storage), other)
+  const history = recordPreparation([], session, now)
+  writeHistory(history, storage)
+  assert.deepEqual(readHistory(storage), history)
+  values.set('cocinapp.cooking-history.v1', JSON.stringify([...history, { ...history[0], id: 'bad', portions: -1 }]))
+  assert.deepEqual(readHistory(storage), history)
+})
