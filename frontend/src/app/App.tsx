@@ -6,6 +6,7 @@ import { OnboardingPage } from '../pages/OnboardingPage'
 import { PantryPage } from '../pages/PantryPage'
 import { ProfilePage } from '../pages/ProfilePage'
 import { RecipesPage } from '../pages/RecipesPage'
+import { RecipeDetailPage } from '../pages/RecipeDetailPage'
 import { WelcomePage } from '../pages/WelcomePage'
 
 export function App() {
@@ -17,6 +18,8 @@ export function App() {
         <Route element={<AppShell />}>
           <Route path="panel" element={<HomePage />} />
           <Route path="recipes" element={<RecipesPage />} />
+          <Route path="recipes/:id" element={<RecipeDetailPage />} />
+          <Route path="favorites" element={<RecipesPage favoritesOnly />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="pantry" element={<PantryPage />} />
           <Route path=":section" element={<FeaturePage />} />

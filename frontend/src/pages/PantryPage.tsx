@@ -207,7 +207,7 @@ export function PantryPage() {
       })}
     </section>}
 
-    <p className="pantry-footnote">Los datos se guardan en este navegador. La despensa aún no se sincroniza con recetas ni compras.</p>
+    <p className="pantry-footnote">Los datos se guardan en este navegador y se usan para indicar la disponibilidad de ingredientes en recetas.</p>
     {editor && <PantryEditor item={editor} items={items} onClose={closeDialog} onSave={saveItem} />}
     {deleting && <PantryConfirmation actionLabel="Eliminar" danger message={`¿Querés eliminar ${deleting.name} de tu despensa?`} onClose={closeDialog} onConfirm={deleteItem} title="Eliminar ingrediente" />}
     {confirmExamples && <PantryConfirmation actionLabel="Cargar ejemplos" message="Se añadirán productos de muestra sin reemplazar tus ingredientes actuales ni duplicar productos del mismo nombre y unidad." onClose={closeDialog} onConfirm={addExamples} title="Cargar kit de ejemplo" />}
