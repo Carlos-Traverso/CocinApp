@@ -21,16 +21,14 @@ export function HomePage() {
         </Link>
       </header>
 
-      <section className="welcome-band" aria-label="Prototipo de pantallas">
+      <section className="welcome-band" aria-label="Recetas y planificación">
         <div className="welcome-icon"><CookingPot size={22} aria-hidden="true" /></div>
         <div>
-          <p className="eyebrow">RECORRIDO INTERACTIVO</p>
-          <h2>Conocé CocinAPP</h2>
-          <p>Recorré el flujo de registro, recetas, planificación y compras.</p>
+          <p className="eyebrow">RECETAS Y PLANIFICACIÓN</p>
+          <h2>Prepará tu próxima comida</h2>
+          <p>Explorá recetas con tu despensa y organizá los almuerzos y cenas de la semana.</p>
         </div>
-        <a className="button button-dark" href="/prototypes/cocinapp.html">
-          Abrir prototipo <ArrowRight size={17} aria-hidden="true" />
-        </a>
+        <Link className="button button-dark" to="/recipes">Explorar recetas <ArrowRight size={17} aria-hidden="true" /></Link>
       </section>
 
       <section className="section-block" aria-labelledby="shortcuts-heading">

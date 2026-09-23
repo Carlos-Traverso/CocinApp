@@ -4,6 +4,7 @@ import { FeaturePage } from '../pages/FeaturePage'
 import { HomePage } from '../pages/HomePage'
 import { OnboardingPage } from '../pages/OnboardingPage'
 import { PantryPage } from '../pages/PantryPage'
+import { PlannerPage } from '../pages/PlannerPage'
 import { ProfilePage } from '../pages/ProfilePage'
 import { RecipesPage } from '../pages/RecipesPage'
 import { RecipeDetailPage } from '../pages/RecipeDetailPage'
@@ -22,6 +23,7 @@ export function App() {
           <Route path="favorites" element={<RecipesPage favoritesOnly />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="pantry" element={<PantryPage />} />
+          <Route path="planner" element={<PlannerPage />} />
           <Route path=":section" element={<FeaturePage />} />
         </Route>
         <Route path="*" element={<Navigate replace to="/" />} />
