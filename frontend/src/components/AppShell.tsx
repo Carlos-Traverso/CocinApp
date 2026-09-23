@@ -5,7 +5,6 @@ import {
   History,
   LayoutDashboard,
   Refrigerator,
-  ShieldCheck,
   ShoppingCart,
   UserRound,
 } from 'lucide-react'
@@ -15,12 +14,11 @@ const navigation = [
   { to: '/panel', label: 'Panel', mobileLabel: 'Panel', Icon: LayoutDashboard, end: true },
   { to: '/recipes', label: 'Recetas', mobileLabel: 'Recetas', Icon: CookingPot },
   { to: '/pantry', label: 'Despensa', mobileLabel: 'Despensa', Icon: Refrigerator },
-  { to: '/planner', label: 'Planificador', mobileLabel: 'Plan', Icon: CalendarDays },
-  { to: '/shopping', label: 'Compras', mobileLabel: 'Compras', Icon: ShoppingCart },
+  { to: '/planner', label: 'Planificación', mobileLabel: 'Plan', Icon: CalendarDays },
+  { to: '/shopping', label: 'Lista de compras', mobileLabel: 'Compras', Icon: ShoppingCart },
   { to: '/favorites', label: 'Favoritos', mobileLabel: 'Favoritos', Icon: Heart },
   { to: '/history', label: 'Historial', mobileLabel: 'Historial', Icon: History },
   { to: '/profile', label: 'Perfil', mobileLabel: 'Perfil', Icon: UserRound },
-  { to: '/admin', label: 'Administración', mobileLabel: 'Admin', Icon: ShieldCheck },
 ]
 
 export function AppShell() {
