@@ -29,8 +29,11 @@ const activityFactors = {
   'very-active': 1.9,
 } satisfies Record<ActivityLevel, number>
 
-export function calculateAge(birthDate: string, today = new Date()): number {
+export function calculateAge(birthDate: string, today = new Date()): number | undefined {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) return undefined
   const birth = new Date(`${birthDate}T12:00:00`)
+  const [year, month, day] = birthDate.split('-').map(Number)
+  if (Number.isNaN(birth.getTime()) || birth.getFullYear() !== year || birth.getMonth() + 1 !== month || birth.getDate() !== day || birth > new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12)) return undefined
   let age = today.getFullYear() - birth.getFullYear()
   const hasHadBirthday = today.getMonth() > birth.getMonth()
     || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate())
@@ -64,6 +67,7 @@ export function profileIsComplete(profile: ProfileDraft): boolean {
   return Boolean(
     profile.name
     && profile.birthDate
+    && calculateAge(profile.birthDate) !== undefined
     && typeof profile.weightKg === 'number'
     && profile.weightKg >= 30
     && profile.weightKg <= 300

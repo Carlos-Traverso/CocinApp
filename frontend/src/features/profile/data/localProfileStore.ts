@@ -1,10 +1,11 @@
 import type { ProfileDraft } from '../domain/profile'
 
 const storageKey = 'cocinapp.profile.v1'
+interface StorageLike { getItem(key: string): string | null; setItem(key: string, value: string): void }
 
-export function readLocalProfile(): ProfileDraft {
+export function readLocalProfile(storage?: StorageLike): ProfileDraft {
   try {
-    const value: unknown = JSON.parse(window.localStorage.getItem(storageKey) ?? '{}')
+    const value: unknown = JSON.parse((storage ?? window.localStorage).getItem(storageKey) ?? '{}')
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
     const candidate = value as Record<string, unknown>
     return {
@@ -23,6 +24,6 @@ export function readLocalProfile(): ProfileDraft {
   }
 }
 
-export function saveLocalProfile(profile: ProfileDraft): void {
-  window.localStorage.setItem(storageKey, JSON.stringify(profile))
+export function saveLocalProfile(profile: ProfileDraft, storage?: StorageLike): void {
+  (storage ?? window.localStorage).setItem(storageKey, JSON.stringify(profile))
 }

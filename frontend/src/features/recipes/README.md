@@ -1,1 +1,1 @@
-Catálogo, búsqueda, detalle y matching. Consumir datos mediante el contrato `data/RecipeRepository.ts`; la coincidencia que dependa de inventario vive en una RPC.
+El catálogo usa `mocks/recipes.ts`. `domain/recipeRules.ts` resuelve filtros y disponibilidad según la despensa local; favoritos se guardan en `localStorage`.

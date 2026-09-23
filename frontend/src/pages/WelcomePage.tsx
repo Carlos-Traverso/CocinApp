@@ -1,6 +1,6 @@
 import { Eye, EyeOff, Refrigerator, Sparkles, UtensilsCrossed } from 'lucide-react'
 import { type FormEvent, type KeyboardEvent, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { readLocalProfile, saveLocalProfile } from '../features/profile/data/localProfileStore'
 
 type AccessMode = 'login' | 'register'
@@ -9,11 +9,11 @@ export function WelcomePage() {
   const navigate = useNavigate()
   const [mode, setMode] = useState<AccessMode>('login')
   const [showPassword, setShowPassword] = useState(false)
-  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
 
   function changeMode(nextMode: AccessMode) {
     setMode(nextMode)
-    setMessage('')
+    setError('')
   }
 
   function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
@@ -36,24 +36,24 @@ export function WelcomePage() {
     const name = String(data.get('name') ?? '').trim()
 
     if (!email.includes('@') || password.length < 8) {
-      setMessage('Ingresá un correo válido y una contraseña de al menos 8 caracteres.')
+      setError('Ingresá un correo válido y una contraseña de al menos 8 caracteres.')
       return
     }
     if (mode === 'register' && (!name || password !== String(data.get('confirmPassword') ?? ''))) {
-      setMessage('Revisá tu nombre y que ambas contraseñas coincidan.')
+      setError('Revisá tu nombre y que ambas contraseñas coincidan.')
       return
     }
 
-    const previous = readLocalProfile()
-    saveLocalProfile({ ...previous, email, ...(name ? { name } : {}) })
-    setMessage('Acceso simulado listo. No guardamos contraseñas en este prototipo.')
-    navigate(mode === 'register' ? '/onboarding' : '/profile')
+    try {
+      const previous = readLocalProfile()
+      saveLocalProfile({ ...previous, email, ...(name ? { name } : {}) })
+      navigate(mode === 'register' ? '/onboarding' : '/panel')
+    } catch { setError('No se pudo guardar el acceso en este navegador.') }
   }
 
   return <main className="access-page">
     <header className="access-header">
-      <a className="access-wordmark" href="/" aria-label="CocinAPP, inicio">Cocin<span>APP</span></a>
-      <a className="text-link" href="/pantallas/CocinAPP_Landing_Registro_Mejorado.html">Ver referencia visual</a>
+      <Link className="access-wordmark" to="/" aria-label="CocinAPP, inicio">Cocin<span>APP</span></Link>
     </header>
     <div className="access-layout">
       <section className="access-intro" aria-labelledby="access-title">
@@ -84,7 +84,7 @@ export function WelcomePage() {
             <span className="password-field"><input autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={8} name="password" type={showPassword ? 'text' : 'password'} required /><button aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setShowPassword(!showPassword)} type="button">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></span>
           </label>
           {mode === 'register' && <label className="field"><span>Confirmar contraseña</span><input autoComplete="new-password" minLength={8} name="confirmPassword" type={showPassword ? 'text' : 'password'} required /></label>}
-          {message && <p className="form-message" role="status">{message}</p>}
+          {error && <p className="form-message error" role="alert">{error}</p>}
           <button className="button button-primary button-wide" type="submit">{mode === 'login' ? 'Iniciar sesión' : 'Continuar con mi perfil'}</button>
         </form>
         <p className="access-disclaimer">Esta es una simulación de frontend. No se crean cuentas ni se guardan contraseñas.</p>

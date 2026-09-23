@@ -19,6 +19,7 @@ export function App() {
       <Routes>
         <Route index element={<WelcomePage />} />
         <Route path="onboarding" element={<OnboardingPage />} />
+        <Route path="auth" element={<Navigate replace to="/" />} />
         <Route path="recipes/:id/cook" element={<CookingPage />} />
         <Route element={<AppShell />}>
           <Route path="panel" element={<HomePage />} />

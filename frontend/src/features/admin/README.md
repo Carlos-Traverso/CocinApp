@@ -1,1 +1,1 @@
-Moderación de contenido y gestión de usuarios. Los permisos deben validarse en RLS y operaciones backend; la interfaz solo refleja el acceso concedido.
+Administración todavía muestra un placeholder React. No hay gestión de usuarios ni permisos implementados en esta etapa local.

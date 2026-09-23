@@ -23,8 +23,8 @@ export function OnboardingPage() {
       formRef.current?.querySelector<HTMLInputElement>('[name="birthDate"]')?.focus()
       return
     }
-    saveLocalProfile(profile)
-    navigate('/profile')
+    try { saveLocalProfile(profile); navigate('/profile') }
+    catch { setError('No se pudo guardar el perfil en este navegador.') }
   }
 
   return <main className="setup-page">

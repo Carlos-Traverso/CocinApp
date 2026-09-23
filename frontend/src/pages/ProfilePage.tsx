@@ -21,9 +21,8 @@ export function ProfilePage() {
       setSaved(false)
       return
     }
-    saveLocalProfile(profile)
-    setError('')
-    setSaved(true)
+    try { saveLocalProfile(profile); setError(''); setSaved(true) }
+    catch { setError('No se pudo guardar el perfil en este navegador.'); setSaved(false) }
   }
 
   return <div className="page profile-page">

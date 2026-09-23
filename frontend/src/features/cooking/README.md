@@ -1,1 +1,1 @@
-Preparación y acción “Cocinar Ahora”. La operación que verifica y descuenta stock debe ser transaccional en PostgreSQL y exponer un resultado al cliente.
+El modo cocina guarda progreso e historial en `localStorage`. El descuento opcional de despensa se confirma antes de aplicarse y nunca deja cantidades negativas.
