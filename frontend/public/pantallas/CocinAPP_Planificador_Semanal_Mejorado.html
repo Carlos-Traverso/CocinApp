@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CocinAPP · Planificador semanal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:FILL@0..1&display=swap" rel="stylesheet">
+  <style>
+    :root{--green:#17603a;--deep:#113d2c;--soft:#eaf5eb;--cream:#f8f8f4;--ink:#1d2924;--muted:#61716a;--line:#dfe7de;--orange:#8e501d;--orange-soft:#fff1e3}
+    *{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--ink);font:16px/1.5 'DM Sans',system-ui,sans-serif}button,select,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible,select:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #ef9e4f;outline-offset:2px}a{color:inherit}.icon{font-family:'Material Symbols Outlined';font-size:22px;line-height:1;font-feature-settings:'liga';font-weight:normal;font-style:normal;white-space:nowrap}h1,h2,h3,p{margin-top:0}[hidden]{display:none!important}
+    .shell{min-height:100vh}.sidebar{display:none}.main{width:min(1510px,100%);margin:0 auto;padding:25px 16px 112px}.wordmark{font-weight:700;letter-spacing:-.06em;font-size:23px}.wordmark span{color:var(--green)}.mobile-brand{margin-bottom:18px}.eyebrow{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--green)}h1{font-size:clamp(31px,4vw,45px);line-height:1.12;letter-spacing:-.05em;margin:6px 0 9px}.intro{color:var(--muted);margin-bottom:0}.head{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:15px;margin-bottom:22px}.button{border:0;border-radius:12px;background:var(--green);color:white;min-height:43px;padding:9px 15px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:700;text-decoration:none}.button.secondary{background:var(--soft);color:var(--deep)}.button.ghost{background:white;color:var(--deep);border:1px solid var(--line)}.button:hover:not(:disabled){filter:brightness(.95)}.head .button{white-space:nowrap}
+    .workspace{display:grid;gap:18px;align-items:start}.panel{background:white;border:1px solid var(--line);border-radius:21px;box-shadow:0 3px 17px #163e290d}.planner{padding:15px;min-width:0}.week-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}.week-bar h2{font-size:21px;letter-spacing:-.03em;margin:0}.week-bar p{margin:0;color:var(--muted);font-size:13px}.week-controls{display:flex;align-items:center;gap:6px}.week-controls button{border:1px solid var(--line);background:white;border-radius:10px;height:38px;min-width:38px;display:grid;place-items:center}.week-controls .today{display:block;padding:0 10px;color:var(--green);font-size:13px;font-weight:700}.grid-scroll{overflow:auto;max-width:100%;padding-bottom:7px;scrollbar-color:#b7cdb8 transparent}.grid{display:grid;grid-template-columns:105px repeat(7,minmax(150px,1fr));gap:8px;min-width:1250px}.day-label{padding:9px 4px;text-align:center;border-radius:11px;background:#f0f4ed}.day-label.today{background:var(--soft);color:var(--green)}.day-label strong{display:block;font-size:15px}.day-label small{font-size:12px;color:var(--muted)}.meal-label{align-self:center;color:var(--deep);font-weight:700;font-size:13px}.slot{min-height:100px;position:relative;background:white;border:1px solid var(--line);border-radius:12px;overflow:hidden}.slot.empty{background:#f8faf7;border-style:dashed}.slot.open{border-color:#a5c9a5}.slot-main{width:100%;min-height:98px;border:0;background:none;padding:12px;display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:4px;color:var(--ink)}.slot-main .plus{color:var(--green);font-weight:700;display:flex;align-items:center;gap:4px;font-size:12px}.slot-main strong{font-size:13px;line-height:1.24;padding-right:25px}.slot-main small{font-size:11px;color:var(--muted)}.slot-main:hover{background:#f2f8f1}.remove{position:absolute;right:5px;top:5px;background:var(--soft);color:var(--deep);border:0;border-radius:50%;width:29px;height:29px;display:grid;place-items:center}.remove .icon{font-size:18px}.grid-hint{font-size:12px;color:var(--muted);margin:9px 2px 0}
+    .shopping{padding:0;overflow:hidden}.shopping-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:17px;border-bottom:1px solid var(--line)}.shopping-head h2{font-size:21px;letter-spacing:-.03em;margin:0}.count{font-size:12px;font-weight:700;background:var(--soft);color:var(--green);padding:5px 9px;border-radius:100px;white-space:nowrap}.shopping-body{padding:15px 17px;max-height:620px;overflow:auto}.shopping-body p{color:var(--muted);font-size:13px}.notice{border:1px solid #e5c99e;background:var(--orange-soft);color:#663d19;padding:11px;border-radius:11px;font-size:13px;margin-bottom:13px}.section-name{font-size:14px;color:var(--green);border-bottom:1px solid var(--line);padding-bottom:5px;margin:18px 0 7px}.item{display:flex;align-items:flex-start;gap:10px;padding:8px 3px;cursor:pointer;border-radius:8px}.item:hover{background:#f4f8f3}.item input{accent-color:var(--green);margin-top:5px;width:17px;height:17px}.item span{display:block}.item .qty{font-size:12px;color:var(--muted)}.item.checked .name{text-decoration:line-through;color:var(--muted)}.shopping-footer{display:flex;gap:8px;flex-wrap:wrap;padding:13px 17px;border-top:1px solid var(--line)}.shopping-footer .button{flex:1}.foot-note{padding:0 17px 15px;color:var(--muted);font-size:12px}.placeholder{text-align:center;color:var(--muted);padding:32px 8px}.placeholder .icon{font-size:36px;color:var(--green)}.placeholder strong{display:block;color:var(--ink);margin:5px 0}
+    .mobile-nav{position:fixed;z-index:12;bottom:0;left:0;width:100%;display:flex;justify-content:space-around;background:white;border-top:1px solid var(--line);padding:8px 3px max(8px,env(safe-area-inset-bottom))}.mobile-nav a{display:grid;justify-items:center;text-decoration:none;color:var(--muted);font-size:11px;min-width:57px}.mobile-nav a.current{color:var(--green);font-weight:700}
+    .overlay{position:fixed;z-index:25;inset:0;background:#10251bb3;display:grid;place-items:center;padding:16px}.dialog{width:min(480px,100%);background:white;padding:24px;border-radius:21px;box-shadow:0 20px 65px #0004}.dialog h2{font-size:23px;line-height:1.2;margin:0 0 8px}.dialog p{color:var(--muted);font-size:13px;margin-bottom:18px}.dialog label{display:block;font-size:13px;font-weight:700;margin:12px 0 5px}.dialog select,.dialog input{width:100%;height:45px;border:1px solid var(--line);border-radius:11px;padding:0 11px;background:white;color:var(--ink)}.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:23px}.toast{position:fixed;z-index:35;bottom:90px;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 25px);background:#172b21;color:white;padding:11px 16px;border-radius:12px;text-align:center;box-shadow:0 8px 23px #0003;font-size:14px}
+    @media(min-width:1000px){.workspace{grid-template-columns:minmax(0,1fr) 315px}.shopping{position:sticky;top:17px}}@media(min-width:1080px){.shell{padding-left:245px}.sidebar{display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;width:245px;padding:27px 16px;background:white;border-right:1px solid var(--line)}.sidebar .wordmark{padding:0 13px 30px}.sidebar nav{display:grid;align-content:start;gap:7px;flex:1}.sidebar a{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--muted);border-radius:12px;padding:12px 14px;font-weight:600}.sidebar a.current{background:var(--soft);color:var(--green)}.sidebar a:hover{background:var(--soft)}.mobile-brand,.mobile-nav{display:none}.main{padding-bottom:40px}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" aria-label="Navegación principal"><div class="wordmark">Cocin<span>APP</span></div><nav><a href="CocinAPP_Landing_Registro_Mejorado.html"><span class="icon">dashboard</span>Panel</a><a href="CocinAPP_Mi_Despensa_Mejorada.html"><span class="icon">inventory_2</span>Mi despensa</a><a href="CocinAPP_Explorar_Recetas_Mejorado.html"><span class="icon">restaurant_menu</span>Recetas</a><a href="#" class="current" aria-current="page"><span class="icon">calendar_month</span>Planificador</a><a href="CocinAPP_Compras_Mejorado.html"><span class="icon">shopping_cart</span>Compras</a></nav><a href="CocinAPP_Landing_Registro_Mejorado.html"><span class="icon">settings</span>Configuración</a></aside>
+  <main class="main">
+    <div class="mobile-brand wordmark">Cocin<span>APP</span></div>
+    <header class="head"><div><div class="eyebrow">Organizá tu semana</div><h1>Planificador semanal</h1><p class="intro">Asigná recetas, elegí porciones y calculá los ingredientes para tu lista.</p></div><button id="calculate" class="button" type="button"><span class="icon">calculate</span>Calcular lista de compras</button></header>
+    <div class="workspace">
+      <section class="planner panel" aria-label="Plan de comidas"><div class="week-bar"><div><h2 id="weekTitle"></h2><p>Elegí una comida para agregar o cambiar una receta.</p></div><div class="week-controls"><button id="previousWeek" type="button" aria-label="Semana anterior"><span class="icon">chevron_left</span></button><button id="currentWeek" class="today" type="button">Esta semana</button><button id="nextWeek" type="button" aria-label="Semana siguiente"><span class="icon">chevron_right</span></button></div></div><div class="grid-scroll" role="region" aria-label="Calendario semanal; desplazate horizontalmente para ver los siete días" tabindex="0"><div id="plannerGrid" class="grid"></div></div><p class="grid-hint">En pantallas angostas, desplazá la tabla hacia los costados para ver todos los días.</p></section>
+      <aside class="shopping panel" aria-labelledby="shoppingTitle"><div class="shopping-head"><h2 id="shoppingTitle">Lista de compras</h2><span id="itemCount" class="count">0 artículos</span></div><div class="shopping-body"><p id="listScope"></p><div id="staleNotice" class="notice" hidden>El plan cambió. Calculá la lista para actualizar las cantidades.</div><div id="shoppingItems"></div></div><div class="shopping-footer"><button id="copyList" class="button secondary" type="button"><span class="icon">content_copy</span>Copiar</button><button id="downloadList" class="button secondary" type="button"><span class="icon">download</span>Descargar</button></div><div class="foot-note">La lista suma todos los ingredientes del plan. No descuenta lo que tengas en la despensa: aún no hay inventario conectado.</div></aside>
+    </div>
+  </main>
+  <nav class="mobile-nav" aria-label="Navegación móvil"><a href="CocinAPP_Mi_Despensa_Mejorada.html"><span class="icon">inventory_2</span>Despensa</a><a href="CocinAPP_Explorar_Recetas_Mejorado.html"><span class="icon">restaurant_menu</span>Recetas</a><a href="#" class="current" aria-current="page"><span class="icon">calendar_month</span>Plan</a><a href="CocinAPP_Compras_Mejorado.html"><span class="icon">shopping_cart</span>Compras</a></nav>
+</div>
+<div id="overlay" class="overlay" hidden><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"><h2 id="dialogTitle">Elegir receta</h2><p id="dialogContext"></p><label for="recipeSelect">Receta</label><select id="recipeSelect"></select><label for="servings">Porciones para esta comida</label><input id="servings" type="number" inputmode="numeric" min="1" max="12" value="2"><div class="dialog-actions"><button id="cancel" class="button ghost" type="button">Cancelar</button><button id="save" class="button" type="button">Guardar comida</button></div></div></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script>
+  'use strict';
+  // Cantidades por porción de demostración. Las unidades se suman solo cuando coinciden.
+  const recipes = [
+    {id:'avena',name:'Bowl de avena y frutas',ingredients:[['Avena',60,'g','Almacén'],['Leche',200,'ml','Lácteos'],['Banana',1,'unidad','Frutas y verduras'],['Arándanos',60,'g','Frutas y verduras']]},
+    {id:'tostada',name:'Tostada con palta y huevo',ingredients:[['Pan',2,'rebanadas','Almacén'],['Palta',0.5,'unidad','Frutas y verduras'],['Huevo',1,'unidad','Huevos y proteínas']]},
+    {id:'quinoa',name:'Bowl de quinoa con verduras asadas',ingredients:[['Quinoa',100,'g','Almacén'],['Batata',150,'g','Frutas y verduras'],['Kale',40,'g','Frutas y verduras'],['Tahini',15,'g','Almacén'],['Limón',0.5,'unidad','Frutas y verduras']]},
+    {id:'pollo',name:'Pechuga de pollo con ensalada',ingredients:[['Pechuga de pollo',180,'g','Huevos y proteínas'],['Lechuga',80,'g','Frutas y verduras'],['Tomates cherry',100,'g','Frutas y verduras']]},
+    {id:'manzana',name:'Manzana con mantequilla de maní',ingredients:[['Manzana',1,'unidad','Frutas y verduras'],['Mantequilla de maní',20,'g','Almacén']]},
+    {id:'salmon',name:'Salmón al horno con limón',ingredients:[['Salmón',180,'g','Huevos y proteínas'],['Limón',0.5,'unidad','Frutas y verduras'],['Espárragos',120,'g','Frutas y verduras']]},
+    {id:'tortilla',name:'Tortilla española clásica',ingredients:[['Papa',200,'g','Frutas y verduras'],['Cebolla',0.5,'unidad','Frutas y verduras'],['Huevo',2,'unidad','Huevos y proteínas']]}
+  ];
+  const meals=['Desayuno','Almuerzo','Merienda','Cena'];
+  const days=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+  const $=id=>document.getElementById(id);
+  const fmt=n=>new Intl.NumberFormat('es-AR',{maximumFractionDigits:2}).format(n);
+  const dateKey=date=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+  const addDays=(date,n)=>{const copy=new Date(date.getFullYear(),date.getMonth(),date.getDate());copy.setDate(copy.getDate()+n);return copy;};
+  const monday=date=>addDays(date,-(date.getDay()+6)%7);
+  const weekLabel=date=>`${date.toLocaleDateString('es-AR',{day:'numeric',month:'long'})} al ${addDays(date,6).toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'})}`;
+  const storageKey='cocinapp-demo-weekly-plans-v1';
+  let allPlans={};
+  try {const parsed=JSON.parse(localStorage.getItem(storageKey)||'{}');if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed))allPlans=parsed;} catch{}
+  let week=monday(new Date()),selected=null,lastFocus=null,toastTimeout=null;
+  let calculated=[],checked=new Set(),calculatedSignature='',dirty=false;
+  function weekKey(){return dateKey(week);}
+  function validEntry(entry){return entry&&recipes.some(r=>r.id===entry.recipeId)&&Number.isInteger(entry.servings)&&entry.servings>=1&&entry.servings<=12;}
+  function plan(){const key=weekKey(),existing=allPlans[key];if(!existing||typeof existing!=='object'||Array.isArray(existing))allPlans[key]={};return allPlans[key];}
+  function persist(){try{localStorage.setItem(storageKey,JSON.stringify(allPlans));return true;}catch{toast('No se pudo guardar el plan en este navegador.');return false;}}
+  function toast(message){clearTimeout(toastTimeout);$('toast').textContent=message;$('toast').hidden=false;toastTimeout=setTimeout(()=>$('toast').hidden=true,3100);}
+  function signature(){const p=plan();return JSON.stringify(Object.keys(p).sort().map(k=>[k,p[k]]));}
+  function updateDirty(){dirty=signature()!==calculatedSignature;$('staleNotice').hidden=!dirty;$('copyList').disabled=dirty||!calculated.length;$('downloadList').disabled=dirty||!calculated.length;}
+  function renderGrid(){
+    $('weekTitle').textContent=`Semana del ${weekLabel(week)}`;
+    const grid=$('plannerGrid');grid.replaceChildren();
+    const corner=document.createElement('div');corner.className='meal-label';corner.textContent='Comida';grid.append(corner);
+    for(let d=0;d<7;d++){const date=addDays(week,d);const label=document.createElement('div');label.className='day-label'+(dateKey(date)===dateKey(new Date())?' today':'');const title=document.createElement('strong');title.textContent=days[d];const number=document.createElement('small');number.textContent=date.toLocaleDateString('es-AR',{day:'numeric',month:'short'});label.append(title,number);grid.append(label);}
+    for(const meal of meals){const heading=document.createElement('div');heading.className='meal-label';heading.textContent=meal;grid.append(heading);
+      for(let d=0;d<7;d++){
+        const date=addDays(week,d),key=`${dateKey(date)}|${meal}`,entry=plan()[key],recipe=validEntry(entry)?recipes.find(r=>r.id===entry.recipeId):null;
+        const cell=document.createElement('div');cell.className='slot'+(recipe?' open':' empty');
+        const button=document.createElement('button');button.type='button';button.className='slot-main';button.dataset.slot=key;
+        button.setAttribute('aria-label',recipe?`${days[d]} ${meal}: ${recipe.name}, ${entry.servings} ${entry.servings===1?'porción':'porciones'}. Cambiar receta`:`Añadir receta para ${meal} del ${days[d]}`);
+        if(recipe){const name=document.createElement('strong');name.textContent=recipe.name;const sub=document.createElement('small');sub.textContent=`${entry.servings} ${entry.servings===1?'porción':'porciones'} · Cambiar`;button.append(name,sub);
+          const remove=document.createElement('button');remove.type='button';remove.className='remove';remove.dataset.remove=key;remove.setAttribute('aria-label',`Quitar ${recipe.name} del ${days[d]} ${meal}`);const x=document.createElement('span');x.className='icon';x.textContent='close';remove.append(x);cell.append(button,remove);
+        }else{const add=document.createElement('span');add.className='plus';const plus=document.createElement('span');plus.className='icon';plus.textContent='add';add.append(plus,document.createTextNode('Añadir receta'));button.append(add);cell.append(button);}grid.append(cell);
+      }
+    }
+  }
+  function computeList(){
+    const totals=new Map();
+    for(const entry of Object.values(plan())){if(!validEntry(entry))continue;const recipe=recipes.find(r=>r.id===entry.recipeId);
+      for(const [name,quantity,unit,category] of recipe.ingredients){const key=`${name.toLowerCase()}|${unit}`;const previous=totals.get(key);if(previous)previous.quantity+=quantity*entry.servings;else totals.set(key,{key,name,unit,category,quantity:quantity*entry.servings});}
+    }
+    return [...totals.values()].sort((a,b)=>a.category.localeCompare(b.category,'es')||a.name.localeCompare(b.name,'es'));
+  }
+  function itemText(item){return `${item.name}: ${fmt(item.quantity)} ${item.unit}`;}
+  function renderShopping(){
+    $('listScope').textContent=`Ingredientes totales para la semana del ${weekLabel(week)}.`;
+    $('itemCount').textContent=`${calculated.length} ${calculated.length===1?'artículo':'artículos'}`;
+    const container=$('shoppingItems');container.replaceChildren();
+    if(!calculated.length){const empty=document.createElement('div');empty.className='placeholder';const icon=document.createElement('span');icon.className='icon';icon.textContent='shopping_basket';const strong=document.createElement('strong');strong.textContent='Todavía no hay ingredientes';const detail=document.createElement('span');detail.textContent='Agregá recetas al plan y calculá la lista.';empty.append(icon,strong,detail);container.append(empty);}
+    else{let lastCategory='';for(const item of calculated){if(item.category!==lastCategory){lastCategory=item.category;const h=document.createElement('h3');h.className='section-name';h.textContent=lastCategory;container.append(h);}const label=document.createElement('label');label.className='item'+(checked.has(item.key)?' checked':'');const input=document.createElement('input');input.type='checkbox';input.checked=checked.has(item.key);input.dataset.check=item.key;const body=document.createElement('span');const name=document.createElement('span');name.className='name';name.textContent=item.name;const qty=document.createElement('span');qty.className='qty';qty.textContent=`${fmt(item.quantity)} ${item.unit}`;body.append(name,qty);label.append(input,body);container.append(label);}}
+    updateDirty();
+  }
+  function calculate(){
+    const newSignature=signature();if(newSignature!==calculatedSignature)checked=new Set();
+    calculated=computeList();calculatedSignature=newSignature;
+    renderShopping();toast(calculated.length?'Lista calculada con las recetas de esta semana':'El plan está vacío; agregá recetas para generar la lista.');
+  }
+  function changeWeek(delta){week=addDays(week,delta*7);calculated=[];checked=new Set();calculatedSignature='';renderGrid();calculate();}
+  function closeDialog(){$('overlay').hidden=true;selected=null;document.body.style.overflow='';lastFocus?.focus();}
+  function openDialog(key,source){selected=key;lastFocus=source;const [date,meal]=key.split('|');const parsed=new Date(`${date}T12:00:00`);$('dialogContext').textContent=`${meal} del ${parsed.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})}`;
+    const entry=plan()[key];$('recipeSelect').value=validEntry(entry)?entry.recipeId:recipes[0].id;$('servings').value=validEntry(entry)?entry.servings:2;$('overlay').hidden=false;document.body.style.overflow='hidden';$('recipeSelect').focus();}
+  $('plannerGrid').addEventListener('click',event=>{
+    const remove=event.target.closest('[data-remove]');if(remove){const key=remove.dataset.remove;delete plan()[key];persist();renderGrid();updateDirty();toast('Comida quitada del plan.');return;}
+    const slot=event.target.closest('[data-slot]');if(slot)openDialog(slot.dataset.slot,slot);
+  });
+  $('save').addEventListener('click',()=>{
+    const servings=Number($('servings').value),recipeId=$('recipeSelect').value;
+    if(!Number.isInteger(servings)||servings<1||servings>12){$('servings').setCustomValidity('Elegí un número entero de 1 a 12 porciones.');$('servings').reportValidity();return;}
+    if(!recipes.some(r=>r.id===recipeId))return;
+    $('servings').setCustomValidity('');const key=selected;plan()[key]={recipeId,servings};persist();closeDialog();renderGrid();updateDirty();toast('Comida guardada. Calculá la lista para actualizarla.');
+  });
+  $('servings').addEventListener('input',()=>$('servings').setCustomValidity(''));
+  $('cancel').addEventListener('click',closeDialog);$('overlay').addEventListener('click',event=>{if(event.target===$('overlay'))closeDialog();});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('overlay').hidden)closeDialog();});
+  $('calculate').addEventListener('click',calculate);
+  $('previousWeek').addEventListener('click',()=>changeWeek(-1));$('nextWeek').addEventListener('click',()=>changeWeek(1));$('currentWeek').addEventListener('click',()=>{week=monday(new Date());calculated=[];checked=new Set();calculatedSignature='';renderGrid();calculate();});
+  $('shoppingItems').addEventListener('change',event=>{const input=event.target.closest('[data-check]');if(!input)return;if(input.checked)checked.add(input.dataset.check);else checked.delete(input.dataset.check);input.closest('.item').classList.toggle('checked',input.checked);});
+  function listText(){return `CocinAPP · Lista de compras\nSemana del ${weekLabel(week)}\n\n`+calculated.map(item=>`${checked.has(item.key)?'[x]':'[ ]'} ${itemText(item)}`).join('\n')+'\n\nCantidades totales; no se descontó la despensa.';}
+  $('copyList').addEventListener('click',async()=>{if(dirty||!calculated.length)return;try{await navigator.clipboard.writeText(listText());toast('Lista copiada.');}catch{toast('No se pudo copiar automáticamente. Usá Descargar.');}});
+  $('downloadList').addEventListener('click',()=>{if(dirty||!calculated.length)return;const blob=new Blob([listText()],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`cocinapp-compras-${weekKey()}.txt`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+  document.querySelectorAll('[data-demo]').forEach(a=>a.addEventListener('click',event=>{event.preventDefault();toast('Esta sección todavía no está conectada.');}));
+  $('recipeSelect').replaceChildren(...recipes.map(r=>{const option=document.createElement('option');option.value=r.id;option.textContent=r.name;return option;}));
+  renderGrid();calculated=computeList();calculatedSignature=signature();renderShopping();
+</script>
+</body>
+</html>

@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>CocinAPP - Configuración inicial</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- Material Symbols -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined"
+        rel="stylesheet"
+    >
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#16a34a",
+                        "primary-light": "#22c55e",
+                        "primary-soft": "#dcfce7",
+
+                        background: "#f8fafc",
+                        surface: "#ffffff",
+
+                        text: "#0f172a",
+                        muted: "#64748b",
+
+                        border: "#dbe3ea"
+                    },
+
+                    fontFamily: {
+                        sans: ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: "Inter", sans-serif;
+        }
+
+        .step {
+            display: none;
+        }
+
+        .step.active {
+            display: block;
+            animation: aparecer .3s ease;
+        }
+
+        @keyframes aparecer {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .goal-card.selected,
+        .diet-card.selected {
+            border-color: #22c55e;
+            background-color: #f0fdf4;
+            box-shadow: 0 4px 14px rgba(34, 197, 94, .12);
+        }
+
+        input:focus,
+        select:focus,
+        button:focus-visible,
+        a:focus-visible {
+            border-color: #22c55e !important;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, .15) !important;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .step.active { animation: none; }
+        }
+    </style>
+</head>
+
+<body class="bg-background text-text min-h-screen">
+
+<!-- ===================================================== -->
+<!-- ENCABEZADO -->
+<!-- ===================================================== -->
+
+<header class="bg-white border-b border-border sticky top-0 z-50">
+
+    <div
+        class="max-w-5xl mx-auto h-16 px-4 md:px-6
+               flex items-center justify-between"
+    >
+
+        <div class="flex items-center gap-2">
+
+            <span class="material-symbols-outlined text-primary text-3xl">
+                skillet
+            </span>
+
+            <span class="text-xl font-bold">
+                Cocin<span class="text-primary">APP</span>
+            </span>
+
+        </div>
+
+        <span
+            class="hidden sm:inline-flex text-xs font-semibold
+                   px-3 py-1 rounded-full bg-primary-soft text-primary"
+        >
+            Configuración inicial
+        </span>
+
+    </div>
+
+</header>
+
+
+<!-- ===================================================== -->
+<!-- CONTENIDO -->
+<!-- ===================================================== -->
+
+<main class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+
+    <section
+        id="onboardingContainer"
+        class="bg-white rounded-3xl shadow-lg
+               border border-slate-100
+               p-5 sm:p-7 md:p-10"
+    >
+
+        <!-- ================================================= -->
+        <!-- PROGRESO -->
+        <!-- ================================================= -->
+
+        <div id="progressSection" class="mb-8">
+
+            <div class="flex justify-between items-center mb-3">
+
+                <span
+                    id="stepIndicator"
+                    class="text-sm text-muted font-medium"
+                >
+                    Paso 1 de 3
+                </span>
+
+                <span
+                    id="stepName"
+                    class="text-sm text-primary font-semibold"
+                >
+                    Datos personales
+                </span>
+
+            </div>
+
+            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+
+                <div
+                    id="progressBar"
+                    class="h-full bg-primary-light
+                           transition-all duration-500 rounded-full"
+                    style="width: 33.33%"
+                ></div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ================================================= -->
+        <!-- PASO 1 -->
+        <!-- ================================================= -->
+
+        <div id="step1" class="step active">
+
+            <div class="text-center mb-8">
+
+                <h1 class="text-2xl md:text-3xl font-bold mb-2">
+                    Queremos conocerte un poco mejor
+                </h1>
+
+                <p class="text-muted max-w-xl mx-auto">
+                    Estos datos permiten mostrar una estimación general del
+                    gasto energético. Podés explorar recetas sin completar este cálculo.
+                </p>
+
+            </div>
+
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+                <!-- Peso -->
+
+                <div>
+
+                    <label
+                        for="weight"
+                        class="block text-sm font-semibold mb-2"
+                    >
+                        Peso
+                    </label>
+
+                    <div class="relative">
+
+                        <input
+                            id="weight"
+                            type="number"
+                            min="30"
+                            max="300"
+                            step="0.1"
+                            placeholder="Ej. 75"
+                            class="w-full rounded-xl border-border pr-14"
+                        >
+
+                        <span
+                            class="absolute right-4 top-1/2
+                                   -translate-y-1/2 text-muted text-sm"
+                        >
+                            kg
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Altura -->
+
+                <div>
+
+                    <label
+                        for="height"
+                        class="block text-sm font-semibold mb-2"
+                    >
+                        Altura
+                    </label>
+
+                    <div class="relative">
+
+                        <input
+                            id="height"
+                            type="number"
+                            min="100"
+                            max="250"
+                            placeholder="Ej. 175"
+                            class="w-full rounded-xl border-border pr-14"
+                        >
+
+                        <span
+                            class="absolute right-4 top-1/2
+                                   -translate-y-1/2 text-muted text-sm"
+                        >
+                            cm
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Edad -->
+
+                <div>
+
+                    <label
+                        for="age"
+                        class="block text-sm font-semibold mb-2"
+                    >
+                        Edad
+                    </label>
+
+                    <input
+                        id="age"
+                        type="number"
+                        min="18"
+                        max="100"
+                        placeholder="Ej. 25"
+                        class="w-full rounded-xl border-border"
+                    >
+
+                </div>
+
+
+                <!-- Sexo -->
+
+                <div>
+
+                    <label
+                        for="sex"
+                        class="block text-sm font-semibold mb-2"
+                    >
+                        Sexo para el cálculo metabólico
+                    </label>
+
+                    <select
+                        id="sex"
+                        class="w-full rounded-xl border-border"
+                    >
+
+                        <option value="">
+                            Seleccionar...
+                        </option>
+
+                        <option value="male">
+                            Masculino
+                        </option>
+
+                        <option value="female">
+                            Femenino
+                        </option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+
+            <!-- Actividad -->
+
+            <div class="mt-5">
+
+                <label
+                    for="activity"
+                    class="block text-sm font-semibold mb-2"
+                >
+                    Nivel de actividad física
+                </label>
+
+                <select
+                    id="activity"
+                    class="w-full rounded-xl border-border"
+                >
+
+                    <option value="">
+                        Seleccioná tu nivel de actividad
+                    </option>
+
+                    <option value="1.2">
+                        Sedentario — poco o ningún ejercicio
+                    </option>
+
+                    <option value="1.375">
+                        Actividad ligera — 1 a 3 días por semana
+                    </option>
+
+                    <option value="1.55">
+                        Actividad moderada — 3 a 5 días por semana
+                    </option>
+
+                    <option value="1.725">
+                        Muy activo — 6 a 7 días por semana
+                    </option>
+
+                    <option value="1.9">
+                        Actividad muy alta — entrenamiento intenso o trabajo físico
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <p
+                id="step1Error"
+                class="hidden mt-4 text-sm text-red-600"
+            >
+                Revisá los campos marcados: peso 30–300 kg, altura 100–250 cm,
+                edad 18–100 años, sexo para la fórmula y nivel de actividad.
+            </p>
+
+
+            <div
+                class="flex justify-end mt-8 pt-6
+                       border-t border-slate-100"
+            >
+
+                <button
+                    onclick="goToStep(2)"
+                    class="bg-primary hover:bg-green-700
+                           text-white font-semibold
+                           px-6 py-3 rounded-xl
+                           flex items-center gap-2
+                           transition"
+                >
+                    Continuar
+
+                    <span class="material-symbols-outlined text-lg">
+                        arrow_forward
+                    </span>
+
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- ================================================= -->
+        <!-- PASO 2 -->
+        <!-- ================================================= -->
+
+        <div id="step2" class="step">
+
+            <div class="text-center mb-8">
+
+                <h1 class="text-2xl md:text-3xl font-bold mb-2">
+                    ¿Cuál es tu objetivo?
+                </h1>
+
+                <p class="text-muted max-w-xl mx-auto">
+                    Guardaremos esta preferencia junto a tu perfil.
+                    calórico diario.
+                </p>
+
+            </div>
+
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+
+                <!-- PERDER PESO -->
+
+                <button
+                    type="button"
+                    class="goal-card text-left border-2 border-border
+                           rounded-2xl p-5 transition
+                           hover:border-primary-light"
+                    data-goal="loss"
+                    onclick="selectGoal(this)"
+                >
+
+                    <div
+                        class="w-12 h-12 rounded-full bg-orange-50
+                               text-orange-600 flex items-center
+                               justify-center mb-4"
+                    >
+                        <span class="material-symbols-outlined">
+                            trending_down
+                        </span>
+                    </div>
+
+                    <h3 class="font-bold text-lg mb-2">
+                        Perder peso
+                    </h3>
+
+                    <p class="text-sm text-muted">
+                        Un objetivo que podés registrar para organizar tu alimentación.
+                    </p>
+
+                </button>
+
+
+                <!-- MANTENER -->
+
+                <button
+                    type="button"
+                    class="goal-card text-left border-2 border-border
+                           rounded-2xl p-5 transition
+                           hover:border-primary-light"
+                    data-goal="maintain"
+                    onclick="selectGoal(this)"
+                >
+
+                    <div
+                        class="w-12 h-12 rounded-full bg-primary-soft
+                               text-primary flex items-center
+                               justify-center mb-4"
+                    >
+                        <span class="material-symbols-outlined">
+                            balance
+                        </span>
+                    </div>
+
+                    <h3 class="font-bold text-lg mb-2">
+                        Mantener mi peso
+                    </h3>
+
+                    <p class="text-sm text-muted">
+                        Registrar tu intención de mantener tus hábitos actuales.
+                    </p>
+
+                </button>
+
+
+                <!-- GANAR -->
+
+                <button
+                    type="button"
+                    class="goal-card text-left border-2 border-border
+                           rounded-2xl p-5 transition
+                           hover:border-primary-light"
+                    data-goal="gain"
+                    onclick="selectGoal(this)"
+                >
+
+                    <div
+                        class="w-12 h-12 rounded-full bg-blue-50
+                               text-blue-600 flex items-center
+                               justify-center mb-4"
+                    >
+                        <span class="material-symbols-outlined">
+                            fitness_center
+                        </span>
+                    </div>
+
+                    <h3 class="font-bold text-lg mb-2">
+                        Aumentar masa muscular
+                    </h3>
+
+                    <p class="text-sm text-muted">
+                        Registrar tu interés por acompañar el entrenamiento.
+                    </p>
+
+                </button>
+
+            </div>
+
+
+            <p
+                id="step2Error"
+                class="hidden mt-5 text-sm text-red-600 text-center"
+            >
+                Seleccioná un objetivo para continuar.
+            </p>
+
+
+            <div
+                class="flex justify-between mt-8 pt-6
+                       border-t border-slate-100"
+            >
+
+                <button
+                    onclick="showStep(1)"
+                    class="text-muted hover:text-primary
+                           font-semibold px-3 py-3
+                           flex items-center gap-2"
+                >
+
+                    <span class="material-symbols-outlined text-lg">
+                        arrow_back
+                    </span>
+
+                    Volver
+
+                </button>
+
+
+                <button
+                    onclick="goToStep(3)"
+                    class="bg-primary hover:bg-green-700
+                           text-white font-semibold
+                           px-6 py-3 rounded-xl
+                           flex items-center gap-2 transition"
+                >
+
+                    Continuar
+
+                    <span class="material-symbols-outlined text-lg">
+                        arrow_forward
+                    </span>
+
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- ================================================= -->
+        <!-- PASO 3 -->
+        <!-- ================================================= -->
+
+        <div id="step3" class="step">
+
+            <div class="text-center mb-8">
+
+                <h1 class="text-2xl md:text-3xl font-bold mb-2">
+                    ¿Tenés preferencias o restricciones alimentarias?
+                </h1>
+
+                <p class="text-muted max-w-xl mx-auto">
+                    Guardaremos tus elecciones. Las recetas etiquetadas como
+                    vegetarianas o veganas pueden iniciarse con ese filtro.
+                </p>
+
+            </div>
+
+
+            <div
+                id="dietGrid"
+                class="grid grid-cols-2 md:grid-cols-3 gap-3"
+            >
+
+                <button
+                    type="button"
+                    class="diet-card border-2 border-border rounded-xl
+                           p-4 flex flex-col items-center gap-2"
+                    data-diet="Sin gluten"
+                    onclick="toggleDiet(this)"
+                >
+                    <span class="material-symbols-outlined text-3xl">
+                        grain
+                    </span>
+
+                    <span class="text-sm font-semibold text-center">
+                        Sin gluten
+                    </span>
+                </button>
+
+
+                <button
+                    type="button"
+                    class="diet-card border-2 border-border rounded-xl
+                           p-4 flex flex-col items-center gap-2"
+                    data-diet="Vegetariano"
+                    onclick="toggleDiet(this)"
+                >
+                    <span class="material-symbols-outlined text-3xl">
+                        eco
+                    </span>
+
+                    <span class="text-sm font-semibold">
+                        Vegetariano
+                    </span>
+                </button>
+
+
+                <button
+                    type="button"
+                    class="diet-card border-2 border-border rounded-xl
+                           p-4 flex flex-col items-center gap-2"
+                    data-diet="Vegano"
+                    onclick="toggleDiet(this)"
+                >
+                    <span class="material-symbols-outlined text-3xl">
+                        psychiatry
+                    </span>
+
+                    <span class="text-sm font-semibold">
+                        Vegano
+                    </span>
+                </button>
+
+
+                <button
+                    type="button"
+                    class="diet-card border-2 border-border rounded-xl
+                           p-4 flex flex-col items-center gap-2"
+                    data-diet="Sin lactosa"
+                    onclick="toggleDiet(this)"
+                >
+                    <span class="material-symbols-outlined text-3xl">
+                        water_drop
+                    </span>
+
+                    <span class="text-sm font-semibold">
+                        Sin lactosa
+                    </span>
+                </button>
+
+
+                <button
+                    type="button"
+                    class="diet-card border-2 border-border rounded-xl
+                           p-4 flex flex-col items-center gap-2"
+                    data-diet="Sin frutos secos"
+                    onclick="toggleDiet(this)"
+                >
+                    <span class="material-symbols-outlined text-3xl">
+                        nutrition
+                    </span>
+
+                    <span class="text-sm font-semibold text-center">
+                        Sin frutos secos
+                    </span>
+                </button>
+
+
+                <button
+                    type="button"
+                    class="diet-card border-2 border-border rounded-xl
+                           p-4 flex flex-col items-center gap-2"
+                    data-diet="Alta en proteína"
+                    onclick="toggleDiet(this)"
+                >
+                    <span class="material-symbols-outlined text-3xl">
+                        fitness_center
+                    </span>
+
+                    <span class="text-sm font-semibold text-center">
+                        Alta en proteína
+                    </span>
+                </button>
+
+            </div>
+
+
+            <p class="mt-4 text-xs text-muted bg-slate-50 rounded-xl p-3">
+                Las etiquetas no verifican ingredientes, trazas ni contaminación
+                cruzada. Si tenés una alergia o restricción médica, revisá cada producto.
+            </p>
+
+            <!-- Sin restricciones -->
+
+            <button
+                id="noRestrictions"
+                type="button"
+                onclick="toggleNoRestrictions()"
+                class="diet-card w-full mt-4
+                       border-2 border-border rounded-xl
+                       p-4 flex items-center justify-center gap-3"
+            >
+
+                <span class="material-symbols-outlined">
+                    restaurant
+                </span>
+
+                <span class="font-semibold">
+                    Sin restricciones — como de todo
+                </span>
+
+            </button>
+
+
+            <div
+                class="flex justify-between mt-8 pt-6
+                       border-t border-slate-100"
+            >
+
+                <button
+                    onclick="showStep(2)"
+                    class="text-muted hover:text-primary
+                           font-semibold px-3 py-3
+                           flex items-center gap-2"
+                >
+
+                    <span class="material-symbols-outlined text-lg">
+                        arrow_back
+                    </span>
+
+                    Volver
+
+                </button>
+
+
+                <button
+                    onclick="finishOnboarding()"
+                    class="bg-primary hover:bg-green-700
+                           text-white font-semibold
+                           px-6 py-3 rounded-xl
+                           flex items-center gap-2 transition"
+                >
+
+                    Ver mi resumen
+
+                    <span class="material-symbols-outlined text-lg">
+                        arrow_forward
+                    </span>
+
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- ================================================= -->
+        <!-- RESULTADO -->
+        <!-- ================================================= -->
+
+        <div id="resultStep" class="step">
+
+            <div class="text-center">
+
+                <div
+                    class="mx-auto w-16 h-16 rounded-full
+                           bg-primary-soft text-primary
+                           flex items-center justify-center mb-5"
+                >
+
+                    <span class="material-symbols-outlined text-4xl">
+                        check_circle
+                    </span>
+
+                </div>
+
+
+                <span
+                    class="inline-block px-4 py-1.5 rounded-full
+                           bg-primary-soft text-primary
+                           text-sm font-semibold mb-4"
+                >
+                    Resumen de tu perfil
+                </span>
+
+
+                <h1 class="text-2xl md:text-3xl font-bold mb-2">
+                    Estimación energética de referencia
+                </h1>
+
+                <p class="text-muted">
+                    Gasto diario aproximado para mantener el peso; no es una meta de consumo.
+                </p>
+
+            </div>
+
+
+            <!-- CALORÍAS -->
+
+            <div
+                class="mt-8 bg-green-50
+                       border border-green-100
+                       rounded-3xl p-7 text-center"
+            >
+
+                <div
+                    id="caloriesResult"
+                    class="text-4xl md:text-5xl
+                           text-primary font-bold"
+                >
+                    0
+                </div>
+
+                <div class="text-lg text-muted mt-1">
+                    kcal / día
+                </div>
+
+                <div
+                    id="goalResult"
+                    class="mt-4 text-sm font-semibold text-primary"
+                ></div>
+
+            </div>
+
+
+            <!-- RESUMEN -->
+
+            <div
+                class="grid grid-cols-1 sm:grid-cols-2
+                       gap-4 mt-6"
+            >
+
+                <div
+                    class="border border-border rounded-2xl
+                           p-5 flex items-center gap-4"
+                >
+
+                    <div
+                        class="w-11 h-11 rounded-full
+                               bg-blue-50 text-blue-600
+                               flex items-center justify-center"
+                    >
+                        <span class="material-symbols-outlined">
+                            scale
+                        </span>
+                    </div>
+
+                    <div>
+
+                        <p class="text-xs text-muted uppercase font-semibold">
+                            Peso
+                        </p>
+
+                        <p
+                            id="weightResult"
+                            class="font-bold text-xl"
+                        ></p>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    class="border border-border rounded-2xl
+                           p-5 flex items-center gap-4"
+                >
+
+                    <div
+                        class="w-11 h-11 rounded-full
+                               bg-orange-50 text-orange-600
+                               flex items-center justify-center"
+                    >
+                        <span class="material-symbols-outlined">
+                            flag
+                        </span>
+                    </div>
+
+                    <div>
+
+                        <p class="text-xs text-muted uppercase font-semibold">
+                            Objetivo
+                        </p>
+
+                        <p
+                            id="objectiveResult"
+                            class="font-bold"
+                        ></p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Preferencias -->
+
+            <div class="border border-border rounded-2xl p-5 mt-4">
+
+                <p class="text-xs text-muted uppercase font-semibold mb-3">
+                    Preferencias alimentarias
+                </p>
+
+                <div
+                    id="dietResult"
+                    class="flex flex-wrap gap-2"
+                ></div>
+
+            </div>
+
+
+            <!-- Aviso -->
+
+            <div
+                class="mt-6 bg-slate-50
+                       text-muted text-xs
+                       rounded-xl p-4"
+            >
+
+                Es una estimación orientativa para adultos. La fórmula estima
+                el gasto en reposo y el nivel de actividad aproxima el gasto
+                diario; no sirve para definir un plan individual ni reemplaza
+                la evaluación de un profesional de la nutrición. Los cambios
+                de peso requieren orientación individual.
+
+            </div>
+
+
+            <button type="button" onclick="showStep(3)"
+                class="mt-5 text-primary font-semibold hover:underline">
+                Editar mis respuestas
+            </button>
+
+            <p id="saveError" class="hidden mt-3 text-sm text-red-600" role="alert">
+                No se pudo guardar el perfil en este navegador. Podés revisar
+                el almacenamiento o entrar sin guardar.
+            </p>
+
+            <button
+                onclick="startApp()"
+                class="w-full mt-7
+                       bg-primary hover:bg-green-700
+                       text-white font-bold
+                       px-6 py-4 rounded-xl transition"
+            >
+
+                Ir a CocinAPP
+
+                <span class="material-symbols-outlined align-middle ml-1">
+                    arrow_forward
+                </span>
+
+            </button>
+
+            <a href="CocinAPP_Explorar_Recetas_Mejorado.html"
+                class="block text-center mt-4 text-sm text-primary font-semibold hover:underline">
+                Entrar sin guardar
+            </a>
+
+        </div>
+
+    </section>
+
+</main>
+
+
+<script>
+    "use strict";
+
+    const storageKey = "cocinapp-onboarding-clasico-v2";
+    const allowedDiets = [
+        "Sin gluten", "Vegetariano", "Vegano",
+        "Sin lactosa", "Sin frutos secos", "Alta en proteína"
+    ];
+    const allowedActivities = ["1.2", "1.375", "1.55", "1.725", "1.9"];
+    const allowedGoals = ["loss", "maintain", "gain"];
+    const names = {
+        1: "Datos personales",
+        2: "Objetivo",
+        3: "Preferencias alimentarias"
+    };
+    let selectedGoal = null;
+    let selectedDiets = [];
+    let noRestrictionsSelected = false;
+
+    function showStep(step) {
+        document.querySelectorAll(".step").forEach(el => el.classList.remove("active"));
+        document.getElementById("step" + step).classList.add("active");
+        document.getElementById("progressSection").classList.remove("hidden");
+        document.getElementById("progressBar").style.width = (step / 3 * 100) + "%";
+        document.getElementById("stepIndicator").textContent = `Paso ${step} de 3`;
+        document.getElementById("stepName").textContent = names[step];
+        window.scrollTo({top: 0, behavior: "smooth"});
+        document.querySelector("#step" + step + " h1").setAttribute("tabindex", "-1");
+        document.querySelector("#step" + step + " h1").focus({preventScroll: true});
+    }
+
+    function validateStep1() {
+        const rules = {
+            weight: value => Number.isFinite(value) && value >= 30 && value <= 300,
+            height: value => Number.isInteger(value) && value >= 100 && value <= 250,
+            age: value => Number.isInteger(value) && value >= 18 && value <= 100,
+            sex: value => value === "male" || value === "female",
+            activity: value => allowedActivities.includes(value)
+        };
+        let firstInvalid = null;
+        for (const [id, rule] of Object.entries(rules)) {
+            const input = document.getElementById(id);
+            const raw = input.value.trim();
+            const value = ["weight", "height", "age"].includes(id) ? Number(raw) : raw;
+            const valid = raw !== "" && rule(value);
+            input.setAttribute("aria-invalid", String(!valid));
+            if (!valid && !firstInvalid) firstInvalid = input;
+        }
+        document.getElementById("step1Error").classList.toggle("hidden", !firstInvalid);
+        if (firstInvalid) firstInvalid.focus();
+        return !firstInvalid;
+    }
+
+    function goToStep(step) {
+        if (step === 2 && !validateStep1()) return;
+        if (step === 3 && !selectedGoal) {
+            document.getElementById("step2Error").classList.remove("hidden");
+            return;
+        }
+        showStep(step);
+    }
+
+    function selectGoal(card) {
+        selectedGoal = card.dataset.goal;
+        document.querySelectorAll(".goal-card").forEach(item => {
+            const active = item === card;
+            item.classList.toggle("selected", active);
+            item.setAttribute("aria-pressed", String(active));
+        });
+        document.getElementById("step2Error").classList.add("hidden");
+    }
+
+    function toggleDiet(card) {
+        const diet = card.dataset.diet;
+        selectedDiets = selectedDiets.includes(diet)
+            ? selectedDiets.filter(item => item !== diet)
+            : [...selectedDiets, diet];
+        noRestrictionsSelected = false;
+        syncDiets();
+    }
+
+    function toggleNoRestrictions() {
+        noRestrictionsSelected = !noRestrictionsSelected;
+        if (noRestrictionsSelected) selectedDiets = [];
+        syncDiets();
+    }
+
+    function syncDiets() {
+        document.querySelectorAll("[data-diet]").forEach(card => {
+            const active = selectedDiets.includes(card.dataset.diet);
+            card.classList.toggle("selected", active);
+            card.setAttribute("aria-pressed", String(active));
+        });
+        const button = document.getElementById("noRestrictions");
+        button.classList.toggle("selected", noRestrictionsSelected);
+        button.setAttribute("aria-pressed", String(noRestrictionsSelected));
+    }
+
+    function profile() {
+        return {
+            version: 2,
+            weight: Number(document.getElementById("weight").value),
+            height: Number(document.getElementById("height").value),
+            age: Number(document.getElementById("age").value),
+            sex: document.getElementById("sex").value,
+            activity: document.getElementById("activity").value,
+            goal: selectedGoal,
+            diets: [...selectedDiets]
+        };
+    }
+
+    function finishOnboarding() {
+        if (!validateStep1()) {showStep(1); validateStep1(); return;}
+        if (!selectedGoal) {showStep(2); document.getElementById("step2Error").classList.remove("hidden"); return;}
+        const data = profile();
+        // Mifflin–St Jeor estima el gasto EN REPOSO. El factor de actividad
+        // aproxima mantenimiento; no se aplica una meta calórica de pérdida o ganancia.
+        const resting = 10 * data.weight + 6.25 * data.height
+            - 5 * data.age + (data.sex === "male" ? 5 : -161);
+        const maintenance = Math.round(resting * Number(data.activity));
+        const goals = {
+            loss: "Perder peso",
+            maintain: "Mantener mi peso",
+            gain: "Aumentar masa muscular"
+        };
+        document.getElementById("caloriesResult").textContent =
+            maintenance.toLocaleString("es-AR");
+        document.getElementById("goalResult").textContent =
+            "Estimación de mantenimiento, independiente de tu objetivo";
+        document.getElementById("weightResult").textContent = data.weight + " kg";
+        document.getElementById("objectiveResult").textContent = goals[data.goal];
+        const dietContainer = document.getElementById("dietResult");
+        dietContainer.replaceChildren();
+        const choices = data.diets.length ? data.diets : ["Sin restricciones seleccionadas"];
+        for (const diet of choices) {
+            const chip = document.createElement("span");
+            chip.className = "px-3 py-1.5 rounded-full bg-primary-soft text-primary text-sm font-semibold";
+            chip.textContent = "✓ " + diet;
+            dietContainer.appendChild(chip);
+        }
+        document.getElementById("saveError").classList.add("hidden");
+        document.getElementById("progressSection").classList.add("hidden");
+        document.querySelectorAll(".step").forEach(el => el.classList.remove("active"));
+        document.getElementById("resultStep").classList.add("active");
+        window.scrollTo({top: 0, behavior: "smooth"});
+        document.querySelector("#resultStep h1").setAttribute("tabindex", "-1");
+        document.querySelector("#resultStep h1").focus({preventScroll: true});
+    }
+
+    function startApp() {
+        if (!validateStep1() || !selectedGoal) {showStep(1); return;}
+        const data = profile();
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(data));
+        } catch {
+            document.getElementById("saveError").classList.remove("hidden");
+            return;
+        }
+        const url = new URL("CocinAPP_Explorar_Recetas_Mejorado.html", location.href);
+        if (data.diets.includes("Vegano")) url.searchParams.set("diet", "Vegana");
+        else if (data.diets.includes("Vegetariano")) url.searchParams.set("diet", "Vegetariana");
+        window.location.href = url.href;
+    }
+
+    // Al volver a la configuración, completar únicamente un perfil válido.
+    try {
+        const data = JSON.parse(localStorage.getItem(storageKey) || "null");
+        if (data && data.version === 2
+            && Number.isFinite(data.weight) && data.weight >= 30 && data.weight <= 300
+            && Number.isInteger(data.height) && data.height >= 100 && data.height <= 250
+            && Number.isInteger(data.age) && data.age >= 18 && data.age <= 100
+            && ["male", "female"].includes(data.sex)
+            && allowedActivities.includes(data.activity)
+            && allowedGoals.includes(data.goal)
+            && Array.isArray(data.diets)
+            && data.diets.every(diet => allowedDiets.includes(diet))) {
+            for (const id of ["weight", "height", "age", "sex", "activity"]) {
+                document.getElementById(id).value = data[id];
+            }
+            selectGoal(document.querySelector(`[data-goal="${data.goal}"]`));
+            selectedDiets = [...new Set(data.diets)];
+            noRestrictionsSelected = false;
+            syncDiets();
+        }
+    } catch {}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CocinAPP · Explorar recetas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:FILL@0..1&display=swap" rel="stylesheet">
+  <style>
+    :root{--green:#17603a;--deep:#113d2c;--soft:#eaf5eb;--cream:#f8f8f4;--ink:#1d2924;--muted:#61716a;--line:#e0e8e1;--orange:#a65718}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--cream);color:var(--ink);font:16px/1.5 'DM Sans',system-ui,sans-serif}button,input,select{font:inherit}button{cursor:pointer}a{color:inherit}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #ed9b51;outline-offset:2px}.icon{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:23px;line-height:1;white-space:nowrap;font-feature-settings:'liga'}
+    .shell{min-height:100vh}.sidebar{display:none}.main{width:min(1190px,100%);margin:auto;padding:24px 20px 112px}.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}.wordmark{font-size:23px;font-weight:700;letter-spacing:-.06em}.wordmark span{color:var(--green)}.eyebrow{color:var(--green);font-size:12px;text-transform:uppercase;font-weight:700;letter-spacing:.08em}.title{font-size:clamp(32px,4.4vw,49px);line-height:1.12;letter-spacing:-.055em;margin:8px 0}.intro{color:var(--muted);margin:0 0 25px;max-width:650px}
+    .filters{background:white;border:1px solid var(--line);padding:15px;border-radius:21px;box-shadow:0 4px 18px #163e2910;display:grid;gap:12px;margin-bottom:30px}.search{position:relative}.search .icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted)}input[type=search]{height:46px;width:100%;border:1px solid var(--line);border-radius:12px;background:var(--cream);padding:0 12px 0 45px;color:var(--ink)}.filter-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:4px}.field select{width:100%;height:44px;border:1px solid var(--line);background:white;color:var(--ink);border-radius:11px;padding:0 9px}.filter-actions{display:flex;align-items:center;justify-content:space-between;gap:12px}.subtle{color:var(--muted);font-size:13px}.text-button{border:0;background:none;color:var(--green);font-weight:700;padding:7px}
+    .section-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:23px 0 15px}.section-head h2{font-size:clamp(22px,3vw,28px);letter-spacing:-.04em;margin:0}.section-head a{font-size:14px;color:var(--green);font-weight:700;text-decoration:none}.section-head a:hover{text-decoration:underline}.rail{display:flex;gap:15px;overflow-x:auto;padding:0 0 16px;scroll-snap-type:x mandatory;scrollbar-width:thin}.rail .card{flex:none;width:min(300px,84vw);scroll-snap-align:start}.catalog{display:grid;grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:17px}.card{background:white;border:1px solid var(--line);border-radius:19px;overflow:hidden;box-shadow:0 3px 15px #163e290d;display:flex;flex-direction:column;min-width:0;transition:transform .15s,box-shadow .15s}.card:hover{transform:translateY(-3px);box-shadow:0 9px 26px #163e2918}.cover{position:relative;height:165px;background:linear-gradient(135deg,#dcebd9,#e9dfbd)}.rail .cover{height:175px}.cover img{height:100%;width:100%;object-fit:cover;display:block}.cover .pill{position:absolute;bottom:10px;left:10px;background:#fffffff0;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:700}.card-body{padding:16px;display:flex;flex-direction:column;flex:1}.card-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.card h3{font-size:18px;letter-spacing:-.025em;line-height:1.26;margin:0}.save{border:0;border-radius:50%;width:34px;height:34px;background:var(--soft);color:var(--green);display:grid;place-items:center;flex:none}.save[aria-pressed=true]{background:#dff2e3}.card p{font-size:13px;color:var(--muted);margin:8px 0 14px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}.tag{font-size:11px;border-radius:100px;padding:4px 8px;background:#edf3ed;color:var(--deep);font-weight:700}.tag.orange{background:#fff1e5;color:#91501b}.card-bottom{border-top:1px solid var(--line);margin-top:14px;padding-top:11px;display:flex;align-items:center;justify-content:space-between;gap:9px}.meta{color:var(--muted);font-size:12px}.open-card{color:var(--green);border:0;background:none;font-weight:700;padding:5px;font-size:13px;white-space:nowrap}.empty{padding:40px 20px;text-align:center;background:white;border:1px dashed var(--line);border-radius:18px;color:var(--muted)}.empty h3{margin:10px 0 3px;color:var(--ink)}.note{color:var(--muted);font-size:12px;margin:20px 0}
+    .mobile-nav{position:fixed;z-index:10;bottom:0;left:0;width:100%;display:flex;justify-content:space-around;background:white;border-top:1px solid var(--line);padding:8px 4px max(8px,env(safe-area-inset-bottom))}.mobile-nav a{display:grid;justify-items:center;color:var(--muted);font-size:11px;text-decoration:none;min-width:60px}.mobile-nav a.current{color:var(--green);font-weight:700}
+    .overlay{position:fixed;z-index:25;inset:0;background:#10251bb0;display:grid;place-items:center;padding:16px}.dialog{width:min(510px,100%);max-height:min(92vh,760px);overflow:auto;background:white;border-radius:22px;box-shadow:0 20px 70px #0004}.dialog-cover{height:200px;background:linear-gradient(135deg,#dcebd9,#e9dfbd)}.dialog-cover img{width:100%;height:100%;object-fit:cover}.dialog-content{padding:20px 23px 24px}.dialog-top{display:flex;justify-content:space-between;gap:10px}.dialog h2{font-size:24px;line-height:1.2;margin:3px 0 8px}.dialog p{color:var(--muted);font-size:14px}.dialog h3{font-size:15px;margin:17px 0 6px}.dialog ul{margin:0;padding-left:20px}.dialog li{padding:2px 0}.dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;flex-wrap:wrap}.button{border:0;background:var(--green);color:white;border-radius:11px;padding:10px 14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}.button.secondary{background:var(--soft);color:var(--deep)}.toast{position:fixed;z-index:35;bottom:89px;left:50%;transform:translateX(-50%);max-width:calc(100vw - 30px);width:max-content;text-align:center;background:#172b21;color:white;padding:11px 16px;border-radius:12px;box-shadow:0 7px 24px #0003;font-size:14px}[hidden]{display:none!important}
+    @media(max-width:620px){.filter-fields{grid-template-columns:1fr 1fr}.field:last-child{grid-column:1/-1}.main{padding-left:15px;padding-right:15px}}@media(min-width:850px){.filters{grid-template-columns:minmax(230px,1fr) minmax(400px,1.5fr);align-items:end}.filter-actions{grid-column:1/-1}.catalog{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(min-width:1080px){.shell{padding-left:245px}.sidebar{display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;width:245px;padding:27px 16px;border-right:1px solid var(--line);background:white}.sidebar .wordmark{padding:0 13px 30px}.sidebar nav{display:grid;align-content:start;gap:7px;flex:1}.sidebar a{padding:12px 14px;display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--muted);border-radius:12px;font-weight:600}.sidebar a.current{color:var(--green);background:var(--soft)}.sidebar a:hover{background:var(--soft)}.main{padding-bottom:48px}.mobile-nav{display:none}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" aria-label="Navegación principal"><div class="wordmark">Cocin<span>APP</span></div><nav><a href="CocinAPP_Mi_Despensa_Mejorada.html"><span class="icon">inventory_2</span>Mi despensa</a><a href="#" class="current" aria-current="page"><span class="icon">restaurant_menu</span>Recetas</a><a href="CocinAPP_Planificador_Semanal_Mejorado.html"><span class="icon">calendar_month</span>Planificador</a><a href="CocinAPP_Compras_Mejorado.html"><span class="icon">shopping_cart</span>Compras</a></nav></aside>
+  <main class="main">
+    <div class="top"><span class="wordmark">Cocin<span>APP</span></span><span class="eyebrow">Ideas para tu cocina</span></div>
+    <header><div class="eyebrow">Explorar</div><h1 class="title">¿Qué te gustaría cocinar?</h1><p class="intro">Buscá una receta por nombre o ingrediente y acotá los resultados según tu tiempo y preferencias.</p></header>
+    <section class="filters" aria-label="Buscar y filtrar recetas">
+      <div class="search"><label for="search" class="subtle">Buscar recetas o ingredientes</label><div style="position:relative;margin-top:4px"><span class="icon" aria-hidden="true">search</span><input id="search" type="search" placeholder="Ej.: quinoa, batata, pasta" autocomplete="off"></div></div>
+      <div class="filter-fields"><div class="field"><label for="meal">Tipo de comida</label><select id="meal"><option value="">Todas</option><option value="Desayuno">Desayuno</option><option value="Almuerzo">Almuerzo</option><option value="Cena">Cena</option></select></div><div class="field"><label for="diet">Dieta</label><select id="diet"><option value="">Todas</option><option value="Vegana">Vegana</option><option value="Vegetariana">Vegetariana</option><option value="Sin gluten">Sin gluten</option></select></div><div class="field"><label for="time">Tiempo máximo</label><select id="time"><option value="">Cualquiera</option><option value="15">15 minutos</option><option value="30">30 minutos</option><option value="45">45 minutos</option><option value="60">60 minutos</option></select></div></div>
+      <div class="filter-actions"><span id="resultCount" class="subtle" role="status" aria-live="polite"></span><button id="clearFilters" type="button" class="text-button">Limpiar filtros</button></div>
+    </section>
+    <section id="trendingSection" aria-labelledby="trendingTitle"><div class="section-head"><h2 id="trendingTitle">Para inspirarte</h2><a href="#catalogTitle" id="seeAll">Ver todo</a></div><div id="trending" class="rail" aria-label="Recetas destacadas"></div></section>
+    <section aria-labelledby="catalogTitle"><div class="section-head"><h2 id="catalogTitle">Todas las recetas</h2></div><div id="catalog" class="catalog"></div><div id="empty" class="empty" hidden><span class="icon" style="font-size:39px;color:var(--green)">search_off</span><h3>No encontramos recetas</h3><p>Probá otro término o cambiá los filtros.</p><button type="button" id="emptyClear" class="button secondary">Limpiar filtros</button></div></section>
+    <p class="note">Recetas, ingredientes y tiempos de ejemplo. La disponibilidad según la despensa se mostrará cuando esta pantalla esté conectada a tus existencias.</p>
+  </main>
+  <nav class="mobile-nav" aria-label="Navegación móvil"><a href="CocinAPP_Mi_Despensa_Mejorada.html"><span class="icon">inventory_2</span>Despensa</a><a href="#" class="current" aria-current="page"><span class="icon">restaurant_menu</span>Recetas</a><a href="CocinAPP_Planificador_Semanal_Mejorado.html"><span class="icon">calendar_month</span>Plan</a><a href="CocinAPP_Compras_Mejorado.html"><span class="icon">shopping_cart</span>Compras</a></nav>
+</div>
+<div id="overlay" class="overlay" hidden><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"><div class="dialog-cover" id="dialogCover"></div><div class="dialog-content"><div class="dialog-top"><div><span class="eyebrow">Vista previa</span><h2 id="dialogTitle"></h2></div><button id="closeDialog" type="button" class="save" aria-label="Cerrar vista previa"><span class="icon">close</span></button></div><p id="dialogDescription"></p><div id="dialogMeta" class="tags"></div><h3>Ingredientes principales</h3><ul id="dialogIngredients"></ul><p>Las cantidades, instrucciones y la disponibilidad en tu despensa se definirán en el detalle de la receta.</p><div id="dialogActions" class="dialog-actions"><button id="dismissDialog" class="button secondary" type="button">Cerrar</button></div></div></div></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script>
+  'use strict';
+  // Datos de demostración. En producción se reemplazan por respuestas de la API.
+  const recipes = [
+    {id:'quinoa',title:'Bowl de quinoa con verduras asadas',description:'Batata y kale al horno con un aderezo de tahini y limón.',ingredients:['quinoa','batata','kale','tahini','limón'],meal:['Almuerzo','Cena'],diet:['Vegana','Vegetariana','Sin gluten'],minutes:35,difficulty:'Fácil',featured:true,image:'https://lh3.googleusercontent.com/aida-public/AB6AXuD2rzQmDk3rmDxaTHaXR2vx8XZeQWqNnfqLGiN9IQWvQJpNouP6eIDGi_-1_w7qYLZfFnhsKsq0WTGjVFNQSPNvDt9qqypiiNCWzSkJxCa7vWi0T3kFFjkqkI4_uITqRPy2JTr0Z6pLKDR3HpDZMNvAmdRldz55JezhBDNBpc17KqS7p5QlfrIlmF3G_-Vtzdu1OC1xNyPC-JIq4sG2FcDRhbrC_YoYeplF8ZLVTxzEViEsfDa2eqs',detail:'CocinAPP_Detalle_Receta_Mejorado.html'},
+    {id:'mediterraneo',title:'Bowl mediterráneo de quinoa',description:'Ensalada fresca de quinoa, tomate, pepino, queso feta y hierbas.',ingredients:['quinoa','tomate','pepino','queso feta','hierbas'],meal:['Almuerzo'],diet:['Vegetariana','Sin gluten'],minutes:15,difficulty:'Fácil',featured:true,image:'https://lh3.googleusercontent.com/aida-public/AB6AXuDbkxqT0p94wqOi2JrlYZvmzLBAKCeV6KVqFt9MbnUsUfloUGxG2eWCOPHQRqMDD-GBFYpJLZGWmE1WVyYcf1-1lWLKJ-RVL3msh9rYm4dw5k8iYkcBpOUznbxlblEDreH7IPOJHYah1jLtTfIELAPl5RR8yWuus7eP5qYywK_sPmugVcbOuw2dh_Mhcx7mkI8UUhLdjowmihiiQwyKTf69_6yMKmbjsy9J4MegO6qG3k2vxJg-jjg'},
+    {id:'pasta',title:'Pasta cremosa de palta',description:'Pasta con salsa de palta, limón y albahaca.',ingredients:['pasta','palta','limón','albahaca'],meal:['Almuerzo','Cena'],diet:['Vegana','Vegetariana'],minutes:20,difficulty:'Fácil',featured:true,image:'https://lh3.googleusercontent.com/aida-public/AB6AXuDlMHPbYL03PB353Bi9bw0mIsk0gXj7XuE0UzW58uuvfm_sast4sjAfBSs8O6493h2JQGd5oE6e7RXEZppF-1sRHWiYQy72ophxT_66YKCKc7Mh8ffnE76i_9bW5nQRWlQbFz3CDYXErA98KBHwaWzkwjyaXbZezc-mfqHj-AOWOZ7p95Recen8OWZoMufUGR7nK1guTy1JazLYWbo0GGWamsCrpzrsy4vq9v_ojTRbQ_CmbMTiQ'},
+    {id:'tortilla',title:'Tortilla española clásica',description:'Papas, cebolla y huevo para una tortilla casera.',ingredients:['papas','cebolla','huevo'],meal:['Almuerzo','Cena'],diet:['Vegetariana','Sin gluten'],minutes:30,difficulty:'Fácil',featured:false,image:'https://lh3.googleusercontent.com/aida-public/AB6AXuA6PvfaXl0E9LXr_ox0RfDyx9L4nxv77qTAbqScxOiGCwK7FJ_NQqwOeoTCvaf7IbLzWAkR-yAsBdhCLgXVJC1IaJU-G1oMN56ir0ylNyOhiTpPoJ1aPBfUtBG2sM0zueVmZUuYV-TnSLtJEdBHIec5NFzDRcW7LdXbsUFkOkyB8ayIcvRsg9WrOl7lHYVM6LqJThOVmItmAis7FstjSJSEelgSGbAANnbtyUirTiGF7R015obxreA'},
+    {id:'thai',title:'Pollo thai con albahaca',description:'Pollo salteado con albahaca, arroz y un toque picante.',ingredients:['pollo','albahaca','arroz','chile','huevo'],meal:['Almuerzo','Cena'],diet:['Sin gluten'],minutes:25,difficulty:'Intermedia',featured:false,image:'https://lh3.googleusercontent.com/aida-public/AB6AXuDcrYVKVe8sz3paeQRb-vDHh8XQ3OPnT2iimcMHp0h64D41vGtN8nGFDP9OWiIS5hKGyBuNHJpVSz2t5JIpfsfyVC4oMV0nX3kG85091vTCSr6VfKtbhgIh2GHCQ06qefokjpEBMBua6sczSQG0_vU5uDll0jzmazd6hI79pwLD0G988bIBDNL1HIi_NXKt2Y66MIfyChDvT9jx_7Y1P2HYouHlsz0syeXeMrGaNun1CUexWJcw6iw'},
+    {id:'guiso',title:'Guiso bourguignon de ternera',description:'Guiso lento de ternera con zanahorias y cebolla.',ingredients:['ternera','zanahoria','cebolla','vino tinto'],meal:['Cena'],diet:[],minutes:180,difficulty:'Avanzada',featured:false,image:'https://lh3.googleusercontent.com/aida-public/AB6AXuAJI7uTRipR0mWXJ5bPU0Nkot79nWmUjab6OlVzv3byybWjFpJr52U9h7fLxC58iOdWLJd9tIhD2-yGJGW1MzMo1wKWWLBevKQPAxKekQaPWMNYCV3KI1fqWOD70fn8VJGnHuKzfOKvv0VmZhquLM2mPsNDYgvk8HLR44-bhp9kXnOgACQMUqrOXBbZk0YZznjI52MWuOLuIACPs-2ltMfsoXirCv40c9l6Fo9L6isAeitnsGp3cDk'},
+    {id:'smoothie',title:'Bowl de smoothie verde',description:'Desayuno fresco con banana, frutos rojos, chía y granola.',ingredients:['banana','frutos rojos','chía','granola','espinaca'],meal:['Desayuno'],diet:['Vegana','Vegetariana'],minutes:10,difficulty:'Fácil',featured:false,image:'https://lh3.googleusercontent.com/aida-public/AB6AXuCCRnroBp9kbhSr9am-9GQ8SAYiab0hN-P3HquziOJly2I9GEDKWM8NWOvanyPLy1oYE0e2VwTVjyDfhhLzyA9sk1zFX0s_8wpWc9TGg-Pr40sKHJoh8gF4ZvXTnC1QiAq4beInIlPZTKIDg31zhSgux40dVLHxmf_pX8_fTp5ce_zW-3fxVE9SZO-sAgar0HpcVRrc3EiJ4TFwJrw13g6JSzJKGp1z-M1pxgka6nAGEA3IJpS0u20'}
+  ];
+  const $ = id => document.getElementById(id);
+  const norm = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const savedKey = 'cocinapp-demo-saved-recipes';
+  let saved;
+  try { saved = new Set(JSON.parse(localStorage.getItem(savedKey) || '[]').filter(id => recipes.some(r => r.id === id))); }
+  catch { saved = new Set(); }
+  let lastFocus = null, toastId = null;
+  function toast(message) { clearTimeout(toastId); $('toast').textContent=message; $('toast').hidden=false; toastId=setTimeout(()=>$('toast').hidden=true,3100); }
+  function imageFor(recipe) { const img=document.createElement('img'); img.src=recipe.image; img.alt=recipe.title; img.loading='lazy'; img.addEventListener('error',()=>img.remove()); return img; }
+  function cardFor(recipe) {
+    const card=document.createElement('article'); card.className='card';
+    const cover=document.createElement('div'); cover.className='cover'; cover.append(imageFor(recipe));
+    const pill=document.createElement('span'); pill.className='pill'; pill.textContent=`${recipe.minutes} min`; cover.append(pill);
+    const body=document.createElement('div'); body.className='card-body';
+    const row=document.createElement('div'); row.className='card-row';
+    const title=document.createElement('h3'); title.textContent=recipe.title;
+    const save=document.createElement('button'); save.className='save'; save.type='button'; save.dataset.save=recipe.id; save.setAttribute('aria-pressed',String(saved.has(recipe.id))); save.setAttribute('aria-label',saved.has(recipe.id)?`Quitar ${recipe.title} de guardadas`:`Guardar ${recipe.title}`);
+    const saveIcon=document.createElement('span'); saveIcon.className='icon'; saveIcon.textContent=saved.has(recipe.id)?'bookmark':'bookmark_add'; save.append(saveIcon); row.append(title,save);
+    const description=document.createElement('p'); description.textContent=recipe.description;
+    const tags=document.createElement('div'); tags.className='tags';
+    for(const label of [recipe.meal[0],recipe.diet[0]].filter(Boolean)){const tag=document.createElement('span');tag.className='tag';tag.textContent=label;tags.append(tag);}
+    const bottom=document.createElement('div'); bottom.className='card-bottom';
+    const meta=document.createElement('span'); meta.className='meta'; meta.textContent=recipe.difficulty;
+    const open=document.createElement('button'); open.type='button'; open.className='open-card'; open.dataset.open=recipe.id; open.textContent='Ver receta →';
+    bottom.append(meta,open); body.append(row,description,tags,bottom); card.append(cover,body); return card;
+  }
+  function filteredRecipes() {
+    const term=norm($('search').value.trim()),meal=$('meal').value,diet=$('diet').value,max=Number($('time').value)||Infinity;
+    return recipes.filter(r=>[r.title,r.description,...r.ingredients].some(text=>norm(text).includes(term)) && (!meal||r.meal.includes(meal)) && (!diet||r.diet.includes(diet)) && r.minutes<=max);
+  }
+  function render() {
+    const list=filteredRecipes();
+    $('catalog').replaceChildren(...list.map(cardFor));
+    $('resultCount').textContent=`${list.length} ${list.length===1?'receta encontrada':'recetas encontradas'}`;
+    $('empty').hidden=list.length!==0;
+    const filtered=Boolean($('search').value.trim()||$('meal').value||$('diet').value||$('time').value);
+    $('trendingSection').hidden=filtered;
+    if(!filtered) $('trending').replaceChildren(...recipes.filter(r=>r.featured).map(cardFor));
+  }
+  function clearFilters() { $('search').value=''; for(const id of ['meal','diet','time'])$(id).value=''; render(); $('search').focus(); }
+  $('search').addEventListener('input',render);
+  for(const id of ['meal','diet','time']) $(id).addEventListener('change',render);
+  $('clearFilters').addEventListener('click',clearFilters); $('emptyClear').addEventListener('click',clearFilters);
+  function closeDialog() {$('overlay').hidden=true;document.body.style.overflow='';lastFocus?.focus();}
+  function openDialog(recipe,source) {
+    lastFocus=source;
+    $('dialogCover').replaceChildren(imageFor(recipe));
+    $('dialogTitle').textContent=recipe.title; $('dialogDescription').textContent=recipe.description;
+    $('dialogMeta').replaceChildren(...[`${recipe.minutes} min`,recipe.difficulty,...recipe.diet].map(value=>{const tag=document.createElement('span');tag.className='tag';tag.textContent=value;return tag;}));
+    $('dialogIngredients').replaceChildren(...recipe.ingredients.map(value=>{const item=document.createElement('li');item.textContent=value;return item;}));
+    $('dialogActions').querySelector('a')?.remove();
+    if(recipe.detail){const link=document.createElement('a');link.href=recipe.detail;link.className='button';link.textContent='Abrir detalle completo';$('dialogActions').append(link);}
+    $('overlay').hidden=false;document.body.style.overflow='hidden';$('closeDialog').focus();
+  }
+  document.addEventListener('click',event=>{
+    const saveButton=event.target.closest('[data-save]');
+    if(saveButton){const id=saveButton.dataset.save;const active=!saved.has(id);if(active)saved.add(id);else saved.delete(id);
+      try{localStorage.setItem(savedKey,JSON.stringify([...saved]));}catch{toast('El navegador no pudo conservar tus guardadas.');}
+      const parentId=saveButton.closest('#trending')?'trending':'catalog';
+      render();document.querySelector(`#${parentId} [data-save="${id}"]`)?.focus();
+      toast(active?'Receta guardada en este navegador':'Receta quitada de guardadas');return;}
+    const openButton=event.target.closest('[data-open]');
+    if(openButton){const recipe=recipes.find(r=>r.id===openButton.dataset.open);if(recipe)openDialog(recipe,openButton);return;}
+    if(event.target.closest('[data-demo]')){event.preventDefault();toast('Esta sección todavía no está conectada.');}
+  });
+  $('closeDialog').addEventListener('click',closeDialog); $('dismissDialog').addEventListener('click',closeDialog);
+  $('overlay').addEventListener('click',event=>{if(event.target===$('overlay'))closeDialog();});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('overlay').hidden)closeDialog();});
+  render();
+</script>
+</body>
+</html>

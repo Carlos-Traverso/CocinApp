@@ -1,0 +1,16 @@
+:root {
+  --ink: #20251f;
+  --muted: #737b72;
+  --line: #e3e7df;
+  --green: #296b4a;
+  --green-dark: #1f5239;
+  --green-soft: #eaf3ec;
+  --surface: #ffffff;
+}
+
+@theme {
+  --color-cocin-ink: var(--ink);
+  --color-cocin-muted: var(--muted);
+  --color-cocin-green: var(--green);
+  --color-cocin-green-dark: var(--green-dark);
+}
