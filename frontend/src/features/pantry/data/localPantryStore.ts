@@ -37,7 +37,9 @@ export function readPantryItems(storage: PantryStorage = localStorage): PantryIt
     const value: unknown = JSON.parse(stored)
     if (!Array.isArray(value)) return []
     const items = value.filter(isPantryItem)
-    if (current === null && items.length > 0) writePantryItems(items, storage)
+    if (current === null && items.length > 0) {
+      try { writePantryItems(items, storage) } catch { /* Existing data remains readable. */ }
+    }
     return items
   } catch {
     return []

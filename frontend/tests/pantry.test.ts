@@ -37,3 +37,15 @@ test('persists valid items and ignores malformed stored entries', () => {
   entries.set('cocinapp.pantry.v1', JSON.stringify([rice, { ...rice, id: 'bad', quantity: -1 }]))
   assert.deepEqual(readPantryItems(storage), [rice])
 })
+
+test('migrates existing prototype data without replacing an intentionally empty pantry', () => {
+  const entries = new Map<string, string>([['cocinapp-demo-pantry-v1', JSON.stringify([rice])]])
+  const storage = {
+    getItem: (key: string) => entries.get(key) ?? null,
+    setItem: (key: string, value: string) => { entries.set(key, value) },
+  }
+  assert.deepEqual(readPantryItems(storage), [rice])
+  assert.deepEqual(JSON.parse(entries.get('cocinapp.pantry.v1') ?? ''), [rice])
+  entries.set('cocinapp.pantry.v1', '[]')
+  assert.deepEqual(readPantryItems(storage), [])
+})
