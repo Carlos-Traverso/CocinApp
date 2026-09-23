@@ -110,11 +110,13 @@
     <aside class="sidebar" aria-label="Navegación principal">
       <div class="wordmark">Cocin<span>APP</span></div>
       <nav>
-        <a href="CocinAPP_Landing_Registro_Mejorado.html"><span class="icon">dashboard</span>Panel</a>
+        <a href="CocinAPP_Panel_Administrador_Mejorado.html"><span class="icon">dashboard</span>Panel</a>
         <a href="CocinAPP_Mi_Despensa_Mejorada.html"><span class="icon">inventory_2</span>Mi despensa</a>
         <a href="CocinAPP_Explorar_Recetas_Mejorado.html" class="current" aria-current="page"><span class="icon">restaurant_menu</span>Recetas</a>
+        <a href="CocinAPP_Favoritos_Mejorado.html"><span class="icon">favorite</span>Favoritos</a>
         <a href="CocinAPP_Compras_Mejorado.html"><span class="icon">shopping_cart</span>Compras</a>
       </nav>
+      <a href="CocinAPP_Perfil_Mejorado.html"><span class="icon">account_circle</span>Mi perfil</a>
     </aside>
     <main class="main">
       <div class="top"><button class="back" id="back" type="button"><span class="icon">arrow_back</span> Volver a recetas</button><span class="wordmark">Cocin<span>APP</span></span></div>
@@ -143,7 +145,7 @@
         </section>
       </div>
     </main>
-    <nav class="mobile-nav" aria-label="Navegación móvil"><a href="CocinAPP_Mi_Despensa_Mejorada.html"><span class="icon">inventory_2</span>Despensa</a><a href="CocinAPP_Explorar_Recetas_Mejorado.html" class="current" aria-current="page"><span class="icon">restaurant_menu</span>Recetas</a><a href="CocinAPP_Compras_Mejorado.html"><span class="icon">shopping_cart</span>Compras</a><a href="CocinAPP_Landing_Registro_Mejorado.html"><span class="icon">settings</span>Ajustes</a></nav>
+    <nav class="mobile-nav" aria-label="Navegación móvil"><a href="CocinAPP_Mi_Despensa_Mejorada.html"><span class="icon">inventory_2</span>Despensa</a><a href="CocinAPP_Explorar_Recetas_Mejorado.html" class="current" aria-current="page"><span class="icon">restaurant_menu</span>Recetas</a><a href="CocinAPP_Favoritos_Mejorado.html"><span class="icon">favorite</span>Favoritos</a><a href="CocinAPP_Compras_Mejorado.html"><span class="icon">shopping_cart</span>Compras</a></nav>
   </div>
 
   <div id="stockOverlay" class="overlay" hidden>
@@ -186,6 +188,11 @@
       ]
     };
     const $ = id => document.getElementById(id);
+    const favoritesKey = 'cocinapp-demo-saved-recipes';
+    const favoriteRecipeId = 'quinoa';
+    let favorites;
+    try { favorites = new Set(JSON.parse(localStorage.getItem(favoritesKey) || '[]')); }
+    catch { favorites = new Set(); }
     let portions = recipe.basePortions;
     let currentStep = 0;
     let timerId = null;
@@ -231,12 +238,19 @@
     }
     $('decrease').addEventListener('click', () => { if (portions > recipe.minPortions) { portions--; updateRecipe(); } });
     $('increase').addEventListener('click', () => { if (portions < recipe.maxPortions) { portions++; updateRecipe(); } });
-    $('favorite').addEventListener('click', () => {
-      const active = $('favorite').getAttribute('aria-pressed') !== 'true';
+    function renderFavorite() {
+      const active = favorites.has(favoriteRecipeId);
       $('favorite').setAttribute('aria-pressed', String(active));
       $('favorite').setAttribute('aria-label', active ? 'Quitar de favoritos' : 'Agregar a favoritos');
       $('favoriteIcon').classList.toggle('filled', active);
-      toast(active ? 'Marcada como favorita en esta vista' : 'Quitada de favoritos en esta vista');
+    }
+    $('favorite').addEventListener('click', () => {
+      const active = !favorites.has(favoriteRecipeId);
+      if (active) favorites.add(favoriteRecipeId); else favorites.delete(favoriteRecipeId);
+      try { localStorage.setItem(favoritesKey, JSON.stringify([...favorites])); }
+      catch { toast('El navegador no pudo conservar tus favoritos.'); return; }
+      renderFavorite();
+      toast(active ? 'Receta agregada a favoritos' : 'Receta quitada de favoritos');
     });
     $('back').addEventListener('click', () => {
       if (history.length > 1) history.back();
@@ -316,6 +330,7 @@
       else if (!$('cookingMode').hidden) closeCooking();
     });
     updateRecipe();
+    renderFavorite();
   </script>
 </body>
 </html>
