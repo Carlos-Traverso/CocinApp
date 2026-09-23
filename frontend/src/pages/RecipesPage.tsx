@@ -19,7 +19,7 @@ export function RecipesPage() {
     <div className="page">
       <header className="page-heading">
         <div>
-          <Link className="back-link" to="/"><ArrowLeft size={16} /> Inicio</Link>
+          <Link className="back-link" to="/panel"><ArrowLeft size={16} /> Panel</Link>
           <p className="eyebrow">RECETAS</p>
           <h1>Ideas para cocinar</h1>
           <p className="page-lead">Una primera colección local para probar la capa de datos.</p>

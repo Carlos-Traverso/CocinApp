@@ -7,11 +7,11 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --pretty false",
+    "test:profile": "node --import jiti/register --test tests/profile.test.ts",
     "lint": "oxlint",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.117.0",
     "@tailwindcss/vite": "^4.3.3",
     "lucide-react": "^1.47.0",
     "react": "^19.2.8",

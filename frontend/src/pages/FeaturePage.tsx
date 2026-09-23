@@ -17,14 +17,14 @@ export function FeaturePage() {
   const feature = sections[section]
 
   if (!feature) {
-    return <div className="page"><Link className="back-link" to="/"><ArrowLeft size={16} /> Volver al inicio</Link><h1>Esta sección no existe</h1></div>
+    return <div className="page"><Link className="back-link" to="/panel"><ArrowLeft size={16} /> Volver al panel</Link><h1>Esta sección no existe</h1></div>
   }
 
   return (
     <div className="page feature-page">
       <header className="page-heading">
         <div>
-          <Link className="back-link" to="/"><ArrowLeft size={16} /> Inicio</Link>
+          <Link className="back-link" to="/panel"><ArrowLeft size={16} /> Panel</Link>
           <p className="eyebrow">{feature.eyebrow}</p>
           <h1>{feature.title}</h1>
           <p className="page-lead">{feature.description}</p>
