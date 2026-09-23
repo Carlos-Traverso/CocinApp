@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --pretty false",
     "test:profile": "node --import jiti/register --test tests/profile.test.ts",
+    "test:pantry": "node --import jiti/register --test tests/pantry.test.ts",
     "lint": "oxlint",
     "preview": "vite preview"
   },
