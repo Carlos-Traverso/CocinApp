@@ -25,6 +25,16 @@ test('recipe filters combine text, category, time, difficulty and pantry availab
   assert.deepEqual(filterRecipes(sampleRecipes, { search: '', category: '', maxMinutes: null, difficulty: '', pantryOnly: true }, pantry, today), [])
 })
 
+test('the example pantry can produce a recipe in the pantry-only filter', () => {
+  const examples: PantryItem[] = [
+    { id: 'chicken', name: 'Pechuga de pollo', category: 'Carnes y pescados', quantity: 500, unit: 'g', minimum: 0, expiry: '' },
+    { id: 'rice', name: 'Arroz integral', category: 'Granos y legumbres', quantity: 1000, unit: 'g', minimum: 0, expiry: '' },
+    { id: 'tomato', name: 'Tomates cherry', category: 'Frutas y verduras', quantity: 250, unit: 'g', minimum: 0, expiry: '' },
+    { id: 'oil', name: 'Aceite de oliva', category: 'Almacén', quantity: 750, unit: 'ml', minimum: 0, expiry: '' },
+  ]
+  assert.deepEqual(filterRecipes(sampleRecipes, { search: '', category: '', maxMinutes: null, difficulty: '', pantryOnly: true }, examples, today).map((item) => item.id), ['chicken-rice'])
+})
+
 test('favorites persist known IDs and ignore malformed storage', () => {
   const entries = new Map<string, string>()
   const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }

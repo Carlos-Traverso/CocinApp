@@ -40,4 +40,17 @@ export const sampleRecipes = [
     symbol: 'G',
     color: 'pink',
   },
+  {
+    id: 'chicken-rice',
+    name: 'Pollo con arroz integral',
+    description: 'Pollo dorado con arroz y tomates cherry frescos.',
+    category: 'Cena',
+    minutes: 35,
+    portions: 2,
+    difficulty: 'Fácil',
+    ingredients: [{ name: 'Pechuga de pollo', quantity: 300, unit: 'g' }, { name: 'Arroz integral', quantity: 160, unit: 'g' }, { name: 'Tomates cherry', quantity: 120, unit: 'g' }, { name: 'Aceite de oliva', quantity: 20, unit: 'ml' }],
+    steps: ['Cociná el arroz integral según las indicaciones del envase.', 'Cortá el pollo y doralo en una sartén con el aceite de oliva.', 'Serví el pollo sobre el arroz y agregá los tomates cortados.'],
+    symbol: 'A',
+    color: 'blue',
+  },
 ] satisfies Recipe[]
