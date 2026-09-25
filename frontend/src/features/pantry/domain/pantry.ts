@@ -1,12 +1,12 @@
-export const pantryCategories = [
+export const defaultPantryCategories = [
   'Frutas y verduras', 'Carnes y pescados', 'Lácteos',
   'Granos y legumbres', 'Huevos', 'Almacén', 'Otros',
-] as const
+]
 
-export const pantryUnits = ['g', 'ml', 'u'] as const
+export const defaultPantryUnits = ['g', 'ml', 'u']
 
-export type PantryCategory = typeof pantryCategories[number]
-export type PantryUnit = typeof pantryUnits[number]
+export type PantryCategory = string
+export type PantryUnit = string
 export type PantryStatus = 'ok' | 'low' | 'empty' | 'soon' | 'expired'
 
 export interface PantryItem {

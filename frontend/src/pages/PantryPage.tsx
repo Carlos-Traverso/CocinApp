@@ -4,9 +4,10 @@ import { useNavigate } from 'react-router-dom'
 import { readPantryItems, writePantryItems } from '../features/pantry/data/localPantryStore'
 import {
   filterPantryItems, formatPantryAmount, getPantryFlags, getPantryStatus,
-  hasDuplicateItem, pantryCategories, pantryExpiryText,
+  hasDuplicateItem, pantryExpiryText,
   type PantryCategory, type PantryFilters, type PantryItem, type PantryStatus, type PantryUnit,
 } from '../features/pantry/domain/pantry'
+import { getActiveCategories } from '../features/admin/data/localAdminStore'
 import { appendShoppingSuggestions } from '../features/shopping/data/localShoppingStore'
 import { suggestPantryRestock } from '../features/shopping/domain/shopping'
 
@@ -75,7 +76,7 @@ function PantryEditor({ item, items, onClose, onSave }: {
     <p className="pantry-dialog-intro">Registrá el stock disponible y, si querés, un mínimo y un vencimiento.</p>
     <form className="pantry-form" onSubmit={submit}>
       <label className="field"><span>Ingrediente</span><input autoComplete="off" maxLength={70} name="name" onChange={(event) => { setDraft({ ...draft, name: event.currentTarget.value }); setError('') }} placeholder="Ej.: arroz integral" required value={draft.name} /></label>
-      <label className="field"><span>Categoría</span><select onChange={(event) => setDraft({ ...draft, category: event.currentTarget.value as PantryCategory })} value={draft.category}>{pantryCategories.map((category) => <option key={category}>{category}</option>)}</select></label>
+      <label className="field"><span>Categoría</span><select onChange={(event) => setDraft({ ...draft, category: event.currentTarget.value as PantryCategory })} value={draft.category}>{getActiveCategories().map((category) => <option key={category}>{category}</option>)}</select></label>
       <div className="pantry-form-grid">
         <label className="field"><span>Cantidad disponible</span><input inputMode="decimal" max="1000000" min="0" name="quantity" onChange={(event) => setDraft({ ...draft, quantity: event.currentTarget.value === '' ? Number.NaN : event.currentTarget.valueAsNumber })} required step="any" type="number" value={Number.isNaN(draft.quantity) ? '' : draft.quantity} /></label>
         <label className="field"><span>Unidad</span><select onChange={(event) => setDraft({ ...draft, unit: event.currentTarget.value as PantryUnit })} value={draft.unit}><option value="g">Gramos (g)</option><option value="ml">Mililitros (ml)</option><option value="u">Unidades (u)</option></select></label>
@@ -185,7 +186,7 @@ export function PantryPage() {
   return <div className="page pantry-page">
     <header className="page-heading pantry-heading">
       <div><p className="eyebrow">TUS INGREDIENTES</p><h1>Mi despensa</h1><p className="page-lead">Registrá cantidades y vencimientos para saber qué tenés disponible.</p></div>
-      <div className="pantry-head-actions"><button className="button button-quiet" onClick={sendRestockToShopping} type="button"><ShoppingCart size={17} /> Reponer</button><button className="button button-quiet" onClick={(event) => { focusBeforeDialog.current = event.currentTarget; setConfirmExamples(true) }} type="button"><ClipboardList size={17} /> Kit de ejemplo</button><button className="button button-primary" onClick={(event) => { focusBeforeDialog.current = event.currentTarget; setEditor({ id: crypto.randomUUID(), name: '', category: pantryCategories[0], quantity: Number.NaN, unit: 'g', minimum: 0, expiry: '' }) }} ref={addButtonRef} type="button"><Plus size={18} /> Añadir ingrediente</button></div>
+      <div className="pantry-head-actions"><button className="button button-quiet" onClick={sendRestockToShopping} type="button"><ShoppingCart size={17} /> Reponer</button><button className="button button-quiet" onClick={(event) => { focusBeforeDialog.current = event.currentTarget; setConfirmExamples(true) }} type="button"><ClipboardList size={17} /> Kit de ejemplo</button><button className="button button-primary" onClick={(event) => { focusBeforeDialog.current = event.currentTarget; setEditor({ id: crypto.randomUUID(), name: '', category: getActiveCategories()[0], quantity: Number.NaN, unit: 'g', minimum: 0, expiry: '' }) }} ref={addButtonRef} type="button"><Plus size={18} /> Añadir ingrediente</button></div>
     </header>
 
     <section aria-label="Resumen de la despensa" className="pantry-summary">
@@ -196,7 +197,7 @@ export function PantryPage() {
 
     <section aria-label="Filtros de ingredientes" className="pantry-controls">
       <label className="field pantry-search"><span>Buscar por nombre</span><span className="pantry-search-input"><Search aria-hidden="true" size={17} /><input onChange={(event) => setFilters({ ...filters, search: event.currentTarget.value })} placeholder="Ej.: arroz, tomate" type="search" value={filters.search} /></span></label>
-      <label className="field"><span>Categoría</span><select onChange={(event) => setFilters({ ...filters, category: event.currentTarget.value as PantryCategory | '' })} value={filters.category}><option value="">Todas</option>{pantryCategories.map((category) => <option key={category}>{category}</option>)}</select></label>
+      <label className="field"><span>Categoría</span><select onChange={(event) => setFilters({ ...filters, category: event.currentTarget.value as PantryCategory | '' })} value={filters.category}><option value="">Todas</option>{getActiveCategories().map((category) => <option key={category}>{category}</option>)}</select></label>
       <label className="field"><span>Estado</span><select onChange={(event) => setFilters({ ...filters, status: event.currentTarget.value as PantryStatus | '' })} value={filters.status}><option value="">Todos</option><option value="ok">Disponibles</option><option value="low">Stock bajo</option><option value="empty">Sin stock</option><option value="soon">Por vencer</option><option value="expired">Vencidos</option></select></label>
       <label className="field"><span>Ordenar por</span><select onChange={(event) => setSortOrder(event.currentTarget.value as SortOrder)} value={sortOrder}><option value="name">Nombre</option><option value="expiry">Vencimiento</option><option value="quantity">Cantidad</option></select></label>
     </section>
@@ -224,3 +225,5 @@ export function PantryPage() {
     {confirmExamples && <PantryConfirmation actionLabel="Cargar ejemplos" message="Se añadirán productos de muestra sin reemplazar tus ingredientes actuales ni duplicar productos del mismo nombre y unidad." onClose={closeDialog} onConfirm={addExamples} title="Cargar kit de ejemplo" />}
   </div>
 }
+
+

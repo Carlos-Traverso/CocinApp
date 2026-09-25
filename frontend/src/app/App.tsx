@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { CookingPage } from '../pages/CookingPage'
 import { FeaturePage } from '../pages/FeaturePage'
+import { AdminPage } from '../pages/AdminPage'
 import { HomePage } from '../pages/HomePage'
 import { HistoryPage } from '../pages/HistoryPage'
 import { OnboardingPage } from '../pages/OnboardingPage'
@@ -32,6 +33,7 @@ export function App() {
           <Route path="pantry" element={<PantryPage />} />
           <Route path="planner" element={<PlannerPage />} />
           <Route path="shopping" element={<ShoppingPage />} />
+          <Route path="admin" element={<AdminPage />} />
           <Route path=":section" element={<FeaturePage />} />
         </Route>
         <Route path="*" element={<Navigate replace to="/" />} />
@@ -39,3 +41,4 @@ export function App() {
     </BrowserRouter>
   )
 }
+

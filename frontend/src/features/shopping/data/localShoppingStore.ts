@@ -1,4 +1,4 @@
-import { pantryCategories, pantryUnits } from '../../pantry/domain/pantry'
+import { getActiveCategories, getActiveUnits } from '../../admin/data/localAdminStore'
 import { mergeShoppingSuggestions, type ShoppingItem, type ShoppingSource, type ShoppingSuggestion } from '../domain/shopping'
 
 const key = 'cocinapp.shopping.v1'
@@ -8,10 +8,13 @@ interface StorageLike { getItem(key: string): string | null; setItem(key: string
 function isShoppingItem(value: unknown): value is ShoppingItem {
   if (!value || typeof value !== 'object') return false
   const item = value as Record<string, unknown>
+  const activeCategories = getActiveCategories()
+  const activeUnits = getActiveUnits()
+
   return typeof item.id === 'string' && item.id.length > 0
     && typeof item.name === 'string' && item.name.trim().length > 0 && item.name.length <= 70
-    && pantryCategories.some((category) => category === item.category)
-    && pantryUnits.some((unit) => unit === item.unit)
+    && activeCategories.includes(item.category as string)
+    && activeUnits.includes(item.unit as string)
     && typeof item.quantity === 'number' && Number.isFinite(item.quantity) && item.quantity > 0 && item.quantity <= 1_000_000
     && typeof item.note === 'string' && item.note.length <= 200
     && typeof item.checked === 'boolean'
