@@ -1,7 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { CookingPage } from '../pages/CookingPage'
-import { FeaturePage } from '../pages/FeaturePage'
 import { AdminPage } from '../pages/AdminPage'
 import { HomePage } from '../pages/HomePage'
 import { HistoryPage } from '../pages/HistoryPage'
@@ -13,24 +12,28 @@ import { RecipesPage } from '../pages/RecipesPage'
 import { RecipeDetailPage } from '../pages/RecipeDetailPage'
 import { ShoppingPage } from '../pages/ShoppingPage'
 import { WelcomePage } from '../pages/WelcomePage'
-import { RequireAuth, RequireAdmin, RedirectIfAuthenticated } from './AuthGuards'
+import { AdminShell } from '../components/AdminShell'
+import { RequireAdmin, RequireUser, RedirectIfAuthenticated } from './AuthGuards'
 
 export function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Unauthenticated routes */}
         <Route element={<RedirectIfAuthenticated />}>
           <Route index element={<WelcomePage />} />
           <Route path="auth" element={<Navigate replace to="/" />} />
         </Route>
 
-        {/* Authenticated routes */}
-        <Route element={<RequireAuth />}>
+        <Route element={<RequireAdmin />}>
+          <Route path="admin" element={<AdminShell />}>
+            <Route index element={<AdminPage />} />
+            <Route path="*" element={<Navigate replace to="/admin" />} />
+          </Route>
+        </Route>
+
+        <Route element={<RequireUser />}>
           <Route path="onboarding" element={<OnboardingPage />} />
           <Route path="recipes/:id/cook" element={<CookingPage />} />
-          
-          {/* Main App Shell */}
           <Route element={<AppShell />}>
             <Route path="panel" element={<HomePage />} />
             <Route path="recipes" element={<RecipesPage />} />
@@ -42,19 +45,10 @@ export function App() {
             <Route path="pantry" element={<PantryPage />} />
             <Route path="planner" element={<PlannerPage />} />
             <Route path="shopping" element={<ShoppingPage />} />
-            
-            <Route element={<RequireAdmin />}>
-              <Route path="admin" element={<AdminPage />} />
-            </Route>
-
-            <Route path=":section" element={<FeaturePage />} />
           </Route>
+          <Route path="*" element={<Navigate replace to="/panel" />} />
         </Route>
-
-        <Route path="*" element={<Navigate replace to="/" />} />
       </Routes>
     </BrowserRouter>
   )
 }
-
-

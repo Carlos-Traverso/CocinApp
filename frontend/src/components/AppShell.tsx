@@ -7,7 +7,6 @@ import {
   Refrigerator,
   ShoppingCart,
   UserRound,
-  ShieldCheck,
 } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../features/auth/data/localAuthStore'
@@ -26,17 +25,13 @@ export function AppShell() {
     { to: '/profile', label: 'Perfil', mobileLabel: 'Perfil', Icon: UserRound },
   ]
 
-  if (session?.role === 'ADMIN') {
-    navigation.splice(1, 0, { to: '/admin', label: 'Administración', mobileLabel: 'Admin', Icon: ShieldCheck, end: false })
-  }
-
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <NavLink className="wordmark" to={session?.role === 'ADMIN' ? '/admin' : '/panel'} aria-label="CocinAPP, inicio">
+        <NavLink className="wordmark" to="/panel" aria-label="CocinAPP, inicio">
           Cocin<span>APP</span>
         </NavLink>
-        <p className="sidebar-label">{session?.role === 'ADMIN' ? 'GESTIÓN' : 'TU COCINA'}</p>
+        <p className="sidebar-label">TU COCINA</p>
         <nav className="primary-nav" aria-label="Navegación principal">
           {navigation.map(({ to, label, mobileLabel, Icon, end }) => (
             <NavLink
@@ -50,9 +45,9 @@ export function AppShell() {
             </NavLink>
           ))}
         </nav>
-        <NavLink className="sidebar-foot" to="/profile">
+      <NavLink className="sidebar-foot" to="/profile">
           <span className="avatar" aria-hidden="true">{session?.name?.charAt(0) || 'C'}</span>
-          <span><strong>{session?.name || 'Mi cocina'}</strong><small>{session?.role === 'ADMIN' ? 'Administrador' : 'Espacio personal'}</small></span>
+          <span><strong>{session?.name || 'Mi cocina'}</strong><small>Espacio personal</small></span>
         </NavLink>
       </aside>
       <main className="main-content"><Outlet /></main>
