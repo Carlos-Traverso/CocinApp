@@ -13,32 +13,48 @@ import { RecipesPage } from '../pages/RecipesPage'
 import { RecipeDetailPage } from '../pages/RecipeDetailPage'
 import { ShoppingPage } from '../pages/ShoppingPage'
 import { WelcomePage } from '../pages/WelcomePage'
+import { RequireAuth, RequireAdmin, RedirectIfAuthenticated } from './AuthGuards'
 
 export function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route index element={<WelcomePage />} />
-        <Route path="onboarding" element={<OnboardingPage />} />
-        <Route path="auth" element={<Navigate replace to="/" />} />
-        <Route path="recipes/:id/cook" element={<CookingPage />} />
-        <Route element={<AppShell />}>
-          <Route path="panel" element={<HomePage />} />
-          <Route path="recipes" element={<RecipesPage />} />
-          <Route path="recipes/:id" element={<RecipeDetailPage />} />
-          <Route path="favorites" element={<RecipesPage favoritesOnly />} />
-          <Route path="history" element={<HistoryPage />} />
-          <Route path="cooking" element={<Navigate replace to="/recipes" />} />
-          <Route path="profile" element={<ProfilePage />} />
-          <Route path="pantry" element={<PantryPage />} />
-          <Route path="planner" element={<PlannerPage />} />
-          <Route path="shopping" element={<ShoppingPage />} />
-          <Route path="admin" element={<AdminPage />} />
-          <Route path=":section" element={<FeaturePage />} />
+        {/* Unauthenticated routes */}
+        <Route element={<RedirectIfAuthenticated />}>
+          <Route index element={<WelcomePage />} />
+          <Route path="auth" element={<Navigate replace to="/" />} />
         </Route>
+
+        {/* Authenticated routes */}
+        <Route element={<RequireAuth />}>
+          <Route path="onboarding" element={<OnboardingPage />} />
+          <Route path="recipes/:id/cook" element={<CookingPage />} />
+          
+          {/* Main App Shell */}
+          <Route element={<AppShell />}>
+            <Route path="panel" element={<HomePage />} />
+            <Route path="recipes" element={<RecipesPage />} />
+            <Route path="recipes/:id" element={<RecipeDetailPage />} />
+            <Route path="favorites" element={<RecipesPage favoritesOnly />} />
+            <Route path="history" element={<HistoryPage />} />
+            <Route path="cooking" element={<Navigate replace to="/recipes" />} />
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="pantry" element={<PantryPage />} />
+            <Route path="planner" element={<PlannerPage />} />
+            <Route path="shopping" element={<ShoppingPage />} />
+            
+            <Route element={<RequireAdmin />}>
+              <Route path="admin" element={<AdminPage />} />
+            </Route>
+
+            <Route path=":section" element={<FeaturePage />} />
+          </Route>
+        </Route>
+
         <Route path="*" element={<Navigate replace to="/" />} />
       </Routes>
     </BrowserRouter>
   )
 }
+
 

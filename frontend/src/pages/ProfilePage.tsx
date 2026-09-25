@@ -1,6 +1,7 @@
-import { Check, PencilLine, Save } from 'lucide-react'
+import { Check, PencilLine, Save, LogOut } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { endSession } from '../features/auth/data/localAuthStore'
 import { readLocalProfile, saveLocalProfile } from '../features/profile/data/localProfileStore'
 import { calculateAge, calculateEnergyEstimate, profileIsComplete, type ProfileDraft } from '../features/profile/domain/profile'
 import { ProfileFields } from '../features/profile/ui/ProfileFields'
@@ -17,7 +18,7 @@ export function ProfilePage() {
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!profileIsComplete(profile) || age === undefined || age < 18 || age > 100) {
-      setError('Completá los datos requeridos con valores válidos antes de guardar el perfil.')
+      setError('Complet├í los datos requeridos con valores v├ílidos antes de guardar el perfil.')
       setSaved(false)
       return
     }
@@ -27,7 +28,7 @@ export function ProfilePage() {
 
   return <div className="page profile-page">
     <header className="page-heading">
-      <div><p className="eyebrow">CONFIGURACIÓN PERSONAL</p><h1>Mi perfil y preferencias</h1><p className="page-lead">Actualizá tus datos para que CocinAPP pueda priorizar recetas más útiles para vos.</p></div>
+      <div><p className="eyebrow">CONFIGURACI├ôN PERSONAL</p><h1>Mi perfil y preferencias</h1><p className="page-lead">Actualiz├í tus datos para que CocinAPP pueda priorizar recetas m├ís ├║tiles para vos.</p></div>
       <Link className="button button-quiet" to="/recipes"><PencilLine size={17} /> Ver recetas</Link>
     </header>
     <div className="profile-layout">
@@ -39,16 +40,22 @@ export function ProfilePage() {
       </form>
       <aside className="profile-summary surface" aria-label="Resumen de perfil">
         <p className="eyebrow">TU PERFIL</p><h2>{profile.name || 'Tu cocina'}</h2>
-        <p>Usamos esta información para mostrar referencias y recetas compatibles.</p>
+        <p>Usamos esta informaci├│n para mostrar referencias y recetas compatibles.</p>
         <dl>
           <div><dt>Objetivo</dt><dd>{profile.goal === 'lose' ? 'Perder peso' : profile.goal === 'gain' ? 'Ganar peso' : profile.goal === 'maintain' ? 'Mantener peso' : 'Sin definir'}</dd></div>
-          <div><dt>Medidas</dt><dd>{profile.weightKg && profile.heightCm ? `${profile.weightKg} kg · ${profile.heightCm} cm` : 'Sin datos'}</dd></div>
+          <div><dt>Medidas</dt><dd>{profile.weightKg && profile.heightCm ? `${profile.weightKg} kg ┬À ${profile.heightCm} cm` : 'Sin datos'}</dd></div>
           <div><dt>Preferencias</dt><dd>{profile.preferences?.length ? `${profile.preferences.length} seleccionadas` : 'Sin definir'}</dd></div>
         </dl>
-        {age !== undefined && <p className="summary-detail">Edad calculada: <strong>{age} años</strong></p>}
+        {age !== undefined && <p className="summary-detail">Edad calculada: <strong>{age} a├▒os</strong></p>}
         {estimate && <div className="summary-energy"><span>Referencia diaria</span><strong>{estimate.dailyCalories} kcal</strong><small>Rango: {estimate.goalRange.minimum} - {estimate.goalRange.maximum} kcal</small></div>}
         <p className="medical-note compact">Las referencias son estimativas y no reemplazan indicaciones profesionales.</p>
+        <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+          <button type="button" className="button button-quiet" onClick={() => endSession()} style={{ width: '100%', justifyContent: 'center', color: 'var(--text-error)' }}>
+            <LogOut size={17} /> Cerrar sesión
+          </button>
+        </div>
       </aside>
     </div>
   </div>
 }
+

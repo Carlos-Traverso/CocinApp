@@ -7,8 +7,8 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --pretty false",
-    "test": "node --import jiti/register --test --test-isolation=none tests/admin.test.ts tests/profile.test.ts tests/pantry.test.ts tests/recipes.test.ts tests/planner.test.ts tests/shopping.test.ts tests/cooking.test.ts tests/dashboard.test.ts",
-    "test:profile": "node --import jiti/register --test --test-isolation=none tests/admin.test.ts tests/profile.test.ts",
+    "test": "node --import jiti/register --test --test-isolation=none tests/auth.test.ts tests/admin.test.ts tests/profile.test.ts tests/pantry.test.ts tests/recipes.test.ts tests/planner.test.ts tests/shopping.test.ts tests/cooking.test.ts tests/dashboard.test.ts",
+    "test:profile": "node --import jiti/register --test --test-isolation=none tests/auth.test.ts tests/admin.test.ts tests/profile.test.ts",
     "test:pantry": "node --import jiti/register --test --test-isolation=none tests/pantry.test.ts",
     "test:recipes": "node --import jiti/register --test --test-isolation=none tests/recipes.test.ts",
     "test:planner": "node --import jiti/register --test --test-isolation=none tests/planner.test.ts",
@@ -36,4 +36,5 @@
     "vite": "^8.3.0"
   }
 }
+
 
