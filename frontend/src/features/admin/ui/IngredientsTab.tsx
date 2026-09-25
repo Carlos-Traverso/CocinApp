@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Plus, Pencil, Trash2, X } from 'lucide-react'
 import { getAdminData } from '../data/localAdminStore'
+import { hasAdminReferences } from '../data/adminReferences'
 import { createIngredient, updateIngredient, deleteIngredient } from '../data/ingredientsStore'
-import { readPantryItems } from '../../pantry/data/localPantryStore'
 
 export function IngredientsTab() {
   const data = getAdminData()
@@ -17,15 +17,9 @@ export function IngredientsTab() {
     baseUnitId: string
   } | null>(null)
   const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
 
   const reload = () => setIngredients(getAdminData().ingredients)
-
-  const checkReferences = (id: string, name: string) => {
-    const adminData = getAdminData()
-    const usedInRecipes = adminData.recipes.some((r) => r.ingredients.some((ing) => ing.ingredientId === id))
-    const usedInPantry = readPantryItems().some((i) => i.name.toLowerCase() === name.toLowerCase())
-    return usedInRecipes || usedInPantry
-  }
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,12 +42,12 @@ export function IngredientsTab() {
   }
 
   const handleDelete = (id: string, name: string) => {
-    const hasRefs = checkReferences(id, name)
+    const hasRefs = hasAdminReferences('ingredient', id, name)
     const msg = hasRefs 
       ? `El ingrediente "${name}" está en uso. Se realizará una baja lógica.`
       : `¿Eliminar el ingrediente "${name}" permanentemente?`
     if (window.confirm(msg)) {
-      deleteIngredient(id, hasRefs)
+      deleteIngredient(id)
       reload()
     }
   }
@@ -67,8 +61,10 @@ export function IngredientsTab() {
         </button>
       </div>
 
+      <label className="field admin-search"><span>Buscar ingrediente</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label>
+
       <div className="records">
-        {ingredients.map((i) => {
+        {ingredients.filter((ingredient) => ingredient.name.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es'))).map((i) => {
           const cat = data.categories.find(c => c.id === i.categoryId)
           const unit = data.units.find(u => u.id === i.baseUnitId)
           return (
@@ -81,10 +77,10 @@ export function IngredientsTab() {
               <div className="record-actions">
                 {!i.isDeleted && (
                   <>
-                    <button className="pantry-icon-button" onClick={() => setEditor({ id: i.id, name: i.name, categoryId: i.categoryId, baseUnitId: i.baseUnitId })}>
+                    <button aria-label={`Editar ingrediente ${i.name}`} className="pantry-icon-button" onClick={() => setEditor({ id: i.id, name: i.name, categoryId: i.categoryId, baseUnitId: i.baseUnitId })} type="button">
                       <Pencil size={17} />
                     </button>
-                    <button className="pantry-icon-button" onClick={() => handleDelete(i.id, i.name)}>
+                    <button aria-label={`Eliminar ingrediente ${i.name}`} className="pantry-icon-button" onClick={() => handleDelete(i.id, i.name)} type="button">
                       <Trash2 size={17} />
                     </button>
                   </>
@@ -97,9 +93,9 @@ export function IngredientsTab() {
       </div>
 
       {editor && (
-        <dialog open className="shopping-editor surface">
+        <dialog aria-labelledby="ingredient-editor-title" className="shopping-editor surface" onCancel={(event) => { event.preventDefault(); setEditor(null) }} ref={(node) => { if (node && !node.open) node.showModal() }}>
           <div className="shopping-editor-heading">
-            <h2>{editor.id ? 'Editar ingrediente' : 'Nuevo ingrediente'}</h2>
+            <h2 id="ingredient-editor-title">{editor.id ? 'Editar ingrediente' : 'Nuevo ingrediente'}</h2>
             <button className="pantry-icon-button" onClick={() => setEditor(null)}><X size={19} /></button>
           </div>
           <form onSubmit={handleSave}>

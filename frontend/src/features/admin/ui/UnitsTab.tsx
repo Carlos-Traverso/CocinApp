@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Plus, Pencil, Trash2, X } from 'lucide-react'
 import { getAdminData } from '../data/localAdminStore'
+import { hasAdminReferences } from '../data/adminReferences'
 import { createUnit, updateUnit, deleteUnit } from '../data/unitsStore'
-import { readPantryItems } from '../../pantry/data/localPantryStore'
 
 export function UnitsTab() {
   const data = getAdminData()
@@ -16,16 +16,9 @@ export function UnitsTab() {
     equivalenceMultiplier: string
   } | null>(null)
   const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
 
   const reload = () => setUnits(getAdminData().units)
-
-  const checkReferences = (id: string, abbr: string) => {
-    const adminData = getAdminData()
-    const usedInIngredients = adminData.ingredients.some((i) => i.baseUnitId === id)
-    const usedInRecipes = adminData.recipes.some((r) => r.ingredients.some((ing) => ing.unitId === id))
-    const usedInPantry = readPantryItems().some((i) => i.unit === abbr)
-    return usedInIngredients || usedInRecipes || usedInPantry
-  }
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
@@ -49,13 +42,13 @@ export function UnitsTab() {
     }
   }
 
-  const handleDelete = (id: string, name: string, abbr: string) => {
-    const hasRefs = checkReferences(id, abbr)
+  const handleDelete = (id: string, name: string, abbreviation: string) => {
+    const hasRefs = hasAdminReferences('unit', id, abbreviation)
     const msg = hasRefs 
       ? `La unidad "${name}" está en uso. Se realizará una baja lógica.`
       : `¿Eliminar la unidad "${name}" permanentemente?`
     if (window.confirm(msg)) {
-      deleteUnit(id, hasRefs)
+      deleteUnit(id)
       reload()
     }
   }
@@ -69,8 +62,10 @@ export function UnitsTab() {
         </button>
       </div>
 
+      <label className="field admin-search"><span>Buscar unidad</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label>
+
       <div className="records">
-        {units.map((u) => {
+        {units.filter((unit) => `${unit.name} ${unit.abbreviation}`.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es'))).map((u) => {
           const base = units.find(x => x.id === u.baseUnitId)
           return (
             <article className="record" key={u.id}>
@@ -82,10 +77,10 @@ export function UnitsTab() {
               <div className="record-actions">
                 {!u.isDeleted && (
                   <>
-                    <button className="pantry-icon-button" onClick={() => setEditor({ id: u.id, name: u.name, abbreviation: u.abbreviation, dimension: u.dimension, baseUnitId: u.baseUnitId || '', equivalenceMultiplier: String(u.equivalenceMultiplier || '') })}>
+                    <button aria-label={`Editar unidad ${u.name}`} className="pantry-icon-button" onClick={() => setEditor({ id: u.id, name: u.name, abbreviation: u.abbreviation, dimension: u.dimension, baseUnitId: u.baseUnitId || '', equivalenceMultiplier: String(u.equivalenceMultiplier || '') })} type="button">
                       <Pencil size={17} />
                     </button>
-                    <button className="pantry-icon-button" onClick={() => handleDelete(u.id, u.name, u.abbreviation)}>
+                    <button aria-label={`Eliminar unidad ${u.name}`} className="pantry-icon-button" onClick={() => handleDelete(u.id, u.name, u.abbreviation)} type="button">
                       <Trash2 size={17} />
                     </button>
                   </>
@@ -98,9 +93,9 @@ export function UnitsTab() {
       </div>
 
       {editor && (
-        <dialog open className="shopping-editor surface">
+        <dialog aria-labelledby="unit-editor-title" className="shopping-editor surface" onCancel={(event) => { event.preventDefault(); setEditor(null) }} ref={(node) => { if (node && !node.open) node.showModal() }}>
           <div className="shopping-editor-heading">
-            <h2>{editor.id ? 'Editar unidad' : 'Nueva unidad'}</h2>
+            <h2 id="unit-editor-title">{editor.id ? 'Editar unidad' : 'Nueva unidad'}</h2>
             <button className="pantry-icon-button" onClick={() => setEditor(null)}><X size={19} /></button>
           </div>
           <form onSubmit={handleSave}>
@@ -119,7 +114,7 @@ export function UnitsTab() {
               <select required value={editor.dimension} onChange={(e) => setEditor({ ...editor, dimension: e.target.value, baseUnitId: '', equivalenceMultiplier: '' })}>
                 <option value="masa">Masa</option>
                 <option value="volumen">Volumen</option>
-                <option value="unidad">Unidad (Count)</option>
+                <option value="conteo">Conteo</option>
               </select>
             </label>
             <label className="field">

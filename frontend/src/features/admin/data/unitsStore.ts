@@ -1,33 +1,31 @@
 import { getAdminData, saveAdminData } from './localAdminStore'
+import { hasAdminReferences } from './adminReferences'
+import { validateUnit } from '../domain/adminValidation'
 
 export function createUnit(name: string, abbreviation: string, dimension: string, baseUnitId?: string, equivalenceMultiplier?: number): string {
   const data = getAdminData()
-  if (data.units.some(u => u.name.toLowerCase() === name.toLowerCase() && !u.isDeleted)) {
-    throw new Error('La unidad ya existe')
-  }
+  const unit = validateUnit({ name, abbreviation, dimension: dimension as 'masa' | 'volumen' | 'conteo', baseUnitId, equivalenceMultiplier }, data.units)
   const id = crypto.randomUUID()
-  data.units.push({ id, name, abbreviation, dimension, baseUnitId, equivalenceMultiplier, isDeleted: false })
+  data.units.push({ ...unit, id, isDeleted: false })
   saveAdminData(data)
   return id
 }
 
 export function updateUnit(id: string, name: string, abbreviation: string, dimension: string, baseUnitId?: string, equivalenceMultiplier?: number): void {
   const data = getAdminData()
-  if (data.units.some(u => u.id !== id && u.name.toLowerCase() === name.toLowerCase() && !u.isDeleted)) {
-    throw new Error('La unidad ya existe')
-  }
+  const unit = validateUnit({ name, abbreviation, dimension: dimension as 'masa' | 'volumen' | 'conteo', baseUnitId, equivalenceMultiplier }, data.units, id)
   const index = data.units.findIndex(u => u.id === id)
   if (index !== -1) {
-    data.units[index] = { ...data.units[index], name, abbreviation, dimension, baseUnitId, equivalenceMultiplier }
+    data.units[index] = { ...data.units[index], ...unit }
     saveAdminData(data)
   }
 }
 
-export function deleteUnit(id: string, hasReferences: boolean): void {
+export function deleteUnit(id: string): void {
   const data = getAdminData()
   const index = data.units.findIndex(u => u.id === id)
   if (index !== -1) {
-    if (hasReferences) {
+    if (hasAdminReferences('unit', id, data.units[index].abbreviation)) {
       data.units[index].isDeleted = true
     } else {
       data.units.splice(index, 1)

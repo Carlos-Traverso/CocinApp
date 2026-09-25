@@ -1,6 +1,4 @@
-import { useState, useEffect } from 'react'
-import { ArrowLeft } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import { getAdminData } from '../features/admin/data/localAdminStore'
 import { CategoriesTab } from '../features/admin/ui/CategoriesTab'
 import { UnitsTab } from '../features/admin/ui/UnitsTab'
@@ -10,26 +8,20 @@ import { RecipesTab } from '../features/admin/ui/RecipesTab'
 export function AdminPage() {
   const [activeTab, setActiveTab] = useState('overview')
 
-  // We can subscribe to storage events to force re-render if needed
-  useEffect(() => {
-    const handleStorage = () => setActiveTab((prev) => prev) // Just a trigger
-    window.addEventListener('storage', handleStorage)
-    return () => window.removeEventListener('storage', handleStorage)
-  }, [])
-
   return (
     <div className="page feature-page">
       <header className="page-heading">
         <div>
-          <Link className="back-link" to="/panel"><ArrowLeft size={16} /> Panel</Link>
           <p className="eyebrow">GESTIÓN DE CONTENIDO</p>
-          <h1>Administración local</h1>
-          <p className="page-lead">Prototipo de administración (modo local).</p>
+          <h1>Administración de catálogos</h1>
+          <p className="page-lead">Gestioná los datos disponibles en la experiencia de cocina. Los cambios se guardan en este navegador.</p>
         </div>
       </header>
 
       <div className="tabs" role="tablist">
         <button
+          id="admin-tab-overview"
+          aria-controls="admin-catalog-panel"
           aria-selected={activeTab === 'overview'}
           className={activeTab === 'overview' ? 'active' : ''}
           onClick={() => setActiveTab('overview')}
@@ -39,6 +31,8 @@ export function AdminPage() {
           Resumen
         </button>
         <button
+          id="admin-tab-categories"
+          aria-controls="admin-catalog-panel"
           aria-selected={activeTab === 'categories'}
           className={activeTab === 'categories' ? 'active' : ''}
           onClick={() => setActiveTab('categories')}
@@ -48,6 +42,8 @@ export function AdminPage() {
           Categorías
         </button>
         <button
+          id="admin-tab-units"
+          aria-controls="admin-catalog-panel"
           aria-selected={activeTab === 'units'}
           className={activeTab === 'units' ? 'active' : ''}
           onClick={() => setActiveTab('units')}
@@ -57,6 +53,8 @@ export function AdminPage() {
           Unidades
         </button>
         <button
+          id="admin-tab-ingredients"
+          aria-controls="admin-catalog-panel"
           aria-selected={activeTab === 'ingredients'}
           className={activeTab === 'ingredients' ? 'active' : ''}
           onClick={() => setActiveTab('ingredients')}
@@ -66,6 +64,8 @@ export function AdminPage() {
           Ingredientes
         </button>
         <button
+          id="admin-tab-recipes"
+          aria-controls="admin-catalog-panel"
           aria-selected={activeTab === 'recipes'}
           className={activeTab === 'recipes' ? 'active' : ''}
           onClick={() => setActiveTab('recipes')}
@@ -76,7 +76,7 @@ export function AdminPage() {
         </button>
       </div>
 
-      <section className="pane">
+      <section aria-labelledby={`admin-tab-${activeTab}`} className="pane" id="admin-catalog-panel" role="tabpanel" tabIndex={0}>
         {activeTab === 'overview' && <OverviewTab />}
         {activeTab === 'categories' && <CategoriesTab />}
         {activeTab === 'units' && <UnitsTab />}

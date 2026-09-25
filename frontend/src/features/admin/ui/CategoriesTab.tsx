@@ -1,23 +1,17 @@
 import { useState } from 'react'
 import { Plus, Pencil, Trash2, X } from 'lucide-react'
 import { getAdminData } from '../data/localAdminStore'
+import { hasAdminReferences } from '../data/adminReferences'
 import { createCategory, updateCategory, deleteCategory } from '../data/categoriesStore'
-import { readPantryItems } from '../../pantry/data/localPantryStore'
 
 export function CategoriesTab() {
   const data = getAdminData()
   const [categories, setCategories] = useState(data.categories)
   const [editor, setEditor] = useState<{ id?: string; name: string } | null>(null)
   const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
 
   const reload = () => setCategories(getAdminData().categories)
-
-  const checkReferences = (id: string, name: string) => {
-    const adminData = getAdminData()
-    const usedInIngredients = adminData.ingredients.some((i) => i.categoryId === id)
-    const usedInPantry = readPantryItems().some((i) => i.category === name)
-    return usedInIngredients || usedInPantry
-  }
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,12 +31,12 @@ export function CategoriesTab() {
   }
 
   const handleDelete = (id: string, name: string) => {
-    const hasRefs = checkReferences(id, name)
-    const msg = hasRefs 
+    const isReferenced = hasAdminReferences('category', id, name)
+    const msg = isReferenced
       ? `La categoría "${name}" está en uso. Se realizará una baja lógica y no estará disponible para nuevos registros.`
       : `¿Eliminar la categoría "${name}" permanentemente?`
     if (window.confirm(msg)) {
-      deleteCategory(id, hasRefs)
+      deleteCategory(id)
       reload()
     }
   }
@@ -56,8 +50,10 @@ export function CategoriesTab() {
         </button>
       </div>
 
+      <label className="field admin-search"><span>Buscar categoría</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label>
+
       <div className="records">
-        {categories.map((c) => (
+        {categories.filter((category) => category.name.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es'))).map((c) => (
           <article className="record" key={c.id}>
             <div className="record-main">
               <strong>{c.name}</strong>
@@ -66,10 +62,10 @@ export function CategoriesTab() {
             <div className="record-actions">
               {!c.isDeleted && (
                 <>
-                  <button className="pantry-icon-button" onClick={() => setEditor({ id: c.id, name: c.name })}>
+                  <button aria-label={`Editar categoría ${c.name}`} className="pantry-icon-button" onClick={() => setEditor({ id: c.id, name: c.name })} type="button">
                     <Pencil size={17} />
                   </button>
-                  <button className="pantry-icon-button" onClick={() => handleDelete(c.id, c.name)}>
+                  <button aria-label={`Eliminar categoría ${c.name}`} className="pantry-icon-button" onClick={() => handleDelete(c.id, c.name)} type="button">
                     <Trash2 size={17} />
                   </button>
                 </>
@@ -81,9 +77,9 @@ export function CategoriesTab() {
       </div>
 
       {editor && (
-        <dialog open className="shopping-editor surface">
+        <dialog aria-labelledby="category-editor-title" className="shopping-editor surface" onCancel={(event) => { event.preventDefault(); setEditor(null) }} ref={(node) => { if (node && !node.open) node.showModal() }}>
           <div className="shopping-editor-heading">
-            <h2>{editor.id ? 'Editar categoría' : 'Nueva categoría'}</h2>
+            <h2 id="category-editor-title">{editor.id ? 'Editar categoría' : 'Nueva categoría'}</h2>
             <button className="pantry-icon-button" onClick={() => setEditor(null)}><X size={19} /></button>
           </div>
           <form onSubmit={handleSave}>

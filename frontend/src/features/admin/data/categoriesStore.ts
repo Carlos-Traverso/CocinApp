@@ -1,33 +1,31 @@
 import { getAdminData, saveAdminData } from './localAdminStore'
+import { hasAdminReferences } from './adminReferences'
+import { validateCategoryName } from '../domain/adminValidation'
 
 export function createCategory(name: string): string {
   const data = getAdminData()
-  if (data.categories.some(c => c.name.toLowerCase() === name.toLowerCase() && !c.isDeleted)) {
-    throw new Error('La categoría ya existe')
-  }
+  const cleanName = validateCategoryName(name, data.categories)
   const id = crypto.randomUUID()
-  data.categories.push({ id, name, isDeleted: false })
+  data.categories.push({ id, name: cleanName, isDeleted: false })
   saveAdminData(data)
   return id
 }
 
 export function updateCategory(id: string, name: string): void {
   const data = getAdminData()
-  if (data.categories.some(c => c.id !== id && c.name.toLowerCase() === name.toLowerCase() && !c.isDeleted)) {
-    throw new Error('La categoría ya existe')
-  }
+  const cleanName = validateCategoryName(name, data.categories, id)
   const index = data.categories.findIndex(c => c.id === id)
   if (index !== -1) {
-    data.categories[index].name = name
+    data.categories[index].name = cleanName
     saveAdminData(data)
   }
 }
 
-export function deleteCategory(id: string, hasReferences: boolean): void {
+export function deleteCategory(id: string): void {
   const data = getAdminData()
   const index = data.categories.findIndex(c => c.id === id)
   if (index !== -1) {
-    if (hasReferences) {
+    if (hasAdminReferences('category', id, data.categories[index].name)) {
       data.categories[index].isDeleted = true
     } else {
       data.categories.splice(index, 1)

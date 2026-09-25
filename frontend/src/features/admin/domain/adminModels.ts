@@ -8,7 +8,7 @@ export interface AdminUnit {
   id: string
   name: string
   abbreviation: string
-  dimension: string // e.g. 'mass', 'volume', 'count'
+  dimension: 'masa' | 'volumen' | 'conteo'
   baseUnitId?: string // if it's derived
   equivalenceMultiplier?: number
   isDeleted: boolean
@@ -36,7 +36,7 @@ export interface AdminRecipe {
   dietaryTags: string[]
   ingredients: { ingredientId: string; quantity: number; unitId: string; note?: string }[]
   steps: string[]
-  status: 'draft' | 'pending' | 'published' | 'archived'
+  status: 'draft' | 'published'
   isDeleted: boolean
   symbol: string
   color: 'green' | 'gold' | 'pink' | 'blue'
