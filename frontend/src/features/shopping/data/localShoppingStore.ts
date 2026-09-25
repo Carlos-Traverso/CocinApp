@@ -1,4 +1,5 @@
 import { getActiveCategories, getActiveUnits } from '../../admin/data/localAdminStore'
+import { personalStorage } from '../../auth/data/personalStorage'
 import { mergeShoppingSuggestions, type ShoppingItem, type ShoppingSource, type ShoppingSuggestion } from '../domain/shopping'
 
 const key = 'cocinapp.shopping.v1'
@@ -22,7 +23,7 @@ function isShoppingItem(value: unknown): value is ShoppingItem {
     && item.sources.every((source: unknown) => sources.includes(source as ShoppingSource))
 }
 
-export function readShoppingItems(storage: StorageLike = localStorage): ShoppingItem[] {
+export function readShoppingItems(storage: StorageLike = personalStorage): ShoppingItem[] {
   try {
     const value: unknown = JSON.parse(storage.getItem(key) ?? '[]')
     if (!Array.isArray(value)) return []
@@ -35,11 +36,11 @@ export function readShoppingItems(storage: StorageLike = localStorage): Shopping
   } catch { return [] }
 }
 
-export function writeShoppingItems(items: ShoppingItem[], storage: StorageLike = localStorage): void {
+export function writeShoppingItems(items: ShoppingItem[], storage: StorageLike = personalStorage): void {
   storage.setItem(key, JSON.stringify(items))
 }
 
-export function appendShoppingSuggestions(suggestions: ShoppingSuggestion[], storage: StorageLike = localStorage): ShoppingItem[] {
+export function appendShoppingSuggestions(suggestions: ShoppingSuggestion[], storage: StorageLike = personalStorage): ShoppingItem[] {
   const merged = mergeShoppingSuggestions(readShoppingItems(storage), suggestions)
   writeShoppingItems(merged, storage)
   return merged

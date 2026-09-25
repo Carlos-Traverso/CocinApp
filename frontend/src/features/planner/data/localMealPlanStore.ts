@@ -1,5 +1,6 @@
 import { daysUntilExpiry } from '../../pantry/domain/pantry'
-import { sampleRecipes } from '../../../mocks/recipes'
+import { getRecipeById } from '../../recipes/data/availableRecipes'
+import { personalStorage } from '../../auth/data/personalStorage'
 import type { PlannedMeal } from '../domain/planner'
 
 const key = 'cocinapp.planner.v1'
@@ -10,10 +11,10 @@ function isPlannedMeal(value: unknown): value is PlannedMeal {
   const entry = value as Record<string, unknown>
   return typeof entry.date === 'string' && daysUntilExpiry(entry.date) !== null
     && (entry.meal === 'Almuerzo' || entry.meal === 'Cena')
-    && sampleRecipes.some((recipe) => recipe.id === entry.recipeId)
+    && Boolean(getRecipeById(String(entry.recipeId), true))
 }
 
-export function readMealPlan(storage: StorageLike = localStorage): PlannedMeal[] {
+export function readMealPlan(storage: StorageLike = personalStorage): PlannedMeal[] {
   try {
     const value: unknown = JSON.parse(storage.getItem(key) ?? '[]')
     if (!Array.isArray(value)) return []
@@ -23,6 +24,6 @@ export function readMealPlan(storage: StorageLike = localStorage): PlannedMeal[]
   } catch { return [] }
 }
 
-export function writeMealPlan(plan: PlannedMeal[], storage: StorageLike = localStorage): void {
+export function writeMealPlan(plan: PlannedMeal[], storage: StorageLike = personalStorage): void {
   storage.setItem(key, JSON.stringify(plan))
 }

@@ -5,12 +5,12 @@ import { readPantryItems, writePantryItems } from '../features/pantry/data/local
 import { formatPantryAmount } from '../features/pantry/domain/pantry'
 import { clearCookingSession, readCookingSession, readHistory, saveCookingSession, writeHistory } from '../features/cooking/data/localCookingStore'
 import { completeStep, createSession, deductIngredients, moveStep, recordPreparation, scaleIngredients, type CookingSession } from '../features/cooking/domain/cooking'
-import { sampleRecipes } from '../mocks/recipes'
+import { getRecipeById } from '../features/recipes/data/availableRecipes'
 
 export function CookingPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
-  const recipe = sampleRecipes.find((item) => item.id === id)
+  const recipe = getRecipeById(id)
   const [session, setSession] = useState<CookingSession | null>(() => recipe ? readCookingSession(recipe.id) ?? createSession(recipe) : null)
   const [finishing, setFinishing] = useState(false)
   const [error, setError] = useState('')

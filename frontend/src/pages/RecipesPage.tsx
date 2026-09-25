@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { readPantryItems } from '../features/pantry/data/localPantryStore'
 import { readFavoriteIds, writeFavoriteIds } from '../features/recipes/data/localFavoritesStore'
 import { filterRecipes, getIngredientAvailability, type RecipeFilters } from '../features/recipes/domain/recipeRules'
-import { sampleRecipes } from '../mocks/recipes'
+import { getAvailableRecipes, getKnownRecipes } from '../features/recipes/data/availableRecipes'
 
 const initialFilters: RecipeFilters = { search: '', category: '', maxMinutes: null, difficulty: '', pantryOnly: false }
 
@@ -13,7 +13,9 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
   const [pantry] = useState(readPantryItems)
   const [favoriteIds, setFavoriteIds] = useState(readFavoriteIds)
   const [error, setError] = useState('')
-  const recipes = filterRecipes(sampleRecipes, filters, pantry).filter((recipe) => !favoritesOnly || favoriteIds.includes(recipe.id))
+  const catalog = favoritesOnly ? getKnownRecipes() : getAvailableRecipes()
+  const recipes = filterRecipes(catalog, filters, pantry).filter((recipe) => !favoritesOnly || favoriteIds.includes(recipe.id))
+  const activeIds = new Set(getAvailableRecipes().map((recipe) => recipe.id))
 
   function toggleFavorite(id: string) {
     const next = favoriteIds.includes(id) ? favoriteIds.filter((item) => item !== id) : [...favoriteIds, id]
@@ -36,7 +38,7 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
       {recipes.map((recipe) => {
         const availability = getIngredientAvailability(recipe, pantry)
         const favorite = favoriteIds.includes(recipe.id)
-        return <article className="recipe-card" key={recipe.id}><div className={`recipe-art ${recipe.color}`} aria-hidden="true"><span>{recipe.symbol}</span></div><div className="recipe-body"><div className="recipe-card-top"><span className="recipe-category">{recipe.category}</span><button aria-label={`${favorite ? 'Quitar' : 'Agregar'} ${recipe.name} ${favorite ? 'de' : 'a'} favoritos`} aria-pressed={favorite} className="recipe-favorite" onClick={() => toggleFavorite(recipe.id)} type="button"><Heart fill={favorite ? 'currentColor' : 'none'} size={19} /></button></div><h2><Link to={`/recipes/${recipe.id}`}>{recipe.name}</Link></h2><p>{recipe.description}</p><div className="recipe-meta"><span><Clock3 size={15} /> {recipe.minutes} min</span><span><UsersRound size={15} /> {recipe.portions} porciones</span><span>{recipe.difficulty}</span></div><p className={`recipe-availability ${availability.missing.length === 0 ? 'complete' : ''}`}>{availability.missing.length === 0 ? 'Podés cocinarla' : `${availability.available.length} de ${recipe.ingredients.length} ingredientes disponibles`}</p><Link className="text-link" to={`/recipes/${recipe.id}`}>Ver receta →</Link></div></article>
+        return <article className="recipe-card" key={recipe.id}><div className={`recipe-art ${recipe.color}`} aria-hidden="true"><span>{recipe.symbol}</span></div><div className="recipe-body"><div className="recipe-card-top"><span className="recipe-category">{recipe.category}</span><button aria-label={`${favorite ? 'Quitar' : 'Agregar'} ${recipe.name} ${favorite ? 'de' : 'a'} favoritos`} aria-pressed={favorite} className="recipe-favorite" onClick={() => toggleFavorite(recipe.id)} type="button"><Heart fill={favorite ? 'currentColor' : 'none'} size={19} /></button></div><h2><Link to={`/recipes/${recipe.id}`}>{recipe.name}</Link></h2><p>{recipe.description}</p>{!activeIds.has(recipe.id) && <p className="form-message">Receta inactiva: disponible solo para consulta.</p>}<div className="recipe-meta"><span><Clock3 size={15} /> {recipe.minutes} min</span><span><UsersRound size={15} /> {recipe.portions} porciones</span><span>{recipe.difficulty}</span></div><p className={`recipe-availability ${availability.missing.length === 0 ? 'complete' : ''}`}>{availability.missing.length === 0 ? 'Podés cocinarla' : `${availability.available.length} de ${recipe.ingredients.length} ingredientes disponibles`}</p><Link className="text-link" to={`/recipes/${recipe.id}`}>Ver receta →</Link></div></article>
       })}
     </section>}
   </div>

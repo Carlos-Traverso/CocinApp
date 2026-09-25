@@ -7,7 +7,7 @@ import { formatPantryAmount } from '../features/pantry/domain/pantry'
 import { readMealPlan } from '../features/planner/data/localMealPlanStore'
 import { readFavoriteIds } from '../features/recipes/data/localFavoritesStore'
 import { readShoppingItems } from '../features/shopping/data/localShoppingStore'
-import { sampleRecipes } from '../mocks/recipes'
+import { getAvailableRecipes, getKnownRecipes } from '../features/recipes/data/availableRecipes'
 
 const shortcuts = [
   { to: '/pantry', label: 'Despensa', Icon: Refrigerator },
@@ -23,9 +23,11 @@ function formatCookedAt(value: string): string {
 }
 
 export function HomePage() {
+  const availableRecipes = getAvailableRecipes()
+  const knownRecipes = getKnownRecipes()
   const summary = buildDashboardSummary({
     pantry: readPantryItems(),
-    recipes: sampleRecipes,
+    recipes: availableRecipes,
     favoriteIds: readFavoriteIds(),
     plan: readMealPlan(),
     shopping: readShoppingItems(),
@@ -118,7 +120,7 @@ export function HomePage() {
 
           <section aria-labelledby="dashboard-history-title" className="dashboard-panel">
             <div className="dashboard-panel-heading"><div><p className="eyebrow">MODO COCINA</p><h2 id="dashboard-history-title">Cocinaste hace poco</h2></div><Link aria-label="Ver historial" className="dashboard-icon-link" to="/history"><History size={18} /></Link></div>
-            {summary.recentHistory.length === 0 ? <div className="dashboard-empty"><p>Acá vas a encontrar tus preparaciones recientes.</p><Link className="text-link" to="/recipes">Elegir una receta <ArrowRight size={15} /></Link></div> : <ul className="dashboard-list">{summary.recentHistory.slice(0, 3).map((event) => { const recipe = sampleRecipes.find((item) => item.id === event.recipeId); return recipe && <li className="dashboard-row" key={event.id}><span><Link className="dashboard-item-link" to={`/recipes/${recipe.id}`}>{recipe.name}</Link><small>{formatCookedAt(event.cookedAt)} · {event.portions} porciones</small></span><Link aria-label={`Cocinar ${recipe.name} otra vez`} className="dashboard-icon-link" to={`/recipes/${recipe.id}/cook`}><ChefHat size={16} /></Link></li> })}</ul>}
+            {summary.recentHistory.length === 0 ? <div className="dashboard-empty"><p>Acá vas a encontrar tus preparaciones recientes.</p><Link className="text-link" to="/recipes">Elegir una receta <ArrowRight size={15} /></Link></div> : <ul className="dashboard-list">{summary.recentHistory.slice(0, 3).map((event) => { const recipe = knownRecipes.find((item) => item.id === event.recipeId); return recipe && <li className="dashboard-row" key={event.id}><span><Link className="dashboard-item-link" to={`/recipes/${recipe.id}`}>{recipe.name}</Link><small>{formatCookedAt(event.cookedAt)} · {event.portions} porciones</small></span>{availableRecipes.some((item) => item.id === recipe.id) && <Link aria-label={`Cocinar ${recipe.name} otra vez`} className="dashboard-icon-link" to={`/recipes/${recipe.id}/cook`}><ChefHat size={16} /></Link>}</li> })}</ul>}
           </section>
         </aside>
       </div>

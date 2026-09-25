@@ -1,3 +1,4 @@
+import { personalStorage } from '../../auth/data/personalStorage'
 import { daysUntilExpiry, type PantryItem } from '../domain/pantry'
 import { getActiveCategories, getActiveUnits } from '../../admin/data/localAdminStore'
 
@@ -33,7 +34,7 @@ function isPantryItem(value: unknown): value is PantryItem {
     && (item.expiry === '' || daysUntilExpiry(item.expiry) !== null)
 }
 
-export function readPantryItems(storage: PantryStorage = localStorage): PantryItem[] {
+export function readPantryItems(storage: PantryStorage = personalStorage): PantryItem[] {
   try {
     const current = storage.getItem(pantryKey)
     const stored = current ?? storage.getItem(legacyPantryKey)
@@ -50,7 +51,7 @@ export function readPantryItems(storage: PantryStorage = localStorage): PantryIt
   }
 }
 
-export function writePantryItems(items: PantryItem[], storage: PantryStorage = localStorage): void {
+export function writePantryItems(items: PantryItem[], storage: PantryStorage = personalStorage): void {
   storage.setItem(pantryKey, JSON.stringify(items))
 }
 

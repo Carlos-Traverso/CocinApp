@@ -3,7 +3,7 @@ export const defaultPantryCategories = [
   'Granos y legumbres', 'Huevos', 'Almacén', 'Otros',
 ]
 
-export const defaultPantryUnits = ['g', 'ml', 'u']
+export const defaultPantryUnits = ['g', 'kg', 'ml', 'l', 'u']
 
 export type PantryCategory = string
 export type PantryUnit = string

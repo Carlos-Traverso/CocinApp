@@ -9,7 +9,7 @@ import { weekDates } from '../features/planner/domain/planner'
 import { readFavoriteIds } from '../features/recipes/data/localFavoritesStore'
 import { appendShoppingSuggestions, readShoppingItems, writeShoppingItems } from '../features/shopping/data/localShoppingStore'
 import { shoppingKey, suggestForRecipes, suggestPantryRestock, type ShoppingItem, type ShoppingSuggestion } from '../features/shopping/domain/shopping'
-import { sampleRecipes } from '../mocks/recipes'
+import { getAvailableRecipes } from '../features/recipes/data/availableRecipes'
 
 type StatusFilter = 'all' | 'pending' | 'checked'
 const sourceLabels = { manual: 'Manual', recipe: 'Receta', plan: 'Plan', favorites: 'Favoritos', pantry: 'Despensa' }
@@ -19,6 +19,7 @@ function emptyItem(): ShoppingItem {
 }
 
 export function ShoppingPage() {
+  const catalogRecipes = getAvailableRecipes()
   const [items, setItems] = useState<ShoppingItem[]>(readShoppingItems)
   const [draft, setDraft] = useState<ShoppingItem | null>(null)
   const [search, setSearch] = useState('')
@@ -54,15 +55,15 @@ export function ShoppingPage() {
 
   function importFavorites() {
     const ids = readFavoriteIds()
-    const recipes = sampleRecipes.filter((recipe) => ids.includes(recipe.id))
-    importSuggestions(suggestForRecipes(recipes, readPantryItems(), 'favorites'), 'favoritos')
+    const selected = catalogRecipes.filter((recipe) => ids.includes(recipe.id))
+    importSuggestions(suggestForRecipes(selected, readPantryItems(), 'favorites'), 'favoritos')
   }
 
   function importPlan() {
     const dates = new Set(weekDates())
     const recipes = readMealPlan().filter((entry) => dates.has(entry.date))
-      .map((entry) => sampleRecipes.find((recipe) => recipe.id === entry.recipeId))
-      .filter((recipe): recipe is typeof sampleRecipes[number] => Boolean(recipe))
+      .map((entry) => catalogRecipes.find((recipe) => recipe.id === entry.recipeId))
+      .filter((recipe): recipe is (typeof catalogRecipes)[number] => Boolean(recipe))
     importSuggestions(suggestForRecipes(recipes, readPantryItems(), 'plan'), 'el plan de esta semana')
   }
 

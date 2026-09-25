@@ -35,6 +35,14 @@ test('the example pantry can produce a recipe in the pantry-only filter', () => 
   assert.deepEqual(filterRecipes(sampleRecipes, { search: '', category: '', maxMinutes: null, difficulty: '', pantryOnly: true }, examples, today).map((item) => item.id), ['chicken-rice'])
 })
 
+test('recipe availability converts compatible metric units and never crosses dimensions', () => {
+  const recipe = { ...sampleRecipes[0], ingredients: [{ name: 'Harina', quantity: 1, unit: 'kg' }] }
+  const matchingPantry: PantryItem[] = [{ id: 'flour', name: 'Harina', category: 'Almacén', quantity: 1000, unit: 'g', minimum: 0, expiry: '' }]
+  assert.deepEqual(getIngredientAvailability(recipe, matchingPantry).missing, [])
+  const incompatible: PantryItem[] = [{ ...matchingPantry[0], quantity: 2000, unit: 'ml' }]
+  assert.equal(getIngredientAvailability(recipe, incompatible).missing.length, 1)
+})
+
 test('favorites persist known IDs and ignore malformed storage', () => {
   const entries = new Map<string, string>()
   const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }

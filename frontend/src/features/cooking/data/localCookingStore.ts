@@ -1,4 +1,5 @@
-import { sampleRecipes } from '../../../mocks/recipes'
+import { getRecipeById } from '../../recipes/data/availableRecipes'
+import { personalStorage } from '../../auth/data/personalStorage'
 import type { CookingSession, PreparationEvent } from '../domain/cooking'
 
 const progressKey = 'cocinapp.cooking-progress.v1'
@@ -12,7 +13,7 @@ function isDate(value: unknown): value is string {
 function isSession(value: unknown): value is CookingSession {
   if (!value || typeof value !== 'object') return false
   const session = value as Record<string, unknown>
-  const recipe = sampleRecipes.find((item) => item.id === session.recipeId)
+  const recipe = getRecipeById(String(session.recipeId))
   return Boolean(recipe)
     && Number.isInteger(session.stepIndex) && (session.stepIndex as number) >= 0 && (session.stepIndex as number) < recipe!.steps.length
     && Array.isArray(session.completed) && session.completed.every((index: unknown) => Number.isInteger(index) && (index as number) >= 0 && (index as number) < recipe!.steps.length)
@@ -24,7 +25,7 @@ function isPreparation(value: unknown): value is PreparationEvent {
   if (!value || typeof value !== 'object') return false
   const event = value as Record<string, unknown>
   return typeof event.id === 'string' && event.id.length > 0
-    && sampleRecipes.some((recipe) => recipe.id === event.recipeId)
+    && Boolean(getRecipeById(String(event.recipeId), true))
     && isDate(event.cookedAt)
     && typeof event.portions === 'number' && Number.isInteger(event.portions) && event.portions >= 1 && event.portions <= 20
 }
@@ -36,19 +37,19 @@ function readSessions(storage: StorageLike): CookingSession[] {
   } catch { return [] }
 }
 
-export function readCookingSession(recipeId: string, storage: StorageLike = localStorage): CookingSession | null {
+export function readCookingSession(recipeId: string, storage: StorageLike = personalStorage): CookingSession | null {
   return readSessions(storage).find((session) => session.recipeId === recipeId) ?? null
 }
 
-export function saveCookingSession(session: CookingSession, storage: StorageLike = localStorage): void {
+export function saveCookingSession(session: CookingSession, storage: StorageLike = personalStorage): void {
   storage.setItem(progressKey, JSON.stringify([...readSessions(storage).filter((item) => item.recipeId !== session.recipeId), session]))
 }
 
-export function clearCookingSession(recipeId: string, storage: StorageLike = localStorage): void {
+export function clearCookingSession(recipeId: string, storage: StorageLike = personalStorage): void {
   storage.setItem(progressKey, JSON.stringify(readSessions(storage).filter((item) => item.recipeId !== recipeId)))
 }
 
-export function readHistory(storage: StorageLike = localStorage): PreparationEvent[] {
+export function readHistory(storage: StorageLike = personalStorage): PreparationEvent[] {
   try {
     const value: unknown = JSON.parse(storage.getItem(historyKey) ?? '[]')
     if (!Array.isArray(value)) return []
@@ -61,6 +62,6 @@ export function readHistory(storage: StorageLike = localStorage): PreparationEve
   } catch { return [] }
 }
 
-export function writeHistory(history: PreparationEvent[], storage: StorageLike = localStorage): void {
+export function writeHistory(history: PreparationEvent[], storage: StorageLike = personalStorage): void {
   storage.setItem(historyKey, JSON.stringify(history))
 }
