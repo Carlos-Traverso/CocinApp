@@ -35,7 +35,7 @@ export function getAvailableRecipes(): Recipe[] {
     const record = data.recipes.find((entry) => entry.id === recipe.id)
     if (!record) return true
     if (record.isDeleted || record.status !== 'published') return false
-    return record.ingredients.length > 0 && record.ingredients.every((entry) => {
+    return record.steps.length > 0 && record.ingredients.length > 0 && record.ingredients.every((entry) => {
       const ingredient = data.ingredients.find((item) => item.id === entry.ingredientId && !item.isDeleted)
       const unit = data.units.find((item) => item.id === entry.unitId && !item.isDeleted)
       const base = ingredient && data.units.find((item) => item.id === ingredient.baseUnitId && !item.isDeleted)
@@ -52,7 +52,8 @@ export function getKnownRecipes(): Recipe[] {
 }
 
 export function getRecipeById(id: string, includeInactive = false): Recipe | undefined {
+  if (!includeInactive) return getAvailableRecipes().find((recipe) => recipe.id === id)
   const record = getAdminData().recipes.find((recipe) => recipe.id === id)
-  if (record) return includeInactive || (!record.isDeleted && record.status === 'published') ? fromAdminRecipe(record) : undefined
+  if (record) return fromAdminRecipe(record)
   return sampleRecipes.find((recipe) => recipe.id === id)
 }

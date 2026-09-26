@@ -11,27 +11,67 @@ export interface AdminStorageData {
   recipes: AdminRecipe[]
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isNamedRecord(value: unknown): value is Record<string, unknown> & { id: string; name: string } {
+  return isRecord(value) && typeof value.id === 'string' && value.id.length > 0 && typeof value.name === 'string'
+}
+
+function readRecipe(value: unknown): AdminRecipe | undefined {
+  if (!isRecord(value) || typeof value.id !== 'string' || !value.id || typeof value.title !== 'string' || !value.title) return undefined
+  const shift = typeof value.mealShift === 'string' ? value.mealShift : typeof value.category === 'string' ? value.category : 'Almuerzo'
+  const ingredients = Array.isArray(value.ingredients) ? value.ingredients.filter((entry) => isRecord(entry)
+    && typeof entry.ingredientId === 'string' && typeof entry.unitId === 'string'
+    && typeof entry.quantity === 'number' && Number.isFinite(entry.quantity) && entry.quantity > 0) : []
+  const validStepIndices = Array.isArray(value.steps) ? value.steps.flatMap((step, index): number[] => typeof step === 'string' ? [index] : []) : []
+  const steps = validStepIndices.map((index) => (value.steps as string[])[index])
+  const stepMeta = validStepIndices.map((index) => {
+    const entry = Array.isArray(value.stepMeta) ? value.stepMeta[index] : undefined
+    return isRecord(entry) ? {
+      minutes: typeof entry.minutes === 'number' && Number.isFinite(entry.minutes) && entry.minutes > 0 ? entry.minutes : undefined,
+      tip: typeof entry.tip === 'string' ? entry.tip : undefined,
+    } : {}
+  })
+  return {
+    id: value.id, title: value.title, author: typeof value.author === 'string' ? value.author : 'CocinAPP',
+    description: typeof value.description === 'string' ? value.description : '', category: shift, mealShift: shift,
+    minutes: typeof value.minutes === 'number' && Number.isFinite(value.minutes) && value.minutes > 0 ? value.minutes : 30,
+    portions: typeof value.portions === 'number' && Number.isFinite(value.portions) && value.portions > 0 ? value.portions : 1,
+    difficulty: value.difficulty === 'Intermedia' || value.difficulty === 'Avanzada' ? value.difficulty : 'Fácil',
+    calories: typeof value.calories === 'number' && Number.isFinite(value.calories) && value.calories >= 0 ? value.calories : 0,
+    dietaryTags: Array.isArray(value.dietaryTags) ? value.dietaryTags.filter((tag): tag is string => typeof tag === 'string') : [],
+    featured: value.featured === true, ingredients, steps, stepMeta,
+    status: value.status === 'published' ? 'published' : 'draft', isDeleted: value.isDeleted === true,
+    symbol: typeof value.symbol === 'string' && value.symbol ? value.symbol : value.title.slice(0, 1).toLocaleUpperCase('es'),
+    color: value.color === 'gold' || value.color === 'pink' || value.color === 'blue' ? value.color : 'green',
+  }
+}
+
 function getAdminData(): AdminStorageData {
   try {
     const raw = localStorage.getItem(ADMIN_KEY)
     if (raw) {
       const data: unknown = JSON.parse(raw)
-      if (!data || typeof data !== 'object') return { categories: [], units: [], ingredients: [], recipes: [] }
+      if (!isRecord(data)) return { categories: [], units: [], ingredients: [], recipes: [] }
       const record = data as Record<string, unknown>
       return {
-        categories: Array.isArray(record.categories) ? record.categories : [],
-        units: Array.isArray(record.units) ? record.units.map((value) => {
-          if (!value || typeof value !== 'object') return value
-          const unit = value as AdminUnit
-          const legacyDimension = String((value as { dimension?: unknown }).dimension)
-          const dimension = legacyDimension === 'mass' ? 'masa' : legacyDimension === 'volume' ? 'volumen' : legacyDimension === 'count' || legacyDimension === 'unidad' ? 'conteo' : legacyDimension
-          return { ...unit, dimension }
+        categories: Array.isArray(record.categories) ? record.categories.filter(isNamedRecord).map((category) => ({ id: category.id, name: category.name, isDeleted: category.isDeleted === true })) : [],
+        units: Array.isArray(record.units) ? record.units.filter(isNamedRecord).flatMap((unit): AdminUnit[] => {
+          const dimension = unit.dimension === 'mass' ? 'masa' : unit.dimension === 'volume' ? 'volumen' : unit.dimension === 'count' || unit.dimension === 'unidad' ? 'conteo' : unit.dimension
+          if (dimension !== 'masa' && dimension !== 'volumen' && dimension !== 'conteo' || typeof unit.abbreviation !== 'string') return []
+          return [{ id: unit.id, name: unit.name, abbreviation: unit.abbreviation, dimension,
+            baseUnitId: typeof unit.baseUnitId === 'string' ? unit.baseUnitId : undefined,
+            equivalenceMultiplier: typeof unit.equivalenceMultiplier === 'number' && Number.isFinite(unit.equivalenceMultiplier) ? unit.equivalenceMultiplier : undefined,
+            isDeleted: unit.isDeleted === true }]
         }) : [],
-        ingredients: Array.isArray(record.ingredients) ? record.ingredients : [],
-        recipes: Array.isArray(record.recipes) ? record.recipes.map((value) => {
-          if (!value || typeof value !== 'object') return value
-          const recipe = value as AdminRecipe & { status?: string }
-          return { ...recipe, status: recipe.status === 'published' ? 'published' : 'draft', isDeleted: Boolean(recipe.isDeleted), mealShift: recipe.mealShift || recipe.category || 'Almuerzo', calories: Number.isFinite(recipe.calories) ? recipe.calories : 0, dietaryTags: Array.isArray(recipe.dietaryTags) ? recipe.dietaryTags : [], ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : [], steps: Array.isArray(recipe.steps) ? recipe.steps : [], stepMeta: Array.isArray(recipe.stepMeta) ? recipe.stepMeta : [], featured: recipe.featured === true }
+        ingredients: Array.isArray(record.ingredients) ? record.ingredients.filter(isNamedRecord).flatMap((ingredient): AdminIngredient[] =>
+          typeof ingredient.categoryId === 'string' && typeof ingredient.baseUnitId === 'string'
+            ? [{ id: ingredient.id, name: ingredient.name, categoryId: ingredient.categoryId, baseUnitId: ingredient.baseUnitId, isDeleted: ingredient.isDeleted === true }] : []) : [],
+        recipes: Array.isArray(record.recipes) ? record.recipes.flatMap((value): AdminRecipe[] => {
+          const recipe = readRecipe(value)
+          return recipe ? [recipe] : []
         }) : [],
       }
     }

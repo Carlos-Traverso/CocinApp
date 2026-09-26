@@ -104,6 +104,35 @@ describe('local admin catalog', () => {
     assert.equal(getAvailableRecipes().some((recipe) => recipe.id === id), false)
     assert.equal(getAvailableRecipes().some((recipe) => recipe.name === 'Tortillas'), false)
     assert.equal(getRecipeById(id, true)?.name, 'Tortillas')
+    assert.equal(getRecipeById(id), undefined)
     assert.equal(localStorage.getItem('cocinapp.user.ana%40example.com.cocinapp.favorites.v1'), JSON.stringify([id]))
+  })
+
+  test('keeps valid older entries while ignoring malformed nested admin records', () => {
+    localStorage.setItem('cocinapp.admin.v1', JSON.stringify({
+      categories: [null, { id: 'c1', name: 'Granos' }],
+      units: [null, { id: 'u1', name: 'Gramo', abbreviation: 'g', dimension: 'mass' }],
+      ingredients: [null, { id: 'i1', name: 'Harina', categoryId: 'c1', baseUnitId: 'u1' }],
+      recipes: [null, { id: 'r1', title: 'Pan', status: 'published', ingredients: [null, { ingredientId: 'i1', unitId: 'u1', quantity: 100 }], steps: [null, 'Hornear.'], stepMeta: [null, { minutes: 'bad', tip: 'Dejar enfriar.' }] }],
+    }))
+    const data = getAdminData()
+    assert.equal(data.categories.length, 1)
+    assert.equal(data.units[0]?.dimension, 'masa')
+    assert.equal(data.ingredients.length, 1)
+    assert.deepEqual(data.recipes[0]?.steps, ['Hornear.'])
+    assert.equal(getAvailableRecipes().find((recipe) => recipe.id === 'r1')?.name, 'Pan')
+    assert.equal(getRecipeById('r1')?.ingredients[0]?.name, 'Harina')
+    localStorage.setItem('cocinapp.admin.v1', '{bad')
+    assert.deepEqual(getAdminData().recipes, [])
+  })
+
+  test('does not serve a published recipe for new actions after its ingredient is archived', () => {
+    const categoryId = createCategory('Granos')
+    const grams = createUnit('Gramo', 'g', 'masa')
+    const ingredientId = createIngredient('Harina', categoryId, grams)
+    const id = createRecipe({ title: 'Pan', author: 'CocinAPP', description: '', category: 'Almuerzo', minutes: 30, portions: 1, difficulty: 'Fácil', calories: 200, mealShift: 'Almuerzo', dietaryTags: [], ingredients: [{ ingredientId, quantity: 100, unitId: grams }], steps: ['Hornear.'], status: 'published', symbol: 'P', color: 'green' })
+    deleteIngredient(ingredientId)
+    assert.equal(getRecipeById(id), undefined)
+    assert.equal(getRecipeById(id, true)?.name, 'Pan')
   })
 })
