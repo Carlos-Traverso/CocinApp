@@ -7,6 +7,7 @@ export interface CookingSession {
   completed: number[]
   portions: number
   startedAt: string
+  timer?: { stepIndex: number; remainingMs: number; deadlineAt?: number }
 }
 
 export interface PreparationEvent {
@@ -14,6 +15,7 @@ export interface PreparationEvent {
   recipeId: string
   cookedAt: string
   portions: number
+  sessionStartedAt?: string
 }
 
 export function createSession(recipe: Recipe, now = new Date()): CookingSession {
@@ -21,17 +23,27 @@ export function createSession(recipe: Recipe, now = new Date()): CookingSession 
 }
 
 export function moveStep(session: CookingSession, delta: number, stepCount: number): CookingSession {
-  return { ...session, stepIndex: Math.max(0, Math.min(stepCount - 1, session.stepIndex + delta)) }
+  return { ...session, stepIndex: Math.max(0, Math.min(stepCount - 1, session.stepIndex + delta)), timer: undefined }
 }
 
 export function completeStep(session: CookingSession, index: number, stepCount: number): CookingSession {
   if (!Number.isInteger(index) || index < 0 || index >= stepCount) return session
-  const completed = session.completed.includes(index) ? session.completed.filter((step) => step !== index) : [...session.completed, index].sort((a, b) => a - b)
+  const completed = session.completed.includes(index) ? session.completed : [...session.completed, index].sort((a, b) => a - b)
   return { ...session, completed }
 }
 
+export function advanceStep(session: CookingSession, stepCount: number): CookingSession {
+  const completed = completeStep(session, session.stepIndex, stepCount)
+  return { ...completed, stepIndex: Math.min(stepCount - 1, session.stepIndex + 1), timer: undefined }
+}
+
+export function remainingTimerMs(timer: NonNullable<CookingSession['timer']>, now = Date.now()): number {
+  return Math.max(0, timer.deadlineAt === undefined ? timer.remainingMs : timer.deadlineAt - now)
+}
+
 export function recordPreparation(history: PreparationEvent[], session: CookingSession, now = new Date()): PreparationEvent[] {
-  return [{ id: crypto.randomUUID(), recipeId: session.recipeId, cookedAt: now.toISOString(), portions: session.portions }, ...history]
+  if (history.some((event) => event.recipeId === session.recipeId && event.sessionStartedAt === session.startedAt)) return history
+  return [{ id: crypto.randomUUID(), recipeId: session.recipeId, cookedAt: now.toISOString(), portions: session.portions, sessionStartedAt: session.startedAt }, ...history]
 }
 
 export function scaleIngredients(recipe: Recipe, portions: number): Recipe['ingredients'] {

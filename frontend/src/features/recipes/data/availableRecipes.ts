@@ -14,6 +14,7 @@ function fromAdminRecipe(recipe: AdminRecipe): Recipe {
     portions: recipe.portions,
     difficulty: recipe.difficulty,
     steps: recipe.steps,
+    stepMeta: recipe.stepMeta,
     symbol: recipe.symbol || recipe.title.slice(0, 1).toLocaleUpperCase('es'),
     color: recipe.color || 'green',
     calories: recipe.calories,

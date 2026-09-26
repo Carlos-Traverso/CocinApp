@@ -46,6 +46,14 @@ export function validateRecipe(input: Omit<AdminRecipe, 'id' | 'isDeleted'>, rec
   if (!['Desayuno', 'Almuerzo', 'Merienda', 'Cena'].includes(input.mealShift)) throw new Error('Elegí un turno de comida válido.')
   if (!Array.isArray(input.ingredients) || input.ingredients.length === 0) throw new Error('Agregá al menos un ingrediente.')
   if (!Array.isArray(input.steps) || input.steps.length === 0 || input.steps.some((step) => !step.trim())) throw new Error('Agregá instrucciones completas y ordenadas.')
+  if (input.stepMeta !== undefined && (!Array.isArray(input.stepMeta) || input.stepMeta.length > input.steps.length)) throw new Error('Los datos de los pasos no son válidos.')
+  const stepMeta = (input.stepMeta ?? []).map((meta) => {
+    const minutes = meta?.minutes
+    const tip = meta?.tip?.trim() ?? ''
+    if (minutes !== undefined && (!Number.isInteger(minutes) || minutes < 1 || minutes > 240)) throw new Error('El tiempo de cada paso debe estar entre 1 y 240 minutos.')
+    if (tip.length > 240) throw new Error('Cada consejo debe tener hasta 240 caracteres.')
+    return { ...(minutes !== undefined ? { minutes } : {}), ...(tip ? { tip } : {}) }
+  })
   if (!['draft', 'published'].includes(input.status)) throw new Error('Elegí si la receta queda como borrador o publicada.')
   if (recipes.some((item) => item.id !== exceptId && !item.isDeleted && normalizePantryName(item.title) === normalizePantryName(title))) throw new Error('Ya existe una receta con ese título.')
   for (const entry of input.ingredients) {
@@ -55,5 +63,5 @@ export function validateRecipe(input: Omit<AdminRecipe, 'id' | 'isDeleted'>, rec
     const base = ingredient && units.find((item) => item.id === ingredient.baseUnitId && !item.isDeleted)
     if (!ingredient || !unit || !base || unit.dimension !== base.dimension) throw new Error('Cada receta debe usar ingredientes activos y unidades compatibles con su dimensión.')
   }
-  return { ...input, title, steps: input.steps.map((step) => step.trim()), dietaryTags: input.dietaryTags.map((tag) => tag.trim()).filter(Boolean) }
+  return { ...input, title, steps: input.steps.map((step) => step.trim()), stepMeta, dietaryTags: input.dietaryTags.map((tag) => tag.trim()).filter(Boolean) }
 }

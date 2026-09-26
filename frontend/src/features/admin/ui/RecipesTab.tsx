@@ -8,7 +8,7 @@ import type { AdminRecipe } from '../domain/adminModels'
 const emptyRecipe = (): Partial<AdminRecipe> => ({
   title: '', author: 'CocinAPP', description: '', category: 'Almuerzo', minutes: 30,
   portions: 2, difficulty: 'Fácil', calories: 0, mealShift: 'Almuerzo', dietaryTags: [],
-  ingredients: [], steps: [''], status: 'draft', symbol: 'R', color: 'green',
+  ingredients: [], steps: [''], stepMeta: [{}], status: 'draft', symbol: 'R', color: 'green',
 })
 
 export function RecipesTab() {
@@ -31,7 +31,7 @@ export function RecipesTab() {
         minutes: editor.minutes ?? 0, portions: editor.portions ?? 0,
         difficulty: editor.difficulty ?? 'Fácil', calories: editor.calories ?? 0,
         mealShift: editor.mealShift ?? '', dietaryTags: editor.dietaryTags ?? [],
-        ingredients: editor.ingredients ?? [], steps: editor.steps ?? [],
+        ingredients: editor.ingredients ?? [], steps: editor.steps ?? [], stepMeta: editor.stepMeta ?? [],
         status: editor.status ?? 'draft', symbol: editor.title?.trim().slice(0, 1).toLocaleUpperCase('es') || 'R',
         color: editor.color ?? 'green',
       }
@@ -71,6 +71,24 @@ export function RecipesTab() {
     setEditor({ ...editor, ingredients })
   }
 
+  function updateStepMeta(index: number, changes: NonNullable<AdminRecipe['stepMeta']>[number]) {
+    if (!editor) return
+    const stepMeta = (editor.steps ?? []).map((_, stepIndex) => ({ ...editor.stepMeta?.[stepIndex] }))
+    stepMeta[index] = { ...stepMeta[index], ...changes }
+    setEditor({ ...editor, stepMeta })
+  }
+
+  function moveRecipeStep(index: number, offset: -1 | 1) {
+    if (!editor) return
+    const stepMeta = (editor.steps ?? []).map((_, stepIndex) => editor.stepMeta?.[stepIndex] ?? {})
+    setEditor({ ...editor, steps: moveItem(editor.steps ?? [], index, offset), stepMeta: moveItem(stepMeta, index, offset) })
+  }
+
+  function removeRecipeStep(index: number) {
+    if (!editor) return
+    setEditor({ ...editor, steps: (editor.steps ?? []).filter((_, stepIndex) => stepIndex !== index), stepMeta: (editor.steps ?? []).map((_, stepIndex) => editor.stepMeta?.[stepIndex] ?? {}).filter((_, stepIndex) => stepIndex !== index) })
+  }
+
   const visibleRecipes = recipes.filter((recipe) => recipe.title.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es')))
 
   return <div className="panel">
@@ -79,7 +97,7 @@ export function RecipesTab() {
     <div className="records">
       {visibleRecipes.map((recipe) => <article className="record" key={recipe.id}>
         <div className="record-main"><strong>{recipe.title}</strong><small>{recipe.mealShift || recipe.category} · {recipe.status === 'published' ? 'Publicada' : 'Borrador'}</small>{recipe.isDeleted && <small className="error">Inactiva</small>}</div>
-        <div className="record-actions">{!recipe.isDeleted && <><button aria-label={`Editar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => { setEditor({ ...recipe, dietaryTags: [...recipe.dietaryTags], ingredients: recipe.ingredients.map((item) => ({ ...item })), steps: [...recipe.steps] }); setError('') }} type="button"><Pencil size={17} /></button><button aria-label={`Eliminar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => remove(recipe)} type="button"><Trash2 size={17} /></button></>}</div>
+        <div className="record-actions">{!recipe.isDeleted && <><button aria-label={`Editar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => { setEditor({ ...recipe, dietaryTags: [...recipe.dietaryTags], ingredients: recipe.ingredients.map((item) => ({ ...item })), steps: [...recipe.steps], stepMeta: recipe.stepMeta?.map((item) => ({ ...item })) ?? [] }); setError('') }} type="button"><Pencil size={17} /></button><button aria-label={`Eliminar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => remove(recipe)} type="button"><Trash2 size={17} /></button></>}</div>
       </article>)}
       {visibleRecipes.length === 0 && <p className="empty">No hay recetas que coincidan con la búsqueda.</p>}
     </div>
@@ -114,8 +132,11 @@ export function RecipesTab() {
           {availableIngredients.length === 0 && <p className="field-help">Primero creá ingredientes activos con categoría y unidad base.</p>}
         </section>
 
-        <section className="admin-recipe-section" aria-labelledby="admin-steps-title"><div className="section-header"><h3 id="admin-steps-title">Instrucciones ordenadas</h3><button className="button button-quiet" onClick={() => setEditor({ ...editor, steps: [...(editor.steps ?? []), ''] })} type="button"><Plus size={15} /> Agregar paso</button></div>
-          {(editor.steps ?? []).map((step, index) => <div className="admin-step-row" key={index}><label className="field"><span>Paso {index + 1}</span><textarea onChange={(event) => { const steps = [...(editor.steps ?? [])]; steps[index] = event.currentTarget.value; setEditor({ ...editor, steps }) }} required value={step} /></label><div className="admin-recipe-row-actions"><button aria-label={`Mover paso ${index + 1} arriba`} className="pantry-icon-button" disabled={index === 0} onClick={() => setEditor({ ...editor, steps: moveItem(editor.steps ?? [], index, -1) })} type="button"><ArrowUp size={17} /></button><button aria-label={`Mover paso ${index + 1} abajo`} className="pantry-icon-button" disabled={index === (editor.steps?.length ?? 0) - 1} onClick={() => setEditor({ ...editor, steps: moveItem(editor.steps ?? [], index, 1) })} type="button"><ArrowDown size={17} /></button><button aria-label={`Quitar paso ${index + 1}`} className="pantry-icon-button" onClick={() => setEditor({ ...editor, steps: (editor.steps ?? []).filter((_, itemIndex) => itemIndex !== index) })} type="button"><X size={17} /></button></div></div>)}
+        <section className="admin-recipe-section" aria-labelledby="admin-steps-title"><div className="section-header"><h3 id="admin-steps-title">Instrucciones ordenadas</h3><button className="button button-quiet" onClick={() => setEditor({ ...editor, steps: [...(editor.steps ?? []), ''], stepMeta: [...(editor.steps ?? []).map((_, index) => editor.stepMeta?.[index] ?? {}), {}] })} type="button"><Plus size={15} /> Agregar paso</button></div>
+          {(editor.steps ?? []).map((step, index) => <div className="admin-step-editor" key={index}>
+            <div className="admin-step-row"><label className="field"><span>Paso {index + 1}</span><textarea onChange={(event) => { const steps = [...(editor.steps ?? [])]; steps[index] = event.currentTarget.value; setEditor({ ...editor, steps }) }} required value={step} /></label><div className="admin-recipe-row-actions"><button aria-label={`Mover paso ${index + 1} arriba`} className="pantry-icon-button" disabled={index === 0} onClick={() => moveRecipeStep(index, -1)} type="button"><ArrowUp size={17} /></button><button aria-label={`Mover paso ${index + 1} abajo`} className="pantry-icon-button" disabled={index === (editor.steps?.length ?? 0) - 1} onClick={() => moveRecipeStep(index, 1)} type="button"><ArrowDown size={17} /></button><button aria-label={`Quitar paso ${index + 1}`} className="pantry-icon-button" onClick={() => removeRecipeStep(index)} type="button"><X size={17} /></button></div></div>
+            <div className="shopping-form-grid"><label className="field"><span>Temporizador del paso {index + 1} (minutos, opcional)</span><input min="1" max="240" onChange={(event) => updateStepMeta(index, { minutes: event.currentTarget.value ? event.currentTarget.valueAsNumber : undefined })} type="number" value={editor.stepMeta?.[index]?.minutes ?? ''} /></label><label className="field"><span>Consejo del paso {index + 1} (opcional)</span><input maxLength={240} onChange={(event) => updateStepMeta(index, { tip: event.currentTarget.value })} value={editor.stepMeta?.[index]?.tip ?? ''} /></label></div>
+          </div>)}
         </section>
 
         {error && <p className="form-message error" role="alert">{error}</p>}

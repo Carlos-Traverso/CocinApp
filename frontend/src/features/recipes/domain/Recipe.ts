@@ -8,6 +8,7 @@ export interface Recipe {
   difficulty: 'Fácil' | 'Intermedia' | 'Avanzada'
   ingredients: { name: string; quantity: number; unit: string }[]
   steps: string[]
+  stepMeta?: { minutes?: number; tip?: string }[]
   symbol: string
   color: 'green' | 'gold' | 'pink' | 'blue'
   calories?: number

@@ -31,7 +31,7 @@ function getAdminData(): AdminStorageData {
         recipes: Array.isArray(record.recipes) ? record.recipes.map((value) => {
           if (!value || typeof value !== 'object') return value
           const recipe = value as AdminRecipe & { status?: string }
-          return { ...recipe, status: recipe.status === 'published' ? 'published' : 'draft', isDeleted: Boolean(recipe.isDeleted), mealShift: recipe.mealShift || recipe.category || 'Almuerzo', calories: Number.isFinite(recipe.calories) ? recipe.calories : 0, dietaryTags: Array.isArray(recipe.dietaryTags) ? recipe.dietaryTags : [], ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : [], steps: Array.isArray(recipe.steps) ? recipe.steps : [] }
+          return { ...recipe, status: recipe.status === 'published' ? 'published' : 'draft', isDeleted: Boolean(recipe.isDeleted), mealShift: recipe.mealShift || recipe.category || 'Almuerzo', calories: Number.isFinite(recipe.calories) ? recipe.calories : 0, dietaryTags: Array.isArray(recipe.dietaryTags) ? recipe.dietaryTags : [], ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : [], steps: Array.isArray(recipe.steps) ? recipe.steps : [], stepMeta: Array.isArray(recipe.stepMeta) ? recipe.stepMeta : [] }
         }) : [],
       }
     }

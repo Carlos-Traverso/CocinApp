@@ -19,6 +19,13 @@ function isSession(value: unknown): value is CookingSession {
     && Array.isArray(session.completed) && session.completed.every((index: unknown) => Number.isInteger(index) && (index as number) >= 0 && (index as number) < recipe!.steps.length)
     && typeof session.portions === 'number' && Number.isInteger(session.portions) && session.portions >= 1 && session.portions <= 20
     && isDate(session.startedAt)
+    && (session.timer === undefined || (typeof session.timer === 'object' && session.timer !== null
+      && Number.isInteger((session.timer as Record<string, unknown>).stepIndex)
+      && (session.timer as { stepIndex: number }).stepIndex === session.stepIndex
+      && typeof (session.timer as Record<string, unknown>).remainingMs === 'number'
+      && Number.isFinite((session.timer as { remainingMs: number }).remainingMs)
+      && (session.timer as { remainingMs: number }).remainingMs >= 0
+      && ((session.timer as { deadlineAt?: unknown }).deadlineAt === undefined || (typeof (session.timer as { deadlineAt?: unknown }).deadlineAt === 'number' && Number.isFinite((session.timer as { deadlineAt: number }).deadlineAt)))))
 }
 
 function isPreparation(value: unknown): value is PreparationEvent {
@@ -28,6 +35,7 @@ function isPreparation(value: unknown): value is PreparationEvent {
     && Boolean(getRecipeById(String(event.recipeId), true))
     && isDate(event.cookedAt)
     && typeof event.portions === 'number' && Number.isInteger(event.portions) && event.portions >= 1 && event.portions <= 20
+    && (event.sessionStartedAt === undefined || isDate(event.sessionStartedAt))
 }
 
 function readSessions(storage: StorageLike): CookingSession[] {

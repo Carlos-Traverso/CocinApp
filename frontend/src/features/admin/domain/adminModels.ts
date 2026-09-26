@@ -36,6 +36,7 @@ export interface AdminRecipe {
   dietaryTags: string[]
   ingredients: { ingredientId: string; quantity: number; unitId: string; note?: string }[]
   steps: string[]
+  stepMeta?: { minutes?: number; tip?: string }[]
   status: 'draft' | 'published'
   isDeleted: boolean
   symbol: string
