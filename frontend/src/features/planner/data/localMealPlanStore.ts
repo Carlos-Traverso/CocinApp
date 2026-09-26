@@ -1,7 +1,7 @@
 import { daysUntilExpiry } from '../../pantry/domain/pantry'
 import { getRecipeById } from '../../recipes/data/availableRecipes'
 import { personalStorage } from '../../auth/data/personalStorage'
-import type { PlannedMeal } from '../domain/planner'
+import { meals, type Meal, type PlannedMeal } from '../domain/planner'
 
 const key = 'cocinapp.planner.v1'
 interface StorageLike { getItem(key: string): string | null; setItem(key: string, value: string): void }
@@ -10,7 +10,7 @@ function isPlannedMeal(value: unknown): value is PlannedMeal {
   if (!value || typeof value !== 'object') return false
   const entry = value as Record<string, unknown>
   return typeof entry.date === 'string' && daysUntilExpiry(entry.date) !== null
-    && (entry.meal === 'Almuerzo' || entry.meal === 'Cena')
+    && meals.includes(entry.meal as Meal)
     && Boolean(getRecipeById(String(entry.recipeId), true))
 }
 

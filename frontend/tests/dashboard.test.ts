@@ -76,3 +76,16 @@ test('returns actionable empty values when every local source is empty', () => {
   assert.equal(summary.shopping.pendingCount, 0)
   assert.deepEqual(summary.recentHistory, [])
 })
+
+test('today includes four ordered turns and keeps a historical inactive assignment visible', () => {
+  const plan: PlannedMeal[] = [
+    { date: '2026-09-23', meal: 'Cena', recipeId: 'pumpkin-pasta' },
+    { date: '2026-09-23', meal: 'Merienda', recipeId: 'chickpea-salad' },
+    { date: '2026-09-23', meal: 'Desayuno', recipeId: 'quinoa-bowl' },
+    { date: '2026-09-23', meal: 'Almuerzo', recipeId: 'chicken-rice' },
+  ]
+  const summary = buildDashboardSummary({ pantry: [], recipes: sampleRecipes.slice(1), knownRecipes: sampleRecipes, favoriteIds: [], plan, shopping: [], history: [] }, today)
+  assert.deepEqual(summary.todayMeals.map((entry) => entry.meal), ['Desayuno', 'Almuerzo', 'Merienda', 'Cena'])
+  assert.equal(summary.todayMeals[0]?.recipe.id, 'quinoa-bowl')
+  assert.equal(summary.weeklyMealCount, 4)
+})

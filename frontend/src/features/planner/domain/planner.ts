@@ -1,4 +1,5 @@
-export type Meal = 'Almuerzo' | 'Cena'
+export const meals = ['Desayuno', 'Almuerzo', 'Merienda', 'Cena'] as const
+export type Meal = typeof meals[number]
 export interface PlannedMeal { date: string; meal: Meal; recipeId: string }
 
 function localDate(date: Date): string {

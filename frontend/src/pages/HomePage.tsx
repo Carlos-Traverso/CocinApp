@@ -8,6 +8,7 @@ import { readMealPlan } from '../features/planner/data/localMealPlanStore'
 import { readFavoriteIds } from '../features/recipes/data/localFavoritesStore'
 import { readShoppingItems } from '../features/shopping/data/localShoppingStore'
 import { getAvailableRecipes, getKnownRecipes } from '../features/recipes/data/availableRecipes'
+import { meals } from '../features/planner/domain/planner'
 
 const shortcuts = [
   { to: '/pantry', label: 'Despensa', Icon: Refrigerator },
@@ -28,6 +29,7 @@ export function HomePage() {
   const summary = buildDashboardSummary({
     pantry: readPantryItems(),
     recipes: availableRecipes,
+    knownRecipes,
     favoriteIds: readFavoriteIds(),
     plan: readMealPlan(),
     shopping: readShoppingItems(),
@@ -99,9 +101,10 @@ export function HomePage() {
 
           <section aria-labelledby="dashboard-plan-title" className="dashboard-panel">
             <div className="dashboard-panel-heading"><div><p className="eyebrow">PLANIFICACIÓN</p><h2 id="dashboard-plan-title">Comidas de hoy</h2></div><Link className="text-link" to="/planner">Ver semana <ArrowRight size={15} /></Link></div>
-            {(['Almuerzo', 'Cena'] as const).map((meal) => {
+            {meals.map((meal) => {
               const entry = summary.todayMeals.find((item) => item.meal === meal)
-              return <div className="dashboard-row dashboard-meal-row" key={meal}><span><strong>{meal}</strong><small>{entry ? entry.recipe.name : 'Todavía sin planificar'}</small></span>{entry ? <Link className="dashboard-row-action" to={`/recipes/${entry.recipe.id}/cook`}>Cocinar <ArrowRight size={14} /></Link> : <Link className="text-link" to="/planner">Agregar <ArrowRight size={14} /></Link>}</div>
+              const active = entry && availableRecipes.some((recipe) => recipe.id === entry.recipe.id)
+              return <div className="dashboard-row dashboard-meal-row" key={meal}><span><strong>{meal}</strong><small>{entry ? `${entry.recipe.name}${active ? '' : ' (inactiva)'}` : 'Todavía sin planificar'}</small></span>{active ? <Link className="dashboard-row-action" to={`/recipes/${entry.recipe.id}/cook`}>Cocinar <ArrowRight size={14} /></Link> : entry ? <Link className="text-link" to={`/recipes/${entry.recipe.id}`}>Ver receta <ArrowRight size={14} /></Link> : <Link className="text-link" to="/planner">Agregar <ArrowRight size={14} /></Link>}</div>
             })}
           </section>
         </div>

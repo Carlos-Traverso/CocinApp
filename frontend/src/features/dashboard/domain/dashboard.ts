@@ -4,11 +4,12 @@ import type { Recipe } from '../../recipes/domain/Recipe'
 import type { PlannedMeal } from '../../planner/domain/planner'
 import type { ShoppingItem } from '../../shopping/domain/shopping'
 import type { PreparationEvent } from '../../cooking/domain/cooking'
-import { weekDates } from '../../planner/domain/planner'
+import { meals, weekDates } from '../../planner/domain/planner'
 
 export interface DashboardData {
   pantry: PantryItem[]
   recipes: Recipe[]
+  knownRecipes?: Recipe[]
   favoriteIds: string[]
   plan: PlannedMeal[]
   shopping: ShoppingItem[]
@@ -38,11 +39,12 @@ export function buildDashboardSummary(data: DashboardData, today = new Date()): 
   const flags = data.pantry.map((item) => ({ item, flags: getPantryFlags(item, today) }))
   const week = new Set(weekDates(today))
   const todayKey = toLocalDate(today)
-  const recipeById = new Map(data.recipes.map((recipe) => [recipe.id, recipe]))
+  const recipeById = new Map((data.knownRecipes ?? data.recipes).map((recipe) => [recipe.id, recipe]))
+  const activeRecipeById = new Map(data.recipes.map((recipe) => [recipe.id, recipe]))
   const todayMeals = data.plan.flatMap((entry) => {
     const recipe = recipeById.get(entry.recipeId)
     return entry.date === todayKey && recipe ? [{ ...entry, recipe }] : []
-  }).sort((first, second) => first.meal.localeCompare(second.meal, 'es'))
+  }).sort((first, second) => meals.indexOf(first.meal) - meals.indexOf(second.meal))
   const pendingItems = data.shopping.filter((item) => !item.checked)
 
   return {
@@ -64,7 +66,7 @@ export function buildDashboardSummary(data: DashboardData, today = new Date()): 
       || second.availableCount - first.availableCount
       || first.recipe.minutes - second.recipe.minutes),
     favorites: data.favoriteIds.flatMap((id) => {
-      const recipe = recipeById.get(id)
+      const recipe = activeRecipeById.get(id)
       return recipe ? [recipe] : []
     }),
     todayMeals,
