@@ -80,7 +80,7 @@ export function CategoriesTab() {
         <dialog aria-labelledby="category-editor-title" className="shopping-editor surface" onCancel={(event) => { event.preventDefault(); setEditor(null) }} ref={(node) => { if (node && !node.open) node.showModal() }}>
           <div className="shopping-editor-heading">
             <h2 id="category-editor-title">{editor.id ? 'Editar categoría' : 'Nueva categoría'}</h2>
-            <button className="pantry-icon-button" onClick={() => setEditor(null)}><X size={19} /></button>
+            <button aria-label="Cerrar editor de categoría" className="pantry-icon-button" onClick={() => setEditor(null)} type="button"><X size={19} /></button>
           </div>
           <form onSubmit={handleSave}>
             <label className="field">
@@ -92,7 +92,7 @@ export function CategoriesTab() {
                 onChange={(e) => setEditor({ ...editor, name: e.target.value })}
               />
             </label>
-            {error && <p className="form-message error">{error}</p>}
+            {error && <p className="form-message error" role="alert">{error}</p>}
             <div className="pantry-dialog-actions">
               <button className="button button-quiet" type="button" onClick={() => setEditor(null)}>Cancelar</button>
               <button className="button button-primary" type="submit">Guardar</button>

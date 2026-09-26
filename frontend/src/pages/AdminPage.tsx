@@ -4,6 +4,7 @@ import { CategoriesTab } from '../features/admin/ui/CategoriesTab'
 import { UnitsTab } from '../features/admin/ui/UnitsTab'
 import { IngredientsTab } from '../features/admin/ui/IngredientsTab'
 import { RecipesTab } from '../features/admin/ui/RecipesTab'
+import { handleTabListKeyDown } from '../components/tabKeyboard'
 
 export function AdminPage() {
   const [activeTab, setActiveTab] = useState('overview')
@@ -18,11 +19,12 @@ export function AdminPage() {
         </div>
       </header>
 
-      <div className="tabs" role="tablist">
+      <div className="tabs" onKeyDown={handleTabListKeyDown} role="tablist">
         <button
           id="admin-tab-overview"
           aria-controls="admin-catalog-panel"
           aria-selected={activeTab === 'overview'}
+          tabIndex={activeTab === 'overview' ? 0 : -1}
           className={activeTab === 'overview' ? 'active' : ''}
           onClick={() => setActiveTab('overview')}
           role="tab"
@@ -34,6 +36,7 @@ export function AdminPage() {
           id="admin-tab-categories"
           aria-controls="admin-catalog-panel"
           aria-selected={activeTab === 'categories'}
+          tabIndex={activeTab === 'categories' ? 0 : -1}
           className={activeTab === 'categories' ? 'active' : ''}
           onClick={() => setActiveTab('categories')}
           role="tab"
@@ -45,6 +48,7 @@ export function AdminPage() {
           id="admin-tab-units"
           aria-controls="admin-catalog-panel"
           aria-selected={activeTab === 'units'}
+          tabIndex={activeTab === 'units' ? 0 : -1}
           className={activeTab === 'units' ? 'active' : ''}
           onClick={() => setActiveTab('units')}
           role="tab"
@@ -56,6 +60,7 @@ export function AdminPage() {
           id="admin-tab-ingredients"
           aria-controls="admin-catalog-panel"
           aria-selected={activeTab === 'ingredients'}
+          tabIndex={activeTab === 'ingredients' ? 0 : -1}
           className={activeTab === 'ingredients' ? 'active' : ''}
           onClick={() => setActiveTab('ingredients')}
           role="tab"
@@ -67,6 +72,7 @@ export function AdminPage() {
           id="admin-tab-recipes"
           aria-controls="admin-catalog-panel"
           aria-selected={activeTab === 'recipes'}
+          tabIndex={activeTab === 'recipes' ? 0 : -1}
           className={activeTab === 'recipes' ? 'active' : ''}
           onClick={() => setActiveTab('recipes')}
           role="tab"

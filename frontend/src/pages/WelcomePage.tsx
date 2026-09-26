@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Refrigerator, Sparkles, UtensilsCrossed, ShieldCheck } from 'lucide-react'
 import { authenticateUser, registerAccount, startDemoAdminSession, startUserSession } from '../features/auth/data/localAuthStore'
+import { handleTabListKeyDown } from '../components/tabKeyboard'
 
 type AccessMode = 'login' | 'register'
 
@@ -44,17 +45,19 @@ export function WelcomePage() {
           <p className="eyebrow">CUENTA LOCAL DE DEMOSTRACIÓN</p>
           <h2 id="access-form-title">{mode === 'login' ? 'Ingresá a tu cocina' : 'Creá tu cuenta'}</h2>
           <p className="field-help">Las cuentas y los permisos se simulan en este navegador. No es autenticación segura.</p>
-          <div className="tabs access-tabs" role="tablist" aria-label="Tipo de acceso">
-            <button type="button" role="tab" aria-selected={mode === 'login'} onClick={() => { setMode('login'); setError('') }}>Iniciar sesión</button>
-            <button type="button" role="tab" aria-selected={mode === 'register'} onClick={() => { setMode('register'); setError('') }}>Registrarme</button>
+          <div className="tabs access-tabs" role="tablist" aria-label="Tipo de acceso" onKeyDown={handleTabListKeyDown}>
+            <button id="access-tab-login" aria-controls="access-panel" type="button" role="tab" aria-selected={mode === 'login'} tabIndex={mode === 'login' ? 0 : -1} onClick={() => { setMode('login'); setError('') }}>Iniciar sesión</button>
+            <button id="access-tab-register" aria-controls="access-panel" type="button" role="tab" aria-selected={mode === 'register'} tabIndex={mode === 'register' ? 0 : -1} onClick={() => { setMode('register'); setError('') }}>Registrarme</button>
           </div>
-          <form className="access-form" onSubmit={submit}>
+          <div id="access-panel" aria-labelledby={`access-tab-${mode}`} role="tabpanel" tabIndex={0}>
+            <form className="access-form" onSubmit={submit}>
             {mode === 'register' && <label className="field"><span>Nombre</span><input autoComplete="name" maxLength={80} onChange={(event) => setName(event.currentTarget.value)} required value={name} /></label>}
             <label className="field"><span>Correo electrónico</span><input autoComplete="email" onChange={(event) => setEmail(event.currentTarget.value)} required type="email" value={email} /></label>
             <label className="field"><span>Contraseña</span><input autoComplete={mode === 'register' ? 'new-password' : 'current-password'} minLength={8} onChange={(event) => setPassword(event.currentTarget.value)} required type="password" value={password} /></label>
             {error && <p className="form-message error" role="alert">{error}</p>}
             <button className="button button-primary button-wide" type="submit">{mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}</button>
-          </form>
+            </form>
+          </div>
           <div className="access-demo">
             <span>Prueba administrativa</span>
             <button className="button button-quiet button-wide" onClick={startDemoAdminSession} type="button"><ShieldCheck size={18} /> Entrar como ADMIN de demostración</button>
