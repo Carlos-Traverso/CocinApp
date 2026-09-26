@@ -87,6 +87,8 @@ export function HomePage() {
             <div className="dashboard-panel-heading"><div><p className="eyebrow">CON TU DESPENSA</p><h2 id="dashboard-recipes-title">¿Qué podés cocinar?</h2></div><Link className="text-link" to="/recipes">Ver recetas <ArrowRight size={15} /></Link></div>
             {summary.pantry.totalItems === 0 ? (
               <div className="dashboard-empty"><p>Agregá ingredientes para recibir sugerencias según tu stock.</p><Link className="text-link" to="/pantry">Ir a la despensa <ArrowRight size={15} /></Link></div>
+            ) : summary.suggestedRecipes.length === 0 ? (
+              <div className="dashboard-empty"><p>Todavía no hay recetas activas para comparar con tu despensa.</p><Link className="text-link" to="/recipes">Abrir catálogo <ArrowRight size={15} /></Link></div>
             ) : (
               <ul className="dashboard-list">
                 {summary.suggestedRecipes.slice(0, 3).map(({ recipe, missingNames, canCook }) => (
@@ -97,6 +99,7 @@ export function HomePage() {
                 ))}
               </ul>
             )}
+            <nav aria-label="Más formas de explorar recetas" className="dashboard-discovery"><Link to="/recipes#recipe-featured"><strong>Destacadas</strong><small>{summary.discovery.featured.length} disponibles</small></Link><Link to="/recipes#recipe-history-based"><strong>Basado en tu historial</strong><small>{summary.discovery.basedOnHistory.length ? summary.discovery.basedOnHistory[0].name : 'Esperando preparaciones'}</small></Link><Link to="/recipes#recipe-recook"><strong>Volver a cocinar</strong><small>{summary.discovery.recook.length ? summary.discovery.recook[0].name : 'Sin preparaciones recientes'}</small></Link></nav>
           </section>
 
           <section aria-labelledby="dashboard-plan-title" className="dashboard-panel">

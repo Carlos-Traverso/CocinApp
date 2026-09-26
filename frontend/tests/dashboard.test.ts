@@ -63,6 +63,8 @@ test('prioritizes recipes that can be cooked and summarizes favorites, plan, sho
   assert.equal(summary.shopping.pendingCount, 1)
   assert.equal(summary.shopping.completedCount, 1)
   assert.deepEqual(summary.recentHistory.map((entry) => entry.id), ['new', 'old'])
+  assert.equal(summary.discovery.featured.length, 3)
+  assert.deepEqual(summary.discovery.recook.map((recipe) => recipe.id), ['quinoa-bowl', 'pumpkin-pasta'])
 })
 
 test('returns actionable empty values when every local source is empty', () => {
@@ -75,6 +77,8 @@ test('returns actionable empty values when every local source is empty', () => {
   assert.equal(summary.weeklyMealCount, 0)
   assert.equal(summary.shopping.pendingCount, 0)
   assert.deepEqual(summary.recentHistory, [])
+  assert.deepEqual(summary.discovery.recook, [])
+  assert.deepEqual(summary.discovery.basedOnHistory, [])
 })
 
 test('today includes four ordered turns and keeps a historical inactive assignment visible', () => {

@@ -5,6 +5,7 @@ import type { PlannedMeal } from '../../planner/domain/planner'
 import type { ShoppingItem } from '../../shopping/domain/shopping'
 import type { PreparationEvent } from '../../cooking/domain/cooking'
 import { meals, weekDates } from '../../planner/domain/planner'
+import { discoverRecipes, type RecipeDiscovery } from '../../recipes/domain/recipeDiscovery'
 
 export interface DashboardData {
   pantry: PantryItem[]
@@ -29,6 +30,7 @@ export interface DashboardSummary {
   weeklyMealCount: number
   shopping: { pendingCount: number; completedCount: number; pendingItems: ShoppingItem[] }
   recentHistory: PreparationEvent[]
+  discovery: RecipeDiscovery
 }
 
 function toLocalDate(date: Date): string {
@@ -46,6 +48,7 @@ export function buildDashboardSummary(data: DashboardData, today = new Date()): 
     return entry.date === todayKey && recipe ? [{ ...entry, recipe }] : []
   }).sort((first, second) => meals.indexOf(first.meal) - meals.indexOf(second.meal))
   const pendingItems = data.shopping.filter((item) => !item.checked)
+  const discovery = discoverRecipes(data.recipes, data.knownRecipes ?? data.recipes, data.favoriteIds, data.history)
 
   return {
     pantry: {
@@ -80,5 +83,6 @@ export function buildDashboardSummary(data: DashboardData, today = new Date()): 
       .filter((event) => recipeById.has(event.recipeId))
       .sort((first, second) => second.cookedAt.localeCompare(first.cookedAt))
       .slice(0, 4),
+    discovery,
   }
 }

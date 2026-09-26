@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Clock3, Heart, Search, UsersRound } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { readPantryItems } from '../features/pantry/data/localPantryStore'
 import { readFavoriteIds, writeFavoriteIds } from '../features/recipes/data/localFavoritesStore'
 import { filterRecipes, getIngredientAvailability, type RecipeFilters } from '../features/recipes/domain/recipeRules'
@@ -12,13 +12,14 @@ import type { Recipe } from '../features/recipes/domain/Recipe'
 
 const initialFilters: RecipeFilters = { search: '', category: '', maxMinutes: null, difficulty: '', pantryOnly: false }
 
-function DiscoverySection({ title, description, recipes, empty, action = 'Ver receta' }: {
-  title: string; description: string; recipes: Recipe[]; empty: string; action?: string
+function DiscoverySection({ id, title, description, recipes, empty, action = 'Ver receta' }: {
+  id: string; title: string; description: string; recipes: Recipe[]; empty: string; action?: string
 }) {
-  return <section aria-label={title} className="recipe-discovery-section"><h2>{title}</h2><p>{description}</p>{recipes.length === 0 ? <p className="recipe-discovery-empty">{empty}</p> : <ul className="recipe-discovery-items">{recipes.map((recipe) => <li key={recipe.id}><span><strong>{recipe.name}</strong><small>{recipe.category} · {recipe.minutes} min</small></span><Link className="text-link" to={`/recipes/${recipe.id}`}>{action}</Link></li>)}</ul>}</section>
+  return <section aria-label={title} className="recipe-discovery-section" id={id}><h2>{title}</h2><p>{description}</p>{recipes.length === 0 ? <p className="recipe-discovery-empty">{empty}</p> : <ul className="recipe-discovery-items">{recipes.map((recipe) => <li key={recipe.id}><span><strong>{recipe.name}</strong><small>{recipe.category} · {recipe.minutes} min</small></span><Link className="text-link" to={`/recipes/${recipe.id}`}>{action}</Link></li>)}</ul>}</section>
 }
 
 export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean }) {
+  const { hash } = useLocation()
   const [filters, setFilters] = useState<RecipeFilters>(initialFilters)
   const [pantry] = useState(readPantryItems)
   const [favoriteIds, setFavoriteIds] = useState(readFavoriteIds)
@@ -31,6 +32,10 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
   const recipes = filterRecipes(catalog, filters, pantry).filter((recipe) => !favoritesOnly || favoriteIds.includes(recipe.id))
   const activeIds = new Set(activeRecipes.map((recipe) => recipe.id))
 
+  useEffect(() => {
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView()
+  }, [hash])
+
   function toggleFavorite(id: string) {
     const next = favoriteIds.includes(id) ? favoriteIds.filter((item) => item !== id) : [...favoriteIds, id]
     try { writeFavoriteIds(next); setFavoriteIds(next); setError('') }
@@ -40,10 +45,10 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
   return <div className="page recipes-page">
     <header className="page-heading"><div><p className="eyebrow">{favoritesOnly ? 'RECETAS GUARDADAS' : 'EXPLORÁ Y COCINÁ'}</p><h1>{favoritesOnly ? 'Tus favoritas' : 'Ideas para cocinar'}</h1><p className="page-lead">{favoritesOnly ? 'Tus recetas preferidas, guardadas en este navegador.' : 'Descubrí recetas y mirá qué ingredientes ya tenés en tu despensa.'}</p></div>{favoritesOnly && <Link className="button button-quiet" to="/recipes">Explorar recetas</Link>}</header>
     {!favoritesOnly && <div className="recipe-discovery">
-      <DiscoverySection description="Selección editorial de ejemplo y recetas que ADMIN marcó como destacadas." empty="Todavía no hay recetas destacadas." recipes={discovery.featured} title="Destacadas" />
-      <DiscoverySection description="Ideas similares a tus preparaciones anteriores, sin repetirlas." empty={history.length ? 'Todavía no hay recetas similares disponibles.' : 'Cociná una receta para recibir sugerencias basadas en tu historial.'} recipes={discovery.basedOnHistory} title="Basado en lo que cocinaste" />
-      <DiscoverySection action="Ver receta" description="Tus preparaciones recientes que siguen disponibles." empty="Tu historial aún no tiene recetas activas para volver a cocinar." recipes={discovery.recook} title="Volver a cocinar" />
-      <DiscoverySection description="Las recetas activas que guardaste." empty="Todavía no guardaste recetas favoritas activas." recipes={discovery.favorites} title="Favoritas" />
+      <DiscoverySection description="Selección editorial de ejemplo y recetas que ADMIN marcó como destacadas." empty="Todavía no hay recetas destacadas." id="recipe-featured" recipes={discovery.featured} title="Destacadas" />
+      <DiscoverySection description="Ideas similares a tus preparaciones anteriores, sin repetirlas." empty={history.length ? 'Todavía no hay recetas similares disponibles.' : 'Cociná una receta para recibir sugerencias basadas en tu historial.'} id="recipe-history-based" recipes={discovery.basedOnHistory} title="Basado en lo que cocinaste" />
+      <DiscoverySection action="Ver receta" description="Tus preparaciones recientes que siguen disponibles." empty="Tu historial aún no tiene recetas activas para volver a cocinar." id="recipe-recook" recipes={discovery.recook} title="Volver a cocinar" />
+      <DiscoverySection description="Las recetas activas que guardaste." empty="Todavía no guardaste recetas favoritas activas." id="recipe-favorites" recipes={discovery.favorites} title="Favoritas" />
     </div>}
     <h2 className="recipe-catalog-title">{favoritesOnly ? 'Todas tus favoritas' : 'Catálogo completo'}</h2>
     <section aria-label="Filtros de recetas" className="recipe-controls">
