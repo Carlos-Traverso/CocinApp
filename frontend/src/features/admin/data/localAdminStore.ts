@@ -50,16 +50,24 @@ export function saveAdminData(data: AdminStorageData): void {
 
 export function getActiveCategories(): string[] {
   const data = getAdminData()
-  const custom = data.categories.filter((c) => !c.isDeleted).map((c) => c.name)
+  const custom = data.categories.filter((c) => c && !c.isDeleted && typeof c.name === 'string').map((c) => c.name)
   const combined = new Set([...defaultPantryCategories, ...custom])
   return Array.from(combined).sort((a, b) => a.localeCompare(b, 'es'))
 }
 
 export function getActiveUnits(): string[] {
   const data = getAdminData()
-  const custom = data.units.filter((u) => !u.isDeleted).map((u) => u.abbreviation)
+  const custom = data.units.filter((u) => u && !u.isDeleted && typeof u.abbreviation === 'string').map((u) => u.abbreviation)
   const combined = new Set([...defaultPantryUnits, ...custom])
   return Array.from(combined)
+}
+
+export function getKnownCategories(): string[] {
+  return [...new Set([...defaultPantryCategories, ...getAdminData().categories.filter((category) => category && typeof category.name === 'string').map((category) => category.name)])]
+}
+
+export function getKnownUnits(): string[] {
+  return [...new Set([...defaultPantryUnits, ...getAdminData().units.filter((unit) => unit && typeof unit.abbreviation === 'string').map((unit) => unit.abbreviation)])]
 }
 
 export function findActiveIngredient(name: string) {

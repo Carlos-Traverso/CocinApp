@@ -29,7 +29,7 @@ export function AppShell() {
     <div className="app-shell">
       <aside className="sidebar">
         <NavLink className="wordmark" to="/panel" aria-label="CocinAPP, inicio">
-          Cocin<span>APP</span>
+          <img alt="" className="brand-mark" src="/favicon.svg" />Cocin<span>APP</span>
         </NavLink>
         <p className="sidebar-label">TU COCINA</p>
         <nav className="primary-nav" aria-label="Navegación principal">
@@ -50,7 +50,7 @@ export function AppShell() {
           <span><strong>{session?.name || 'Mi cocina'}</strong><small>Espacio personal</small></span>
         </NavLink>
       </aside>
-      <main className="main-content"><Outlet /></main>
+      <main className="main-content"><NavLink className="mobile-brand" to="/panel"><img alt="" className="brand-mark" src="/favicon.svg" />Cocin<span>APP</span></NavLink><Outlet /></main>
     </div>
   )
 }

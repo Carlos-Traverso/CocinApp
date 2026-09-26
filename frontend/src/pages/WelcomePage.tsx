@@ -29,7 +29,7 @@ export function WelcomePage() {
 
   return (
     <main className="access-page">
-      <header className="access-header"><div className="access-wordmark" aria-label="CocinAPP, inicio">Cocin<span>APP</span></div></header>
+      <header className="access-header"><div className="access-wordmark" aria-label="CocinAPP, inicio"><img alt="" className="brand-mark" src="/favicon.svg" />Cocin<span>APP</span></div></header>
       <div className="access-layout">
         <section className="access-intro" aria-labelledby="access-title">
           <p className="eyebrow">TU COCINA, MÁS ORGANIZADA</p>

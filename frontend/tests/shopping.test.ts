@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { sampleRecipes } from '../src/mocks/recipes'
-import { mergeShoppingSuggestions, suggestForRecipes, suggestPantryRestock, type ShoppingItem } from '../src/features/shopping/domain/shopping'
+import { filterShoppingItems, mergeShoppingSuggestions, suggestForRecipes, suggestPantryRestock, type ShoppingItem } from '../src/features/shopping/domain/shopping'
 import { appendShoppingSuggestions, readShoppingItems, writeShoppingItems } from '../src/features/shopping/data/localShoppingStore'
 import type { PantryItem } from '../src/features/pantry/domain/pantry'
 
@@ -60,4 +60,16 @@ test('shopping storage persists valid items and ignores malformed records', () =
   assert.deepEqual(readShoppingItems(storage), [item])
   entries.set('cocinapp.shopping.v1', '{bad')
   assert.deepEqual(readShoppingItems(storage), [])
+})
+
+test('category, search and status filters combine and return an empty result when nothing matches', () => {
+  const items: ShoppingItem[] = [
+    { id: 'milk', name: 'Leche', category: 'Lácteos', quantity: 1, unit: 'l', note: '', checked: false, sources: ['manual'] },
+    { id: 'yogurt', name: 'Yogur', category: 'Lácteos', quantity: 1, unit: 'u', note: '', checked: true, sources: ['manual'] },
+    { id: 'apple', name: 'Manzana', category: 'Frutas y verduras', quantity: 2, unit: 'u', note: '', checked: false, sources: ['manual'] },
+  ]
+  assert.deepEqual(filterShoppingItems(items, { search: 'LECHE', category: 'Lácteos', status: 'pending' }).map((item) => item.id), ['milk'])
+  assert.deepEqual(filterShoppingItems(items, { search: '', category: 'Lácteos', status: 'checked' }).map((item) => item.id), ['yogurt'])
+  assert.deepEqual(filterShoppingItems(items, { search: 'manzana', category: 'Lácteos', status: 'all' }), [])
+  assert.equal(filterShoppingItems(items, { search: '', category: '', status: 'all' }).length, 3)
 })

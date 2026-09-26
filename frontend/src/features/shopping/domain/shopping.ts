@@ -20,6 +20,20 @@ export interface ShoppingSuggestion {
   source: ShoppingSource
 }
 
+export type ShoppingStatusFilter = 'all' | 'pending' | 'checked'
+export interface ShoppingFilters { search: string; category: PantryCategory | ''; status: ShoppingStatusFilter }
+
+export function filterShoppingItems(items: ShoppingItem[], filters: ShoppingFilters): ShoppingItem[] {
+  const search = normalizePantryName(filters.search)
+  return items.filter((item) => {
+    if (search && !normalizePantryName(item.name).includes(search)) return false
+    if (filters.category && item.category !== filters.category) return false
+    if (filters.status === 'pending' && item.checked) return false
+    if (filters.status === 'checked' && !item.checked) return false
+    return true
+  })
+}
+
 export function shoppingKey(name: string, unit: PantryUnit): string {
   return `${normalizePantryName(name)}:${unit}`
 }
