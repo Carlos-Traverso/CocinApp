@@ -78,7 +78,7 @@ describe('local admin catalog', () => {
       title: 'Pan simple', author: 'CocinAPP', description: 'Pan casero', category: 'Desayuno',
       minutes: 30, portions: 2, difficulty: 'Fácil' as const, calories: 200,
       mealShift: 'Desayuno', dietaryTags: ['Vegetariana'], ingredients: [{ ingredientId, quantity: 200, unitId: grams }],
-      steps: ['Mezclar.', 'Hornear.'], stepMeta: [{ minutes: 8, tip: 'Usá agua tibia.' }, {}], status: 'published' as const, symbol: 'P', color: 'green' as const,
+      steps: ['Mezclar.', 'Hornear.'], stepMeta: [{ minutes: 8, tip: 'Usá agua tibia.' }, {}], featured: true, status: 'published' as const, symbol: 'P', color: 'green' as const,
     }
     assert.throws(() => createRecipe({ ...recipe, ingredients: [{ ingredientId, quantity: 0, unitId: grams }] }), /positiva/i)
     assert.throws(() => createRecipe({ ...recipe, ingredients: [{ ingredientId, quantity: 200, unitId: milliliters }] }), /compatibles/i)
@@ -90,6 +90,7 @@ describe('local admin catalog', () => {
     assert.equal(getAvailableRecipes().find((entry) => entry.id === id)?.name, 'Pan simple')
     assert.equal(getAvailableRecipes().find((entry) => entry.id === id)?.ingredients[0]?.unit, 'g')
     assert.deepEqual(getAvailableRecipes().find((entry) => entry.id === id)?.stepMeta?.[0], { minutes: 8, tip: 'Usá agua tibia.' })
+    assert.equal(getAvailableRecipes().find((entry) => entry.id === id)?.featured, true)
   })
 
   test('referenced published recipes are retained inactive and hidden from new actions', () => {

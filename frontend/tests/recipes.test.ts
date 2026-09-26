@@ -3,6 +3,7 @@ import test from 'node:test'
 import { sampleRecipes } from '../src/mocks/recipes'
 import { filterRecipes, getIngredientAvailability } from '../src/features/recipes/domain/recipeRules'
 import { readFavoriteIds, writeFavoriteIds } from '../src/features/recipes/data/localFavoritesStore'
+import { discoverRecipes } from '../src/features/recipes/domain/recipeDiscovery'
 import type { PantryItem } from '../src/features/pantry/domain/pantry'
 
 const pantry: PantryItem[] = [
@@ -52,4 +53,19 @@ test('favorites persist known IDs and ignore malformed storage', () => {
   assert.deepEqual(readFavoriteIds(storage), ['quinoa-bowl'])
   entries.set('cocinapp.favorites.v1', '{bad')
   assert.deepEqual(readFavoriteIds(storage), [])
+})
+
+test('discovery uses local history deterministically and excludes inactive recipes from new actions', () => {
+  const history = [
+    { id: 'old', recipeId: 'pumpkin-pasta', cookedAt: '2026-09-22T10:00:00.000Z', portions: 2 },
+    { id: 'new', recipeId: 'quinoa-bowl', cookedAt: '2026-09-23T10:00:00.000Z', portions: 2 },
+    { id: 'again', recipeId: 'quinoa-bowl', cookedAt: '2026-09-23T11:00:00.000Z', portions: 2 },
+  ]
+  const active = sampleRecipes.filter((recipe) => recipe.id !== 'quinoa-bowl')
+  const result = discoverRecipes(active, sampleRecipes, ['chickpea-salad', 'chickpea-salad'], history)
+  assert.deepEqual(result.recook.map((recipe) => recipe.id), ['pumpkin-pasta'])
+  assert.deepEqual(result.favorites.map((recipe) => recipe.id), ['chickpea-salad'])
+  assert.equal(result.featured.some((recipe) => recipe.id === 'quinoa-bowl'), false)
+  assert.equal(result.basedOnHistory.some((recipe) => recipe.id === 'quinoa-bowl' || recipe.id === 'pumpkin-pasta'), false)
+  assert.deepEqual(discoverRecipes(active, sampleRecipes, [], []).basedOnHistory, [])
 })

@@ -8,7 +8,7 @@ import type { AdminRecipe } from '../domain/adminModels'
 const emptyRecipe = (): Partial<AdminRecipe> => ({
   title: '', author: 'CocinAPP', description: '', category: 'Almuerzo', minutes: 30,
   portions: 2, difficulty: 'Fácil', calories: 0, mealShift: 'Almuerzo', dietaryTags: [],
-  ingredients: [], steps: [''], stepMeta: [{}], status: 'draft', symbol: 'R', color: 'green',
+  ingredients: [], steps: [''], stepMeta: [{}], featured: false, status: 'draft', symbol: 'R', color: 'green',
 })
 
 export function RecipesTab() {
@@ -30,7 +30,7 @@ export function RecipesTab() {
         description: editor.description?.trim() ?? '', category: editor.mealShift ?? 'Almuerzo',
         minutes: editor.minutes ?? 0, portions: editor.portions ?? 0,
         difficulty: editor.difficulty ?? 'Fácil', calories: editor.calories ?? 0,
-        mealShift: editor.mealShift ?? '', dietaryTags: editor.dietaryTags ?? [],
+        mealShift: editor.mealShift ?? '', dietaryTags: editor.dietaryTags ?? [], featured: editor.featured ?? false,
         ingredients: editor.ingredients ?? [], steps: editor.steps ?? [], stepMeta: editor.stepMeta ?? [],
         status: editor.status ?? 'draft', symbol: editor.title?.trim().slice(0, 1).toLocaleUpperCase('es') || 'R',
         color: editor.color ?? 'green',
@@ -116,6 +116,7 @@ export function RecipesTab() {
         <label className="field"><span>Descripción</span><textarea maxLength={280} onChange={(event) => setEditor({ ...editor, description: event.currentTarget.value })} value={editor.description ?? ''} /></label>
         <label className="field"><span>Etiquetas dietéticas (separadas por coma)</span><input onChange={(event) => setEditor({ ...editor, dietaryTags: event.currentTarget.value.split(',').map((tag) => tag.trim()).filter(Boolean) })} placeholder="Vegana, Sin TACC, Vegetariana" value={(editor.dietaryTags ?? []).join(', ')} /></label>
         <label className="field"><span>Disponibilidad en el catálogo</span><select onChange={(event) => setEditor({ ...editor, status: event.currentTarget.value as AdminRecipe['status'] })} value={editor.status ?? 'draft'}><option value="draft">Borrador: no visible para usuarios</option><option value="published">Publicada</option></select></label>
+        <label className="recipe-pantry-toggle"><input checked={editor.featured ?? false} onChange={(event) => setEditor({ ...editor, featured: event.currentTarget.checked })} type="checkbox" /> Destacar en Explorar recetas</label>
 
         <section className="admin-recipe-section" aria-labelledby="admin-ingredients-title"><div className="section-header"><h3 id="admin-ingredients-title">Ingredientes</h3><button className="button button-quiet" onClick={() => setEditor({ ...editor, ingredients: [...(editor.ingredients ?? []), { ingredientId: '', quantity: 1, unitId: '' }] })} type="button"><Plus size={15} /> Agregar ingrediente</button></div>
           {(editor.ingredients ?? []).map((entry, index) => {

@@ -55,6 +55,7 @@ export function validateRecipe(input: Omit<AdminRecipe, 'id' | 'isDeleted'>, rec
     return { ...(minutes !== undefined ? { minutes } : {}), ...(tip ? { tip } : {}) }
   })
   if (!['draft', 'published'].includes(input.status)) throw new Error('Elegí si la receta queda como borrador o publicada.')
+  if (input.featured !== undefined && typeof input.featured !== 'boolean') throw new Error('La marca destacada debe ser válida.')
   if (recipes.some((item) => item.id !== exceptId && !item.isDeleted && normalizePantryName(item.title) === normalizePantryName(title))) throw new Error('Ya existe una receta con ese título.')
   for (const entry of input.ingredients) {
     if (!Number.isFinite(entry.quantity) || entry.quantity <= 0) throw new Error('Cada ingrediente debe tener una cantidad positiva.')

@@ -14,4 +14,5 @@ export interface Recipe {
   calories?: number
   mealShift?: string
   dietaryTags?: string[]
+  featured?: boolean
 }

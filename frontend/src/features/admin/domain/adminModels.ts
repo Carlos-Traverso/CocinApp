@@ -34,6 +34,7 @@ export interface AdminRecipe {
   calories: number
   mealShift: string // Desayuno, Almuerzo, etc.
   dietaryTags: string[]
+  featured?: boolean
   ingredients: { ingredientId: string; quantity: number; unitId: string; note?: string }[]
   steps: string[]
   stepMeta?: { minutes?: number; tip?: string }[]

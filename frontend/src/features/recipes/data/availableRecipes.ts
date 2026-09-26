@@ -20,6 +20,7 @@ function fromAdminRecipe(recipe: AdminRecipe): Recipe {
     calories: recipe.calories,
     mealShift: recipe.mealShift,
     dietaryTags: recipe.dietaryTags,
+    featured: recipe.featured,
     ingredients: recipe.ingredients.flatMap((entry) => {
       const ingredient = data.ingredients.find((item) => item.id === entry.ingredientId)
       const unit = data.units.find((item) => item.id === entry.unitId)
