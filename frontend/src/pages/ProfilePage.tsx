@@ -3,7 +3,8 @@ import { type FormEvent, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { endSession } from '../features/auth/data/localAuthStore'
 import { readLocalProfile, saveLocalProfile } from '../features/profile/data/localProfileStore'
-import { calculateAge, calculateEnergyEstimate, profileIsComplete, type ProfileDraft } from '../features/profile/domain/profile'
+import { calculateAge, estimateForProfile, profileIsComplete, type ProfileDraft } from '../features/profile/domain/profile'
+import { EnergySummary } from '../features/profile/ui/EnergySummary'
 import { ProfileFields } from '../features/profile/ui/ProfileFields'
 
 export function ProfilePage() {
@@ -11,9 +12,7 @@ export function ProfilePage() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const age = profile.birthDate ? calculateAge(profile.birthDate) : undefined
-  const estimate = profileIsComplete(profile) && age !== undefined && profile.weightKg && profile.heightCm && profile.metabolicSex && profile.activityLevel && profile.goal
-    ? calculateEnergyEstimate({ weightKg: profile.weightKg, heightCm: profile.heightCm, age, metabolicSex: profile.metabolicSex, activityLevel: profile.activityLevel, goal: profile.goal })
-    : undefined
+  const estimate = estimateForProfile(profile)
 
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -42,12 +41,12 @@ export function ProfilePage() {
         <p className="eyebrow">TU PERFIL</p><h2>{profile.name || 'Tu cocina'}</h2>
         <p>Usamos esta informaci├│n para mostrar referencias y recetas compatibles.</p>
         <dl>
-          <div><dt>Objetivo</dt><dd>{profile.goal === 'lose' ? 'Perder peso' : profile.goal === 'gain' ? 'Ganar peso' : profile.goal === 'maintain' ? 'Mantener peso' : 'Sin definir'}</dd></div>
+          <div><dt>Objetivo</dt><dd>{profile.goal === 'lose' ? 'Perder peso' : profile.goal === 'gain' ? 'Ganar peso' : profile.goal === 'gain-muscle' ? 'Ganar masa muscular' : profile.goal === 'maintain' ? 'Mantener peso' : 'Sin definir'}</dd></div>
           <div><dt>Medidas</dt><dd>{profile.weightKg && profile.heightCm ? `${profile.weightKg} kg ┬À ${profile.heightCm} cm` : 'Sin datos'}</dd></div>
           <div><dt>Preferencias</dt><dd>{profile.preferences?.length ? `${profile.preferences.length} seleccionadas` : 'Sin definir'}</dd></div>
         </dl>
         {age !== undefined && <p className="summary-detail">Edad calculada: <strong>{age} a├▒os</strong></p>}
-        {estimate && <div className="summary-energy"><span>Referencia diaria</span><strong>{estimate.dailyCalories} kcal</strong><small>Rango: {estimate.goalRange.minimum} - {estimate.goalRange.maximum} kcal</small></div>}
+        {estimate && <EnergySummary estimate={estimate} />}
         <p className="medical-note compact">Las referencias son estimativas y no reemplazan indicaciones profesionales.</p>
         <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
           <button type="button" className="button button-quiet" onClick={() => endSession()} style={{ width: '100%', justifyContent: 'center', color: 'var(--text-error)' }}>

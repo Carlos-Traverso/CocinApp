@@ -2,7 +2,8 @@ import { ArrowLeft, ArrowRight, CircleAlert } from 'lucide-react'
 import { type FormEvent, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { readLocalProfile, saveLocalProfile } from '../features/profile/data/localProfileStore'
-import { calculateAge, calculateEnergyEstimate, profileIsComplete, type ProfileDraft } from '../features/profile/domain/profile'
+import { calculateAge, estimateForProfile, profileIsComplete, type ProfileDraft } from '../features/profile/domain/profile'
+import { EnergySummary } from '../features/profile/ui/EnergySummary'
 import { ProfileFields } from '../features/profile/ui/ProfileFields'
 
 export function OnboardingPage() {
@@ -12,9 +13,7 @@ export function OnboardingPage() {
   const formRef = useRef<HTMLFormElement>(null)
 
   const age = profile.birthDate ? calculateAge(profile.birthDate) : undefined
-  const estimate = profileIsComplete(profile) && age !== undefined && profile.weightKg && profile.heightCm && profile.metabolicSex && profile.activityLevel && profile.goal
-    ? calculateEnergyEstimate({ weightKg: profile.weightKg, heightCm: profile.heightCm, age, metabolicSex: profile.metabolicSex, activityLevel: profile.activityLevel, goal: profile.goal })
-    : undefined
+  const estimate = estimateForProfile(profile)
 
   function saveAndContinue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -37,11 +36,7 @@ export function OnboardingPage() {
       <form onSubmit={saveAndContinue} ref={formRef}>
         <ProfileFields profile={profile} onChange={(changes) => { setProfile({ ...profile, ...changes }); setError('') }} />
         {age !== undefined && <p className="calculated-age">Edad calculada: <strong>{age} años</strong></p>}
-        {estimate && <section className="energy-summary" aria-label="Estimación energética de referencia">
-          <div><span>TMB</span><strong>{estimate.basalCalories} kcal</strong></div>
-          <div><span>Gasto diario</span><strong>{estimate.dailyCalories} kcal</strong></div>
-          <div><span>Rango orientativo</span><strong>{estimate.goalRange.minimum} - {estimate.goalRange.maximum} kcal</strong></div>
-        </section>}
+        {estimate && <EnergySummary estimate={estimate} />}
         <p className="medical-note"><CircleAlert size={17} /> Esta estimación es informativa; no reemplaza el asesoramiento de un profesional de nutrición.</p>
         {error && <p className="form-message error" role="alert">{error}</p>}
         <div className="setup-actions"><button className="button button-quiet" onClick={() => navigate('/')} type="button"><ArrowLeft size={17} /> Volver</button><button className="button button-primary" type="submit">Guardar y continuar <ArrowRight size={17} /></button></div>

@@ -13,11 +13,11 @@ export function readLocalProfile(storage?: StorageLike): ProfileDraft {
       name: typeof candidate.name === 'string' ? candidate.name : undefined,
       email: typeof candidate.email === 'string' ? candidate.email : undefined,
       birthDate: typeof candidate.birthDate === 'string' ? candidate.birthDate : undefined,
-      weightKg: typeof candidate.weightKg === 'number' ? candidate.weightKg : undefined,
-      heightCm: typeof candidate.heightCm === 'number' ? candidate.heightCm : undefined,
+      weightKg: typeof candidate.weightKg === 'number' && Number.isFinite(candidate.weightKg) ? candidate.weightKg : undefined,
+      heightCm: typeof candidate.heightCm === 'number' && Number.isFinite(candidate.heightCm) ? candidate.heightCm : undefined,
       metabolicSex: candidate.metabolicSex === 'female' || candidate.metabolicSex === 'male' ? candidate.metabolicSex : undefined,
       activityLevel: candidate.activityLevel === 'sedentary' || candidate.activityLevel === 'light' || candidate.activityLevel === 'moderate' || candidate.activityLevel === 'active' || candidate.activityLevel === 'very-active' ? candidate.activityLevel : undefined,
-      goal: candidate.goal === 'lose' || candidate.goal === 'maintain' || candidate.goal === 'gain' ? candidate.goal : undefined,
+      goal: candidate.goal === 'lose' || candidate.goal === 'maintain' || candidate.goal === 'gain' || candidate.goal === 'gain-muscle' ? candidate.goal : undefined,
       preferences: Array.isArray(candidate.preferences) ? candidate.preferences.filter((item): item is NonNullable<ProfileDraft['preferences']>[number] => item === 'gluten-free' || item === 'vegetarian' || item === 'vegan' || item === 'lactose-free' || item === 'nut-free') : undefined,
     }
   } catch {

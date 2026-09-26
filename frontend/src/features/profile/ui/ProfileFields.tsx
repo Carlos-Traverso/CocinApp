@@ -129,11 +129,12 @@ export function ProfileFields({ profile, onChange, showEmail = false }: ProfileF
     </div>
     <fieldset className="choice-group">
       <legend>Objetivo principal</legend>
-      <div className="choice-grid three-columns">
+      <div className="choice-grid four-columns">
         {([
           ['lose', 'Perder peso'],
           ['maintain', 'Mantener peso'],
           ['gain', 'Ganar peso'],
+          ['gain-muscle', 'Ganar masa muscular'],
         ] as const satisfies ReadonlyArray<readonly [Goal, string]>).map(([value, label]) => <label className="choice-card" key={value}>
           <input
             checked={profile.goal === value}
