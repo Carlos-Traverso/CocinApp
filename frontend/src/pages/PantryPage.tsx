@@ -3,7 +3,7 @@ import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { readPantryItems, writePantryItems } from '../features/pantry/data/localPantryStore'
 import {
-  filterPantryItems, formatPantryAmount, getPantryFlags, getPantryStatus,
+  countPantryAlerts, filterPantryItems, formatPantryAmount, getPantryStatus,
   hasDuplicateItem, pantryExpiryText,
   type PantryCategory, type PantryFilters, type PantryItem, type PantryStatus, type PantryUnit,
 } from '../features/pantry/domain/pantry'
@@ -139,8 +139,7 @@ export function PantryPage() {
     return result
   }, [items, filters, sortOrder])
 
-  const lowCount = items.filter((item) => { const flags = getPantryFlags(item); return flags.low || flags.empty }).length
-  const expiryCount = items.filter((item) => { const flags = getPantryFlags(item); return flags.soon || flags.expired }).length
+  const alertCounts = countPantryAlerts(items)
 
   function persist(next: PantryItem[]): boolean {
     try {
@@ -190,9 +189,10 @@ export function PantryPage() {
     </header>
 
     <section aria-label="Resumen de la despensa" className="pantry-summary">
-      <div><ClipboardList aria-hidden="true" size={19} /><span>Productos</span><strong>{items.length}</strong></div>
-      <div className="pantry-summary-low"><AlertTriangle aria-hidden="true" size={19} /><span>Stock bajo</span><strong>{lowCount}</strong></div>
-      <div className="pantry-summary-expiry"><CalendarClock aria-hidden="true" size={19} /><span>Vencidos o por vencer</span><strong>{expiryCount}</strong></div>
+      <button aria-pressed={filters.status === ''} onClick={() => setFilters(emptyFilters)} type="button"><ClipboardList aria-hidden="true" size={19} /><span>Productos</span><strong>{items.length}</strong></button>
+      <button aria-pressed={filters.status === 'low'} className="pantry-summary-low" onClick={() => setFilters({ ...emptyFilters, status: 'low' })} type="button"><AlertTriangle aria-hidden="true" size={19} /><span>Stock bajo</span><strong>{alertCounts.low}</strong></button>
+      <button aria-pressed={filters.status === 'expired'} className="pantry-summary-expiry" onClick={() => setFilters({ ...emptyFilters, status: 'expired' })} type="button"><CalendarClock aria-hidden="true" size={19} /><span>Vencidos</span><strong>{alertCounts.expired}</strong></button>
+      <button aria-pressed={filters.status === 'soon'} className="pantry-summary-expiry" onClick={() => setFilters({ ...emptyFilters, status: 'soon' })} type="button"><CalendarClock aria-hidden="true" size={19} /><span>Por vencer</span><strong>{alertCounts.soon}</strong></button>
     </section>
 
     <section aria-label="Filtros de ingredientes" className="pantry-controls">

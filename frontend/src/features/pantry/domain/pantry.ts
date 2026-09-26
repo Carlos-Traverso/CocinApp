@@ -50,6 +50,15 @@ export function getPantryFlags(item: PantryItem, today = new Date()) {
   }
 }
 
+export function countPantryAlerts(items: PantryItem[], today = new Date()) {
+  const flags = items.map((item) => getPantryFlags(item, today))
+  return {
+    low: flags.filter((item) => item.low || item.empty).length,
+    expired: flags.filter((item) => item.expired).length,
+    soon: flags.filter((item) => item.soon).length,
+  }
+}
+
 export function getPantryStatus(item: PantryItem, today = new Date()): { kind: PantryStatus; label: string } {
   const flags = getPantryFlags(item, today)
   if (flags.expired) return { kind: 'expired', label: 'Vencido' }

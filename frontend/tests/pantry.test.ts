@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { filterPantryItems, getPantryStatus, hasDuplicateItem, type PantryItem } from '../src/features/pantry/domain/pantry'
+import { countPantryAlerts, filterPantryItems, getPantryStatus, hasDuplicateItem, type PantryItem } from '../src/features/pantry/domain/pantry'
 import { readPantryItems, writePantryItems } from '../src/features/pantry/data/localPantryStore'
 
 const today = new Date(2026, 8, 23)
@@ -16,6 +16,18 @@ test('classifies expiry by local calendar days and keeps stock alerts independen
   assert.equal(getPantryStatus({ ...rice, expiry: '2026-09-27' }, today).kind, 'ok')
   assert.equal(getPantryStatus({ ...rice, quantity: 0, expiry: '2026-09-27' }, today).kind, 'empty')
   assert.equal(getPantryStatus({ ...rice, quantity: 100 }, today).kind, 'low')
+})
+
+test('summary separates past dates from today and upcoming dates without double counting', () => {
+  const items = [
+    { ...rice, id: 'past', expiry: '2026-09-22' },
+    { ...rice, id: 'today', expiry: '2026-09-23' },
+    { ...rice, id: 'soon', expiry: '2026-09-25' },
+    { ...rice, id: 'none', expiry: '' },
+  ]
+  assert.deepEqual(countPantryAlerts(items, today), { low: 0, expired: 1, soon: 2 })
+  assert.deepEqual(filterPantryItems(items, { search: '', category: '', status: 'expired' }, today).map((item) => item.id), ['past'])
+  assert.deepEqual(filterPantryItems(items, { search: '', category: '', status: 'soon' }, today).map((item) => item.id), ['today', 'soon'])
 })
 
 test('filters accent-insensitively, including empty items in low stock', () => {
