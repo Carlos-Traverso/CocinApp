@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { sampleRecipes } from '../src/mocks/recipes'
 import { mergeShoppingSuggestions, suggestForRecipes, suggestPantryRestock, type ShoppingItem } from '../src/features/shopping/domain/shopping'
-import { readShoppingItems, writeShoppingItems } from '../src/features/shopping/data/localShoppingStore'
+import { appendShoppingSuggestions, readShoppingItems, writeShoppingItems } from '../src/features/shopping/data/localShoppingStore'
 import type { PantryItem } from '../src/features/pantry/domain/pantry'
 
 const today = new Date(2026, 8, 23)
@@ -36,6 +36,18 @@ test('merging suggestions is idempotent and preserves edits and checked state', 
   const merged = mergeShoppingSuggestions(current, suggestions)
   assert.deepEqual(merged, [{ ...current[0], quantity: 120, sources: ['manual', 'plan'] }])
   assert.deepEqual(mergeShoppingSuggestions(merged, suggestions), merged)
+})
+
+test('sending recipe faltantes twice keeps one row per ingredient and the correct quantity', () => {
+  const entries = new Map<string, string>()
+  const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
+  const recipe = sampleRecipes.find((item) => item.id === 'chicken-rice')!
+  const missing = suggestForRecipes([recipe], pantry, 'recipe', today)
+  const first = appendShoppingSuggestions(missing, storage)
+  const second = appendShoppingSuggestions(missing, storage)
+  assert.deepEqual(second, first)
+  assert.equal(second.length, missing.length)
+  assert.equal(second.find((item) => item.name === 'Pechuga de pollo')?.quantity, 200)
 })
 
 test('shopping storage persists valid items and ignores malformed records', () => {
