@@ -98,7 +98,7 @@ export function ShoppingPage() {
   }
 
   function markAll() {
-    try { setItems(markAllShoppingPurchased()); setNotice(`${pendingCount} ${pendingCount === 1 ? 'producto marcado' : 'productos marcados'} como comprados.`); setError('') }
+    try { setItems(markAllShoppingPurchased()); setNotice(`${pendingCount} ${pendingCount === 1 ? 'producto marcado como comprado' : 'productos marcados como comprados'}.`); setError('') }
     catch { setError('No se pudieron marcar las compras. Intentá nuevamente.') }
   }
 
