@@ -1,7 +1,7 @@
-import { sampleRecipes } from '../../../mocks/recipes'
 import { getAdminData } from '../../admin/data/localAdminStore'
 import type { AdminRecipe } from '../../admin/domain/adminModels'
 import type { Recipe } from '../domain/Recipe'
+import { mergeRecipeSeed, recipeSeed } from './recipeSeed'
 
 function fromAdminRecipe(recipe: AdminRecipe): Recipe {
   const data = getAdminData()
@@ -46,14 +46,12 @@ export function getAvailableRecipes(): Recipe[] {
 
 export function getKnownRecipes(): Recipe[] {
   const data = getAdminData()
-  const combined = new Map<string, Recipe>(sampleRecipes.map((recipe): [string, Recipe] => [recipe.id, recipe]))
-  for (const recipe of data.recipes) combined.set(recipe.id, fromAdminRecipe(recipe))
-  return [...combined.values()]
+  return mergeRecipeSeed(recipeSeed, data.recipes.map(fromAdminRecipe))
 }
 
 export function getRecipeById(id: string, includeInactive = false): Recipe | undefined {
   if (!includeInactive) return getAvailableRecipes().find((recipe) => recipe.id === id)
   const record = getAdminData().recipes.find((recipe) => recipe.id === id)
   if (record) return fromAdminRecipe(record)
-  return sampleRecipes.find((recipe) => recipe.id === id)
+  return recipeSeed.find((recipe) => recipe.id === id)
 }

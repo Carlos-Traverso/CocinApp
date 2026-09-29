@@ -15,5 +15,6 @@ export interface Recipe {
   mealShift?: string
   dietaryTags?: string[]
   featured?: boolean
+  /** @deprecated Recommendations use only local user data. */
   popularity?: number
 }

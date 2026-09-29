@@ -5,6 +5,7 @@ import { filterRecipes, getIngredientAvailability } from '../src/features/recipe
 import { readFavoriteIds, writeFavoriteIds } from '../src/features/recipes/data/localFavoritesStore'
 import { discoverRecipes } from '../src/features/recipes/domain/recipeDiscovery'
 import type { PantryItem } from '../src/features/pantry/domain/pantry'
+import { mergeRecipeSeed, recipeSeed, recipeSeedVersion } from '../src/features/recipes/data/recipeSeed'
 
 const pantry: PantryItem[] = [
   { id: 'a', name: 'Quinoa', category: 'Granos y legumbres', quantity: 150, unit: 'g', minimum: 0, expiry: '' },
@@ -20,8 +21,25 @@ test('ingredient availability checks quantity, unit and expiry', () => {
   assert.deepEqual(result.missing.map((item) => item.name), ['Tomates cherry', 'Aceite de oliva', 'Limón'])
 })
 
+test('the versioned seed provides a complete varied catalog and remains idempotent', () => {
+  assert.equal(recipeSeedVersion, 2)
+  assert.equal(recipeSeed.length, 22)
+  assert.deepEqual(new Set(recipeSeed.map((recipe) => recipe.category)), new Set(['Almuerzo', 'Cena', 'Desayuno', 'Merienda']))
+  assert.equal(recipeSeed.every((recipe) => recipe.steps.length > 0 && recipe.ingredients.length > 0 && recipe.symbol), true)
+  assert.equal(mergeRecipeSeed(recipeSeed, []).length, 22)
+  assert.equal(mergeRecipeSeed(mergeRecipeSeed(recipeSeed, []), []).length, 22)
+})
+
+test('administrator records override a seed recipe without duplicating or losing new seed entries', () => {
+  const override = { ...recipeSeed[0], name: 'Bowl personalizado' }
+  const merged = mergeRecipeSeed(recipeSeed, [override])
+  assert.equal(merged.length, 22)
+  assert.equal(merged.find((recipe) => recipe.id === override.id)?.name, 'Bowl personalizado')
+  assert.equal(merged.some((recipe) => recipe.id === 'roasted-vegetable-soup'), true)
+})
+
 test('recipe filters combine text, category, time, difficulty and pantry availability', () => {
-  assert.deepEqual(filterRecipes(sampleRecipes, { search: 'CALABAZA', category: '', maxMinutes: null, difficulty: '', pantryOnly: false }, pantry, today).map((item) => item.id), ['pumpkin-pasta'])
+  assert.deepEqual(filterRecipes(sampleRecipes, { search: 'CALABAZA', category: '', maxMinutes: null, difficulty: '', pantryOnly: false }, pantry, today).map((item) => item.id), ['pumpkin-pasta', 'roasted-vegetable-soup'])
   assert.deepEqual(filterRecipes(sampleRecipes, { search: '', category: 'Almuerzo', maxMinutes: 25, difficulty: 'Fácil', pantryOnly: false }, pantry, today).map((item) => item.id), ['chickpea-salad'])
   assert.deepEqual(filterRecipes(sampleRecipes, { search: '', category: '', maxMinutes: null, difficulty: '', pantryOnly: true }, pantry, today), [])
 })

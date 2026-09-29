@@ -15,7 +15,6 @@ export const sampleRecipes = [
     symbol: '🥗',
     color: 'green',
     featured: true,
-    popularity: 92,
   },
   {
     id: 'pumpkin-pasta',
@@ -31,7 +30,6 @@ export const sampleRecipes = [
     symbol: '🍝',
     color: 'gold',
     featured: true,
-    popularity: 98,
   },
   {
     id: 'chickpea-salad',
@@ -46,7 +44,6 @@ export const sampleRecipes = [
     stepMeta: [{ minutes: 8, tip: 'Secá los garbanzos antes de saltearlos para que doren mejor.' }],
     symbol: '🥙',
     color: 'pink',
-    popularity: 84,
   },
   {
     id: 'chicken-rice',
@@ -60,7 +57,6 @@ export const sampleRecipes = [
     steps: ['Cociná el arroz integral según las indicaciones del envase.', 'Cortá el pollo y doralo en una sartén con el aceite de oliva.', 'Serví el pollo sobre el arroz y agregá los tomates cortados.'],
     symbol: '🍗',
     color: 'blue',
-    popularity: 90,
   },
   {
     id: 'yogurt-fruit',
@@ -77,7 +73,6 @@ export const sampleRecipes = [
     color: 'pink',
     calories: 310,
     featured: true,
-    popularity: 88,
   },
   {
     id: 'apple-toast',
@@ -92,7 +87,6 @@ export const sampleRecipes = [
     symbol: '🍎',
     color: 'gold',
     calories: 285,
-    popularity: 78,
   },
   {
     id: 'vegetable-omelette',
@@ -107,7 +101,6 @@ export const sampleRecipes = [
     symbol: '🍳',
     color: 'gold',
     calories: 340,
-    popularity: 95,
   },
   {
     id: 'lentil-stew',
@@ -121,7 +114,6 @@ export const sampleRecipes = [
     steps: ['Cortá las verduras.', 'Cocinalas con el tomate.', 'Sumá las lentejas y cociná hasta integrar.'],
     symbol: '🍲',
     color: 'pink',
-    popularity: 87,
   },
   {
     id: 'avocado-toast',
@@ -136,7 +128,6 @@ export const sampleRecipes = [
     symbol: '🥑',
     color: 'green',
     calories: 390,
-    popularity: 96,
   },
   {
     id: 'banana-pancakes',
@@ -151,6 +142,65 @@ export const sampleRecipes = [
     symbol: '🥞',
     color: 'blue',
     calories: 360,
-    popularity: 93,
+  },
+  {
+    id: 'scrambled-eggs-toast', name: 'Huevos revueltos con tostadas', description: 'Desayuno tibio y rápido con huevos cremosos.', category: 'Desayuno', minutes: 12, portions: 1, difficulty: 'Fácil',
+    ingredients: [{ name: 'Huevos', quantity: 2, unit: 'u' }, { name: 'Pan integral', quantity: 2, unit: 'u' }, { name: 'Leche', quantity: 30, unit: 'ml' }],
+    steps: ['Batí los huevos con la leche.', 'Cocinalos a fuego bajo revolviendo.', 'Tostá el pan y serví.'], stepMeta: [{ tip: 'Batí solo hasta integrar.' }, { minutes: 4, tip: 'Retirá del fuego cuando todavía estén húmedos.' }], symbol: '🍳', color: 'gold', calories: 330,
+  },
+  {
+    id: 'overnight-oats', name: 'Avena nocturna con manzana', description: 'Avena fresca preparada con anticipación.', category: 'Desayuno', minutes: 10, portions: 1, difficulty: 'Fácil',
+    ingredients: [{ name: 'Avena', quantity: 60, unit: 'g' }, { name: 'Leche', quantity: 180, unit: 'ml' }, { name: 'Manzana', quantity: 1, unit: 'u' }],
+    steps: ['Mezclá la avena con la leche.', 'Refrigerá la preparación.', 'Sumá la manzana antes de servir.'], stepMeta: [{ tip: 'Usá un recipiente con tapa.' }, { minutes: 480, tip: 'Dejala reposar durante la noche.' }], symbol: '🥣', color: 'blue', calories: 350,
+  },
+  {
+    id: 'caprese-sandwich', name: 'Sándwich caprese', description: 'Pan tostado con tomate, queso y hojas frescas.', category: 'Almuerzo', minutes: 15, portions: 1, difficulty: 'Fácil',
+    ingredients: [{ name: 'Pan integral', quantity: 2, unit: 'u' }, { name: 'Tomate', quantity: 1, unit: 'u' }, { name: 'Queso', quantity: 80, unit: 'g' }, { name: 'Hojas verdes', quantity: 30, unit: 'g' }],
+    steps: ['Cortá el tomate y el queso.', 'Armá el sándwich con las hojas.', 'Tostalo hasta fundir el queso.'], stepMeta: [{ tip: 'Secá el tomate para que el pan conserve su textura.' }, { minutes: 5 }], symbol: '🥪', color: 'green', calories: 420,
+  },
+  {
+    id: 'tuna-rice-salad', name: 'Ensalada de arroz y atún', description: 'Almuerzo fresco con arroz, atún y vegetales.', category: 'Almuerzo', minutes: 25, portions: 2, difficulty: 'Fácil',
+    ingredients: [{ name: 'Arroz', quantity: 160, unit: 'g' }, { name: 'Atún', quantity: 160, unit: 'g' }, { name: 'Tomate', quantity: 1, unit: 'u' }, { name: 'Aceite de oliva', quantity: 20, unit: 'ml' }],
+    steps: ['Cociná el arroz.', 'Escurrí el atún y cortá el tomate.', 'Mezclá todo con aceite.'], stepMeta: [{ minutes: 15, tip: 'Enfriá el arroz extendido para que quede suelto.' }], symbol: '🐟', color: 'blue', calories: 480,
+  },
+  {
+    id: 'vegetable-wrap', name: 'Wrap de verduras y hummus', description: 'Wrap liviano con verduras crocantes.', category: 'Almuerzo', minutes: 18, portions: 2, difficulty: 'Fácil',
+    ingredients: [{ name: 'Tortillas', quantity: 2, unit: 'u' }, { name: 'Garbanzos', quantity: 180, unit: 'g' }, { name: 'Zanahoria', quantity: 1, unit: 'u' }, { name: 'Hojas verdes', quantity: 60, unit: 'g' }],
+    steps: ['Procesá los garbanzos hasta formar un hummus.', 'Cortá la zanahoria y lavá las hojas.', 'Rellená y enrollá las tortillas.'], stepMeta: [{ minutes: 5, tip: 'Agregá agua de a cucharadas para ajustar el hummus.' }, { tip: 'Doblá los extremos antes de enrollar.' }], symbol: '🌯', color: 'pink', calories: 390,
+  },
+  {
+    id: 'tomato-risotto', name: 'Risotto de tomate', description: 'Arroz cremoso con tomate y queso.', category: 'Cena', minutes: 38, portions: 3, difficulty: 'Intermedia',
+    ingredients: [{ name: 'Arroz', quantity: 240, unit: 'g' }, { name: 'Tomate', quantity: 3, unit: 'u' }, { name: 'Queso rallado', quantity: 60, unit: 'g' }],
+    steps: ['Cociná el tomate hasta obtener una salsa.', 'Agregá el arroz y líquido de a poco.', 'Terminá con queso rallado.'], stepMeta: [{ minutes: 10, tip: 'Cociná el tomate hasta concentrar su sabor.' }, { minutes: 20, tip: 'Revolvé con frecuencia para liberar el almidón.' }], symbol: '🍚', color: 'pink', calories: 510,
+  },
+  {
+    id: 'baked-fish-potatoes', name: 'Pescado al horno con papas', description: 'Cena completa de pescado, papas y limón.', category: 'Cena', minutes: 45, portions: 2, difficulty: 'Intermedia',
+    ingredients: [{ name: 'Filet de pescado', quantity: 400, unit: 'g' }, { name: 'Papa', quantity: 500, unit: 'g' }, { name: 'Limón', quantity: 1, unit: 'u' }, { name: 'Aceite de oliva', quantity: 30, unit: 'ml' }],
+    steps: ['Cortá y condimentá las papas.', 'Horneá las papas hasta que empiecen a dorar.', 'Sumá el pescado y cociná hasta que esté tierno.'], stepMeta: [{ tip: 'Cortá las papas del mismo grosor.' }, { minutes: 25 }, { minutes: 15, tip: 'El pescado debe separarse fácilmente con un tenedor.' }], symbol: '🐟', color: 'blue', calories: 530,
+  },
+  {
+    id: 'spinach-pie', name: 'Tarta de espinaca', description: 'Tarta casera de espinaca, huevo y queso.', category: 'Cena', minutes: 55, portions: 4, difficulty: 'Intermedia',
+    ingredients: [{ name: 'Espinaca', quantity: 400, unit: 'g' }, { name: 'Huevos', quantity: 3, unit: 'u' }, { name: 'Queso', quantity: 150, unit: 'g' }, { name: 'Masa para tarta', quantity: 1, unit: 'u' }],
+    steps: ['Salteá y escurrí la espinaca.', 'Mezclá con huevos y queso.', 'Rellená la masa y horneá.'], stepMeta: [{ minutes: 8, tip: 'Escurrí muy bien la espinaca.' }, { tip: 'Probá el relleno antes de sumar los huevos.' }, { minutes: 35 }], symbol: '🥧', color: 'green', calories: 460,
+  },
+  {
+    id: 'pear-yogurt-cup', name: 'Copa de pera y yogur', description: 'Merienda fresca con fruta y avena tostada.', category: 'Merienda', minutes: 10, portions: 1, difficulty: 'Fácil',
+    ingredients: [{ name: 'Pera', quantity: 1, unit: 'u' }, { name: 'Yogur', quantity: 180, unit: 'g' }, { name: 'Avena', quantity: 30, unit: 'g' }],
+    steps: ['Cortá la pera.', 'Alterná capas de yogur y fruta.', 'Terminá con avena.'], stepMeta: [{ tip: 'Conservá la cáscara si está firme y bien lavada.' }], symbol: '🍐', color: 'green', calories: 270,
+  },
+  {
+    id: 'cheese-scones', name: 'Scones de queso', description: 'Bocados tibios para acompañar la merienda.', category: 'Merienda', minutes: 32, portions: 6, difficulty: 'Intermedia',
+    ingredients: [{ name: 'Harina', quantity: 250, unit: 'g' }, { name: 'Queso rallado', quantity: 100, unit: 'g' }, { name: 'Leche', quantity: 120, unit: 'ml' }],
+    steps: ['Mezclá harina y queso.', 'Agregá leche hasta unir.', 'Cortá los scones y horneá.'], stepMeta: [{ tip: 'No amases de más.' }, { tip: 'La masa debe quedar apenas unida.' }, { minutes: 18 }], symbol: '🧀', color: 'gold', calories: 240,
+  },
+  {
+    id: 'banana-smoothie', name: 'Licuado de banana y avena', description: 'Merienda cremosa lista en pocos minutos.', category: 'Merienda', minutes: 6, portions: 1, difficulty: 'Fácil',
+    ingredients: [{ name: 'Banana', quantity: 1, unit: 'u' }, { name: 'Leche', quantity: 250, unit: 'ml' }, { name: 'Avena', quantity: 25, unit: 'g' }],
+    steps: ['Colocá todos los ingredientes en la licuadora.', 'Procesá hasta obtener una textura lisa.'], stepMeta: [{ tip: 'Usá banana fría para un resultado más fresco.' }, { minutes: 2 }], symbol: '🥤', color: 'pink', calories: 320,
+  },
+  {
+    id: 'roasted-vegetable-soup', name: 'Sopa de verduras asadas', description: 'Sopa suave de calabaza, zanahoria y tomate.', category: 'Cena', minutes: 50, portions: 4, difficulty: 'Fácil',
+    ingredients: [{ name: 'Calabaza', quantity: 500, unit: 'g' }, { name: 'Zanahoria', quantity: 2, unit: 'u' }, { name: 'Tomate', quantity: 2, unit: 'u' }, { name: 'Aceite de oliva', quantity: 25, unit: 'ml' }],
+    steps: ['Cortá y condimentá las verduras.', 'Asalas hasta que estén tiernas.', 'Procesá con agua caliente hasta lograr la textura deseada.'], stepMeta: [{ tip: 'Cortá piezas similares para una cocción pareja.' }, { minutes: 35 }, { tip: 'Agregá el líquido gradualmente.' }], symbol: '🥣', color: 'gold', calories: 220, featured: true,
   },
 ] satisfies Recipe[]
