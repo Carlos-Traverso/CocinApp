@@ -5,10 +5,18 @@ import { hasAdminReferences } from '../data/adminReferences'
 import { createRecipe, deleteRecipe, updateRecipe } from '../data/recipesStore'
 import type { AdminRecipe } from '../domain/adminModels'
 
+const recipeSymbols = ['🍲', '🥗', '🍝', '🍳', '🥞', '🥣', '🍗', '🥑'] as const
+const recipeColors = [
+  { value: 'green', label: 'Verde' },
+  { value: 'gold', label: 'Dorado' },
+  { value: 'pink', label: 'Rosa' },
+  { value: 'blue', label: 'Azul' },
+] as const satisfies readonly { value: AdminRecipe['color']; label: string }[]
+
 const emptyRecipe = (): Partial<AdminRecipe> => ({
   title: '', author: 'CocinAPP', description: '', category: 'Almuerzo', minutes: 30,
   portions: 2, difficulty: 'Fácil', calories: 0, mealShift: 'Almuerzo', dietaryTags: [],
-  ingredients: [], steps: [''], stepMeta: [{}], featured: false, status: 'draft', symbol: 'R', color: 'green',
+  ingredients: [], steps: [''], stepMeta: [{}], featured: false, status: 'draft', symbol: '🍲', color: 'green',
 })
 
 export function RecipesTab() {
@@ -32,7 +40,7 @@ export function RecipesTab() {
         difficulty: editor.difficulty ?? 'Fácil', calories: editor.calories ?? 0,
         mealShift: editor.mealShift ?? '', dietaryTags: editor.dietaryTags ?? [], featured: editor.featured ?? false,
         ingredients: editor.ingredients ?? [], steps: editor.steps ?? [], stepMeta: editor.stepMeta ?? [],
-        status: editor.status ?? 'draft', symbol: editor.title?.trim().slice(0, 1).toLocaleUpperCase('es') || 'R',
+        status: editor.status ?? 'draft', symbol: editor.symbol?.trim() || editor.title?.trim().slice(0, 1).toLocaleUpperCase('es') || 'R',
         color: editor.color ?? 'green',
       }
       if (editor.id) updateRecipe(editor.id, payload)
@@ -95,8 +103,8 @@ export function RecipesTab() {
     <div className="section-header"><h2>Recetas oficiales</h2><button className="button button-primary" onClick={() => { setEditor(emptyRecipe()); setError('') }} type="button"><Plus size={16} /> Nueva receta</button></div>
     <label className="field admin-search"><span>Buscar receta</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label>
     <div className="records">
-      {visibleRecipes.map((recipe) => <article className="record" key={recipe.id}>
-        <div className="record-main"><strong>{recipe.title}</strong><small>{recipe.mealShift || recipe.category} · {recipe.status === 'published' ? 'Publicada' : 'Borrador'}</small>{recipe.isDeleted && <small className="error">Inactiva</small>}</div>
+      {visibleRecipes.map((recipe) => <article className="record admin-recipe-record" key={recipe.id}>
+        <span aria-hidden="true" className={`admin-recipe-record-art ${recipe.color}`}>{recipe.symbol}</span><div className="record-main"><strong>{recipe.title}</strong><small>{recipe.mealShift || recipe.category} · {recipe.minutes} min</small><span className={`admin-recipe-status ${recipe.status}`}>{recipe.status === 'published' ? 'Publicada' : 'Borrador'}</span>{recipe.isDeleted && <small className="error">Inactiva</small>}</div>
         <div className="record-actions">{!recipe.isDeleted && <><button aria-label={`Editar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => { setEditor({ ...recipe, dietaryTags: [...recipe.dietaryTags], ingredients: recipe.ingredients.map((item) => ({ ...item })), steps: [...recipe.steps], stepMeta: recipe.stepMeta?.map((item) => ({ ...item })) ?? [] }); setError('') }} type="button"><Pencil size={17} /></button><button aria-label={`Eliminar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => remove(recipe)} type="button"><Trash2 size={17} /></button></>}</div>
       </article>)}
       {visibleRecipes.length === 0 && <p className="empty">No hay recetas que coincidan con la búsqueda.</p>}
@@ -114,6 +122,14 @@ export function RecipesTab() {
           <label className="field"><span>Turno de comida</span><select onChange={(event) => setEditor({ ...editor, mealShift: event.currentTarget.value, category: event.currentTarget.value })} value={editor.mealShift ?? 'Almuerzo'}><option>Desayuno</option><option>Almuerzo</option><option>Merienda</option><option>Cena</option></select></label>
         </div>
         <label className="field"><span>Descripción</span><textarea maxLength={280} onChange={(event) => setEditor({ ...editor, description: event.currentTarget.value })} value={editor.description ?? ''} /></label>
+        <section aria-labelledby="admin-recipe-visual-title" className="admin-recipe-visual-section">
+          <div className={`admin-recipe-preview ${editor.color ?? 'green'}`}><span aria-hidden="true">{editor.symbol?.trim() || editor.title?.trim().slice(0, 1).toLocaleUpperCase('es') || 'R'}</span><div><small>Vista previa en el catálogo</small><strong>{editor.title?.trim() || 'Nombre de la receta'}</strong><em>{editor.mealShift ?? 'Almuerzo'} · {editor.minutes ?? 0} min</em></div></div>
+          <div className="admin-recipe-visual-controls"><h3 id="admin-recipe-visual-title">Identidad visual</h3><p className="field-help">Elegí un símbolo y un color para reconocer la receta en el catálogo.</p>
+            <div aria-label="Símbolos sugeridos" className="admin-symbol-picker">{recipeSymbols.map((symbol) => <button aria-label={`Usar ${symbol} como símbolo`} aria-pressed={editor.symbol === symbol} key={symbol} onClick={() => setEditor({ ...editor, symbol })} type="button">{symbol}</button>)}</div>
+            <label className="field"><span>Símbolo o emoji personalizado</span><input maxLength={4} onChange={(event) => setEditor({ ...editor, symbol: event.currentTarget.value })} value={editor.symbol ?? ''} /></label>
+            <fieldset className="admin-color-picker"><legend>Color de la tarjeta</legend>{recipeColors.map((color) => <label key={color.value}><input checked={editor.color === color.value} name="recipe-color" onChange={() => setEditor({ ...editor, color: color.value })} type="radio" /><span className={color.value} aria-hidden="true" />{color.label}</label>)}</fieldset>
+          </div>
+        </section>
         <label className="field"><span>Etiquetas dietéticas (separadas por coma)</span><input onChange={(event) => setEditor({ ...editor, dietaryTags: event.currentTarget.value.split(',').map((tag) => tag.trim()).filter(Boolean) })} placeholder="Vegana, Sin TACC, Vegetariana" value={(editor.dietaryTags ?? []).join(', ')} /></label>
         <label className="field"><span>Disponibilidad en el catálogo</span><select onChange={(event) => setEditor({ ...editor, status: event.currentTarget.value as AdminRecipe['status'] })} value={editor.status ?? 'draft'}><option value="draft">Borrador: no visible para usuarios</option><option value="published">Publicada</option></select></label>
         <label className="recipe-pantry-toggle"><input checked={editor.featured ?? false} onChange={(event) => setEditor({ ...editor, featured: event.currentTarget.checked })} type="checkbox" /> Destacar en Explorar recetas</label>
