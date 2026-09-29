@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronLeft, ChevronRight, CookingPot, Minus, Plus, X } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { readPantryItems, writePantryItems } from '../features/pantry/data/localPantryStore'
 import { formatPantryAmount } from '../features/pantry/domain/pantry'
-import { clearCookingSession, readCookingSession, readHistory, saveCookingSession, writeHistory } from '../features/cooking/data/localCookingStore'
-import { advanceStep, completeStep, createSession, deductIngredients, moveStep, recordPreparation, remainingTimerMs, scaleIngredients, type CookingSession } from '../features/cooking/domain/cooking'
+import { finalizeCookingSession, readCookingSession, saveCookingSession } from '../features/cooking/data/localCookingStore'
+import { advanceStep, completeStep, cookingCompletionPath, createSession, moveStep, remainingTimerMs, scaleIngredients, type CookingSession } from '../features/cooking/domain/cooking'
 import { getRecipeById } from '../features/recipes/data/availableRecipes'
 
 function formatTime(milliseconds: number): string {
@@ -114,21 +113,10 @@ function CookingRecipePage({ id }: { id: string }) {
     if (finishingRef.current) return
     finishingRef.current = true
     setSaving(true)
-    const beforeHistory = readHistory()
-    const beforePantry = readPantryItems()
-    let historySaved = false
-    let pantrySaved = false
     try {
-      writeHistory(recordPreparation(beforeHistory, session!))
-      historySaved = true
-      if (discount) { writePantryItems(deductIngredients(beforePantry, recipe!, session!.portions)); pantrySaved = true }
-      clearCookingSession(recipe!.id)
-      navigate('/history')
+      finalizeCookingSession(recipe!, session!, discount)
+      navigate(cookingCompletionPath, { replace: true, state: { completionMessage: `Terminaste ${recipe!.name}. Se agregó a tu historial.` } })
     } catch {
-      try {
-        if (historySaved) writeHistory(beforeHistory)
-        if (pantrySaved) writePantryItems(beforePantry)
-      } catch { /* Keep the original error visible. */ }
       finishingRef.current = false
       setSaving(false)
       setFinishing(false)

@@ -1,6 +1,8 @@
 import { daysUntilExpiry, normalizePantryName, type PantryItem } from '../../pantry/domain/pantry'
 import type { Recipe } from '../../recipes/domain/Recipe'
 
+export const cookingCompletionPath = '/recipes'
+
 export interface CookingSession {
   recipeId: string
   stepIndex: number

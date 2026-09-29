@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, Clock3, Heart, PackageCheck, Search, Sparkles, UsersRound } from 'lucide-react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { readPantryItems } from '../features/pantry/data/localPantryStore'
 import { readFavoriteIds, writeFavoriteIds } from '../features/recipes/data/localFavoritesStore'
 import { filterRecipes, getIngredientAvailability, type RecipeFilters } from '../features/recipes/domain/recipeRules'
@@ -28,12 +28,18 @@ function RecipeRail({ id, eyebrow, title, description, recipes, empty }: {
 }
 
 export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean }) {
-  const { hash } = useLocation()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { hash } = location
   const [filters, setFilters] = useState<RecipeFilters>(initialFilters)
   const [pantry] = useState(readPantryItems)
   const [favoriteIds, setFavoriteIds] = useState(readFavoriteIds)
   const [history] = useState(readHistory)
   const [error, setError] = useState('')
+  const [completionNotice, setCompletionNotice] = useState(() => {
+    const state = location.state as { completionMessage?: unknown } | null
+    return typeof state?.completionMessage === 'string' ? state.completionMessage : ''
+  })
   const activeRecipes = getAvailableRecipes()
   const knownRecipes = getKnownRecipes()
   const discovery = discoverRecipes(activeRecipes, knownRecipes, favoriteIds, history)
@@ -50,6 +56,13 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView()
   }, [hash])
 
+  useEffect(() => {
+    if (!completionNotice) return
+    navigate(`${location.pathname}${location.hash}`, { replace: true, state: null })
+    const timeout = window.setTimeout(() => setCompletionNotice(''), 5000)
+    return () => window.clearTimeout(timeout)
+  }, [completionNotice, location.hash, location.pathname, navigate])
+
   function toggleFavorite(id: string) {
     const next = favoriteIds.includes(id) ? favoriteIds.filter((item) => item !== id) : [...favoriteIds, id]
     try { writeFavoriteIds(next); setFavoriteIds(next); setError('') }
@@ -57,6 +70,7 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
   }
 
   return <div className="page recipes-page">
+    {completionNotice && <p className="form-message pantry-notice" role="status">{completionNotice}</p>}
     {favoritesOnly ? <header className="page-heading"><div><p className="eyebrow">RECETAS GUARDADAS</p><h1>Tus favoritas</h1><p className="page-lead">Tus recetas preferidas, guardadas en este navegador.</p></div><Link className="button button-quiet" to="/recipes">Explorar recetas</Link></header> : <>
       <header className="recipes-intro"><div><p className="eyebrow">TU PRÓXIMA COMIDA EMPIEZA ACÁ</p><h1>¿Qué cocinamos hoy?</h1><p>Ideas pensadas para tu tiempo, tu despensa y lo que ya disfrutaste.</p></div><label className="recipe-hero-search"><Search aria-hidden="true" size={20} /><span className="sr-only">Buscar receta o ingrediente</span><input onChange={(event) => setFilters({ ...filters, search: event.currentTarget.value })} placeholder="Buscá una receta o ingrediente" type="search" value={filters.search} /></label></header>
       {heroRecipe && <section className={`recipe-hero ${heroRecipe.color}`} aria-labelledby="recipe-hero-title"><div className="recipe-hero-copy"><p className="recipe-hero-kicker"><Sparkles aria-hidden="true" size={16} /> Recomendación para vos</p><h2 id="recipe-hero-title">{heroRecipe.name}</h2><p>{heroRecipe.description}</p><div className="recipe-hero-meta"><span><Clock3 aria-hidden="true" size={16} />{heroRecipe.minutes} min</span><span><UsersRound aria-hidden="true" size={16} />{heroRecipe.portions} porciones</span><span>{heroRecipe.difficulty}</span></div><div className="recipe-hero-actions"><Link className="button button-dark" to={`/recipes/${heroRecipe.id}`}>Ver receta <ArrowRight aria-hidden="true" size={17} /></Link>{heroAvailability && <span className={heroAvailability.missing.length === 0 ? 'ready' : ''}><PackageCheck aria-hidden="true" size={17} />{heroAvailability.missing.length === 0 ? 'Tenés todo para cocinarla' : `Te faltan ${heroAvailability.missing.length} ingredientes`}</span>}</div></div><RecipeArtwork recipe={heroRecipe} size="hero" /></section>}

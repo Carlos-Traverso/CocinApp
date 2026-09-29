@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { sampleRecipes } from '../src/mocks/recipes'
-import { advanceStep, completeStep, createSession, moveStep, recordPreparation, remainingTimerMs, scaleIngredients, deductIngredients, type CookingSession } from '../src/features/cooking/domain/cooking'
-import { clearCookingSession, readCookingSession, readHistory, saveCookingSession, writeHistory } from '../src/features/cooking/data/localCookingStore'
+import { advanceStep, completeStep, cookingCompletionPath, createSession, moveStep, recordPreparation, remainingTimerMs, scaleIngredients, deductIngredients, type CookingSession } from '../src/features/cooking/domain/cooking'
+import { clearCookingSession, finalizeCookingSession, readCookingSession, readHistory, saveCookingSession, writeHistory } from '../src/features/cooking/data/localCookingStore'
+import { readPantryItems, writePantryItems } from '../src/features/pantry/data/localPantryStore'
 import type { PantryItem } from '../src/features/pantry/domain/pantry'
 
 const recipe = sampleRecipes[0]
@@ -73,4 +74,22 @@ test('storage persists valid progress and history, and clears one session', () =
   assert.deepEqual(readHistory(storage), history)
   values.set('cocinapp.cooking-history.v1', JSON.stringify([...history, { ...history[0], id: 'bad', portions: -1 }]))
   assert.deepEqual(readHistory(storage), history)
+})
+
+test('finalization records history once, closes the session and optionally deducts pantry stock', () => {
+  assert.equal(cookingCompletionPath, '/recipes')
+  const values = new Map<string, string>()
+  const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value) } }
+  const session = createSession(recipe, now)
+  const stock: PantryItem[] = recipe.ingredients.map((ingredient, index) => ({ id: String(index), name: ingredient.name, category: 'Otros', quantity: ingredient.quantity * 2, unit: ingredient.unit, minimum: 0, expiry: null }))
+  saveCookingSession(session, storage)
+  writePantryItems(stock, storage)
+  finalizeCookingSession(recipe, session, true, storage, now)
+  assert.equal(readHistory(storage).length, 1)
+  assert.equal(readHistory(storage)[0].portions, recipe.portions)
+  assert.equal(readCookingSession(recipe.id, storage), null)
+  assert.equal(readPantryItems(storage)[0].quantity, recipe.ingredients[0].quantity)
+  finalizeCookingSession(recipe, session, false, storage, now)
+  assert.equal(readHistory(storage).length, 1)
+  assert.equal(readPantryItems(storage)[0].quantity, recipe.ingredients[0].quantity)
 })

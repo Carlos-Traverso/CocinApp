@@ -1,6 +1,9 @@
 import { getRecipeById } from '../../recipes/data/availableRecipes'
 import { personalStorage } from '../../auth/data/personalStorage'
 import type { CookingSession, PreparationEvent } from '../domain/cooking'
+import type { Recipe } from '../../recipes/domain/Recipe'
+import { readPantryItems, writePantryItems } from '../../pantry/data/localPantryStore'
+import { deductIngredients, recordPreparation } from '../domain/cooking'
 
 const progressKey = 'cocinapp.cooking-progress.v1'
 const historyKey = 'cocinapp.cooking-history.v1'
@@ -72,4 +75,12 @@ export function readHistory(storage: StorageLike = personalStorage): Preparation
 
 export function writeHistory(history: PreparationEvent[], storage: StorageLike = personalStorage): void {
   storage.setItem(historyKey, JSON.stringify(history))
+}
+
+export function finalizeCookingSession(recipe: Recipe, session: CookingSession, discount: boolean, storage: StorageLike = personalStorage, now = new Date()): PreparationEvent[] {
+  const history = recordPreparation(readHistory(storage), session, now)
+  writeHistory(history, storage)
+  if (discount) writePantryItems(deductIngredients(readPantryItems(storage), recipe, session.portions, now), storage)
+  clearCookingSession(recipe.id, storage)
+  return history
 }
