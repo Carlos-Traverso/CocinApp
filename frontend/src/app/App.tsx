@@ -46,7 +46,7 @@ export function App() {
             <Route path="planner" element={<PlannerPage />} />
             <Route path="shopping" element={<ShoppingPage />} />
           </Route>
-          <Route path="*" element={<Navigate replace to="/panel" />} />
+          <Route path="*" element={<Navigate replace to="/recipes" />} />
         </Route>
       </Routes>
     </BrowserRouter>

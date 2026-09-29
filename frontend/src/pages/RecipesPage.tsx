@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Clock3, Heart, Search, UsersRound } from 'lucide-react'
+import { ArrowRight, Clock3, Heart, PackageCheck, Search, Sparkles, UsersRound } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { readPantryItems } from '../features/pantry/data/localPantryStore'
 import { readFavoriteIds, writeFavoriteIds } from '../features/recipes/data/localFavoritesStore'
@@ -12,10 +12,19 @@ import type { Recipe } from '../features/recipes/domain/Recipe'
 
 const initialFilters: RecipeFilters = { search: '', category: '', maxMinutes: null, difficulty: '', pantryOnly: false }
 
-function DiscoverySection({ id, title, description, recipes, empty, action = 'Ver receta' }: {
-  id: string; title: string; description: string; recipes: Recipe[]; empty: string; action?: string
+function RecipeArtwork({ recipe, size = 'card' }: { recipe: Recipe; size?: 'hero' | 'card' | 'mini' }) {
+  return <div aria-hidden="true" className={`recipe-artwork recipe-artwork-${size} ${recipe.color}`}><span>{recipe.symbol}</span></div>
+}
+
+function RecipeRail({ id, eyebrow, title, description, recipes, empty }: {
+  id: string; eyebrow: string; title: string; description: string; recipes: Recipe[]; empty: string
 }) {
-  return <section aria-label={title} className="recipe-discovery-section" id={id}><h2>{title}</h2><p>{description}</p>{recipes.length === 0 ? <p className="recipe-discovery-empty">{empty}</p> : <ul className="recipe-discovery-items">{recipes.map((recipe) => <li key={recipe.id}><span><strong>{recipe.name}</strong><small>{recipe.category} · {recipe.minutes} min</small></span><Link className="text-link" to={`/recipes/${recipe.id}`}>{action}</Link></li>)}</ul>}</section>
+  return <section aria-labelledby={`${id}-title`} className="recipe-rail" id={id}>
+    <div className="recipe-rail-heading"><div><p className="eyebrow">{eyebrow}</p><h2 id={`${id}-title`}>{title}</h2><p>{description}</p></div><a className="recipe-rail-catalog-link" href="#recipe-catalog">Ver catálogo <ArrowRight aria-hidden="true" size={15} /></a></div>
+    {recipes.length === 0
+      ? <div className="recipe-rail-empty"><Sparkles aria-hidden="true" size={19} /><span>{empty}</span></div>
+      : <div className="recipe-rail-items">{recipes.slice(0, 4).map((recipe) => <Link className="recipe-mini-card" key={recipe.id} to={`/recipes/${recipe.id}`}><RecipeArtwork recipe={recipe} size="mini" /><span className="recipe-mini-copy"><span className="recipe-category">{recipe.category}</span><strong>{recipe.name}</strong><small><Clock3 aria-hidden="true" size={13} /> {recipe.minutes} min · {recipe.difficulty}</small></span><ArrowRight aria-hidden="true" className="recipe-mini-arrow" size={17} /></Link>)}</div>}
+  </section>
 }
 
 export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean }) {
@@ -31,6 +40,11 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
   const catalog = favoritesOnly ? knownRecipes : activeRecipes
   const recipes = filterRecipes(catalog, filters, pantry).filter((recipe) => !favoritesOnly || favoriteIds.includes(recipe.id))
   const activeIds = new Set(activeRecipes.map((recipe) => recipe.id))
+  const trending = [...activeRecipes].sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0) || a.name.localeCompare(b.name, 'es')).slice(0, 4)
+  const pantryReady = activeRecipes.filter((recipe) => getIngredientAvailability(recipe, pantry).missing.length === 0).slice(0, 4)
+  const quickRecipes = activeRecipes.filter((recipe) => recipe.minutes <= 20).sort((a, b) => a.minutes - b.minutes).slice(0, 4)
+  const heroRecipe = discovery.basedOnHistory[0] ?? pantryReady[0] ?? trending[0] ?? activeRecipes[0]
+  const heroAvailability = heroRecipe ? getIngredientAvailability(heroRecipe, pantry) : null
 
   useEffect(() => {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView()
@@ -43,28 +57,35 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
   }
 
   return <div className="page recipes-page">
-    <header className="page-heading"><div><p className="eyebrow">{favoritesOnly ? 'RECETAS GUARDADAS' : 'EXPLORÁ Y COCINÁ'}</p><h1>{favoritesOnly ? 'Tus favoritas' : 'Ideas para cocinar'}</h1><p className="page-lead">{favoritesOnly ? 'Tus recetas preferidas, guardadas en este navegador.' : 'Descubrí recetas y mirá qué ingredientes ya tenés en tu despensa.'}</p></div>{favoritesOnly && <Link className="button button-quiet" to="/recipes">Explorar recetas</Link>}</header>
-    {!favoritesOnly && <div className="recipe-discovery">
-      <DiscoverySection description="Selección editorial de ejemplo y recetas que ADMIN marcó como destacadas." empty="Todavía no hay recetas destacadas." id="recipe-featured" recipes={discovery.featured} title="Destacadas" />
-      <DiscoverySection description="Ideas similares a tus preparaciones anteriores, sin repetirlas." empty={history.length ? 'Todavía no hay recetas similares disponibles.' : 'Cociná una receta para recibir sugerencias basadas en tu historial.'} id="recipe-history-based" recipes={discovery.basedOnHistory} title="Basado en lo que cocinaste" />
-      <DiscoverySection action="Ver receta" description="Tus preparaciones recientes que siguen disponibles." empty="Tu historial aún no tiene recetas activas para volver a cocinar." id="recipe-recook" recipes={discovery.recook} title="Volver a cocinar" />
-      <DiscoverySection description="Las recetas activas que guardaste." empty="Todavía no guardaste recetas favoritas activas." id="recipe-favorites" recipes={discovery.favorites} title="Favoritas" />
-    </div>}
-    <h2 className="recipe-catalog-title">{favoritesOnly ? 'Todas tus favoritas' : 'Catálogo completo'}</h2>
-    <section aria-label="Filtros de recetas" className="recipe-controls">
-      <label className="field"><span>Buscar receta o ingrediente</span><span className="pantry-search-input"><Search aria-hidden="true" size={17} /><input onChange={(event) => setFilters({ ...filters, search: event.currentTarget.value })} placeholder="Ej.: quinoa, calabaza" type="search" value={filters.search} /></span></label>
-      <label className="field"><span>Categoría</span><select onChange={(event) => setFilters({ ...filters, category: event.currentTarget.value })} value={filters.category}><option value="">Todas</option>{meals.map((meal) => <option key={meal}>{meal}</option>)}</select></label>
-      <label className="field"><span>Tiempo máximo</span><select onChange={(event) => setFilters({ ...filters, maxMinutes: event.currentTarget.value ? Number(event.currentTarget.value) : null })} value={filters.maxMinutes ?? ''}><option value="">Cualquiera</option><option value="20">20 min</option><option value="30">30 min</option><option value="60">60 min</option></select></label>
-      <label className="field"><span>Dificultad</span><select onChange={(event) => setFilters({ ...filters, difficulty: event.currentTarget.value as RecipeFilters['difficulty'] })} value={filters.difficulty}><option value="">Todas</option><option>Fácil</option><option>Intermedia</option><option>Avanzada</option></select></label>
+    {favoritesOnly ? <header className="page-heading"><div><p className="eyebrow">RECETAS GUARDADAS</p><h1>Tus favoritas</h1><p className="page-lead">Tus recetas preferidas, guardadas en este navegador.</p></div><Link className="button button-quiet" to="/recipes">Explorar recetas</Link></header> : <>
+      <header className="recipes-intro"><div><p className="eyebrow">TU PRÓXIMA COMIDA EMPIEZA ACÁ</p><h1>¿Qué cocinamos hoy?</h1><p>Ideas pensadas para tu tiempo, tu despensa y lo que ya disfrutaste.</p></div><label className="recipe-hero-search"><Search aria-hidden="true" size={20} /><span className="sr-only">Buscar receta o ingrediente</span><input onChange={(event) => setFilters({ ...filters, search: event.currentTarget.value })} placeholder="Buscá una receta o ingrediente" type="search" value={filters.search} /></label></header>
+      {heroRecipe && <section className={`recipe-hero ${heroRecipe.color}`} aria-labelledby="recipe-hero-title"><div className="recipe-hero-copy"><p className="recipe-hero-kicker"><Sparkles aria-hidden="true" size={16} /> Recomendación para vos</p><h2 id="recipe-hero-title">{heroRecipe.name}</h2><p>{heroRecipe.description}</p><div className="recipe-hero-meta"><span><Clock3 aria-hidden="true" size={16} />{heroRecipe.minutes} min</span><span><UsersRound aria-hidden="true" size={16} />{heroRecipe.portions} porciones</span><span>{heroRecipe.difficulty}</span></div><div className="recipe-hero-actions"><Link className="button button-dark" to={`/recipes/${heroRecipe.id}`}>Ver receta <ArrowRight aria-hidden="true" size={17} /></Link>{heroAvailability && <span className={heroAvailability.missing.length === 0 ? 'ready' : ''}><PackageCheck aria-hidden="true" size={17} />{heroAvailability.missing.length === 0 ? 'Tenés todo para cocinarla' : `Te faltan ${heroAvailability.missing.length} ingredientes`}</span>}</div></div><RecipeArtwork recipe={heroRecipe} size="hero" /></section>}
+      <RecipeRail description="Las recetas que más inspiran a la comunidad de demostración." empty="Todavía no hay recetas publicadas." eyebrow="LAS MÁS ELEGIDAS" id="recipe-trending" recipes={trending} title="En tendencia" />
+      <RecipeRail description="Opciones que podés preparar con el stock disponible." empty="Agregá ingredientes a tu despensa para recibir sugerencias listas para cocinar." eyebrow="APROVECHÁ TU STOCK" id="recipe-pantry-ready" recipes={pantryReady} title="Con lo que ya tenés" />
+      <RecipeRail description="Sugerencias relacionadas con tus últimas preparaciones." empty="Cociná una receta y usaremos ese historial para recomendarte nuevas ideas." eyebrow="HECHO A TU MEDIDA" id="recipe-history-based" recipes={discovery.basedOnHistory} title="Según lo que cocinaste" />
+      {(discovery.recook.length > 0 || discovery.favorites.length > 0) && <div className="recipe-personal-grid">
+        <RecipeRail description="Tus preparaciones recientes, a un toque de distancia." empty="Tu historial todavía está vacío." eyebrow="OTRA VEZ, POR FAVOR" id="recipe-recook" recipes={discovery.recook} title="Volvé a cocinar" />
+        <RecipeRail description="Las recetas que marcaste para tener siempre a mano." empty="Marcá una receta con el corazón para verla acá." eyebrow="TU COLECCIÓN" id="recipe-favorites" recipes={discovery.favorites} title="Tus favoritas" />
+      </div>}
+      <RecipeRail description="Preparaciones simples para los días con poco tiempo." empty="No hay recetas rápidas publicadas por el momento." eyebrow="POCO TIEMPO, MUCHO SABOR" id="recipe-quick" recipes={quickRecipes} title="Listas en 20 minutos" />
+    </>}
+
+    <section aria-labelledby="recipe-catalog-title" className="recipe-catalog" id="recipe-catalog">
+      <div className="recipe-catalog-heading"><div><p className="eyebrow">{favoritesOnly ? 'TU COLECCIÓN' : 'TODAS LAS OPCIONES'}</p><h2 id="recipe-catalog-title">{favoritesOnly ? 'Todas tus favoritas' : 'Explorá el catálogo'}</h2></div><span aria-live="polite">{recipes.length} {recipes.length === 1 ? 'resultado' : 'resultados'}</span></div>
+      <div aria-label="Filtros de recetas" className={`recipe-controls${favoritesOnly ? ' with-search' : ''}`}>
+        {favoritesOnly && <label className="field"><span>Buscar receta o ingrediente</span><span className="pantry-search-input"><Search aria-hidden="true" size={17} /><input onChange={(event) => setFilters({ ...filters, search: event.currentTarget.value })} placeholder="Ej.: quinoa, calabaza" type="search" value={filters.search} /></span></label>}
+        <label className="field"><span>Categoría</span><select onChange={(event) => setFilters({ ...filters, category: event.currentTarget.value })} value={filters.category}><option value="">Todas</option>{meals.map((meal) => <option key={meal}>{meal}</option>)}</select></label>
+        <label className="field"><span>Tiempo máximo</span><select onChange={(event) => setFilters({ ...filters, maxMinutes: event.currentTarget.value ? Number(event.currentTarget.value) : null })} value={filters.maxMinutes ?? ''}><option value="">Cualquiera</option><option value="20">20 min</option><option value="30">30 min</option><option value="60">60 min</option></select></label>
+        <label className="field"><span>Dificultad</span><select onChange={(event) => setFilters({ ...filters, difficulty: event.currentTarget.value as RecipeFilters['difficulty'] })} value={filters.difficulty}><option value="">Todas</option><option>Fácil</option><option>Intermedia</option><option>Avanzada</option></select></label>
+      </div>
+      <div className="recipe-filter-footer"><label className="recipe-pantry-toggle"><input checked={filters.pantryOnly} onChange={(event) => setFilters({ ...filters, pantryOnly: event.currentTarget.checked })} type="checkbox" /> Puedo cocinar con mi despensa</label><button onClick={() => setFilters(initialFilters)} type="button">Limpiar filtros</button></div>
     </section>
-    <label className="recipe-pantry-toggle"><input checked={filters.pantryOnly} onChange={(event) => setFilters({ ...filters, pantryOnly: event.currentTarget.checked })} type="checkbox" /> Puedo cocinar con mi despensa</label>
-    <div className="pantry-results"><span aria-live="polite">{recipes.length} {recipes.length === 1 ? 'receta encontrada' : 'recetas encontradas'}</span><button onClick={() => setFilters(initialFilters)} type="button">Limpiar filtros</button></div>
     {error && <p className="form-message error" role="alert">{error}</p>}
     {recipes.length === 0 ? <section className="pantry-empty"><h2>{favoritesOnly && favoriteIds.length === 0 ? 'Todavía no guardaste recetas' : 'No encontramos recetas'}</h2><p>{favoritesOnly && favoriteIds.length === 0 ? 'Explorá el catálogo y tocá el corazón de una receta.' : 'Probá otros filtros o agregá ingredientes a tu despensa.'}</p></section> : <section aria-label="Listado de recetas" className="recipe-grid">
       {recipes.map((recipe) => {
         const availability = getIngredientAvailability(recipe, pantry)
         const favorite = favoriteIds.includes(recipe.id)
-        return <article className="recipe-card" key={recipe.id}><div className={`recipe-art ${recipe.color}`} aria-hidden="true"><span>{recipe.symbol}</span></div><div className="recipe-body"><div className="recipe-card-top"><span className="recipe-category">{recipe.category}</span><button aria-label={`${favorite ? 'Quitar' : 'Agregar'} ${recipe.name} ${favorite ? 'de' : 'a'} favoritos`} aria-pressed={favorite} className="recipe-favorite" onClick={() => toggleFavorite(recipe.id)} type="button"><Heart fill={favorite ? 'currentColor' : 'none'} size={19} /></button></div><h2><Link to={`/recipes/${recipe.id}`}>{recipe.name}</Link></h2><p>{recipe.description}</p>{!activeIds.has(recipe.id) && <p className="form-message">Receta inactiva: disponible solo para consulta.</p>}<div className="recipe-meta"><span><Clock3 size={15} /> {recipe.minutes} min</span><span><UsersRound size={15} /> {recipe.portions} porciones</span><span>{recipe.difficulty}</span></div><p className={`recipe-availability ${availability.missing.length === 0 ? 'complete' : ''}`}>{availability.missing.length === 0 ? 'Podés cocinarla' : `${availability.available.length} de ${recipe.ingredients.length} ingredientes disponibles`}</p><Link className="text-link" to={`/recipes/${recipe.id}`}>Ver receta →</Link></div></article>
+        return <article className="recipe-card" key={recipe.id}><RecipeArtwork recipe={recipe} /><div className="recipe-body"><div className="recipe-card-top"><span className="recipe-category">{recipe.category}</span><button aria-label={`${favorite ? 'Quitar' : 'Agregar'} ${recipe.name} ${favorite ? 'de' : 'a'} favoritos`} aria-pressed={favorite} className="recipe-favorite" onClick={() => toggleFavorite(recipe.id)} type="button"><Heart fill={favorite ? 'currentColor' : 'none'} size={19} /></button></div><h2><Link to={`/recipes/${recipe.id}`}>{recipe.name}</Link></h2><p>{recipe.description}</p>{!activeIds.has(recipe.id) && <p className="form-message">Receta inactiva: disponible solo para consulta.</p>}<div className="recipe-meta"><span><Clock3 size={15} /> {recipe.minutes} min</span><span><UsersRound size={15} /> {recipe.portions} porciones</span><span>{recipe.difficulty}</span></div><p className={`recipe-availability ${availability.missing.length === 0 ? 'complete' : ''}`}>{availability.missing.length === 0 ? 'Lista con tu despensa' : `${availability.available.length} de ${recipe.ingredients.length} ingredientes`}</p><Link className="recipe-card-link" to={`/recipes/${recipe.id}`}>Ver receta <ArrowRight aria-hidden="true" size={16} /></Link></div></article>
       })}
     </section>}
   </div>

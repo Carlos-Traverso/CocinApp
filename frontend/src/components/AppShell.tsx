@@ -15,8 +15,8 @@ export function AppShell() {
   const session = useAuth()
   
   const navigation = [
-    { to: '/panel', label: 'Panel', mobileLabel: 'Panel', Icon: LayoutDashboard, end: true },
     { to: '/recipes', label: 'Recetas', mobileLabel: 'Recetas', Icon: CookingPot },
+    { to: '/panel', label: 'Panel', mobileLabel: 'Panel', Icon: LayoutDashboard, end: true },
     { to: '/pantry', label: 'Despensa', mobileLabel: 'Despensa', Icon: Refrigerator },
     { to: '/planner', label: 'Planificación', mobileLabel: 'Plan', Icon: CalendarDays },
     { to: '/shopping', label: 'Lista de compras', mobileLabel: 'Compras', Icon: ShoppingCart },
@@ -28,7 +28,7 @@ export function AppShell() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <NavLink className="wordmark" to="/panel" aria-label="CocinAPP, inicio">
+        <NavLink className="wordmark" to="/recipes" aria-label="CocinAPP, inicio">
           <img alt="" className="brand-mark" src="/favicon.svg" />Cocin<span>APP</span>
         </NavLink>
         <p className="sidebar-label">TU COCINA</p>
@@ -50,7 +50,7 @@ export function AppShell() {
           <span><strong>{session?.name || 'Mi cocina'}</strong><small>Espacio personal</small></span>
         </NavLink>
       </aside>
-      <main className="main-content"><NavLink className="mobile-brand" to="/panel"><img alt="" className="brand-mark" src="/favicon.svg" />Cocin<span>APP</span></NavLink><Outlet /></main>
+      <main className="main-content"><NavLink className="mobile-brand" to="/recipes"><img alt="" className="brand-mark" src="/favicon.svg" />Cocin<span>APP</span></NavLink><Outlet /></main>
     </div>
   )
 }

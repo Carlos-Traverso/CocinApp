@@ -87,7 +87,7 @@ describe('local access flows', () => {
     assert.equal(canAccessPath('USER', '/admin'), false)
     assert.equal(canAccessPath('ADMIN', '/admin/recipes'), true)
     assert.equal(canAccessPath('ADMIN', '/pantry'), false)
-    assert.equal(roleHome('USER'), '/panel')
+    assert.equal(roleHome('USER'), '/recipes')
     assert.equal(roleHome('ADMIN'), '/admin')
   })
 })

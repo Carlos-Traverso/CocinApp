@@ -1,7 +1,7 @@
 import type { UserRole } from '../data/localAuthStore'
 
-export function roleHome(role: UserRole): '/admin' | '/panel' {
-  return role === 'ADMIN' ? '/admin' : '/panel'
+export function roleHome(role: UserRole): '/admin' | '/recipes' {
+  return role === 'ADMIN' ? '/admin' : '/recipes'
 }
 
 export function canAccessPath(role: UserRole, pathname: string): boolean {
@@ -9,6 +9,6 @@ export function canAccessPath(role: UserRole, pathname: string): boolean {
   return role === 'ADMIN' ? isAdminPath : !isAdminPath
 }
 
-export function unknownPathDestination(role: UserRole): '/admin' | '/panel' {
+export function unknownPathDestination(role: UserRole): '/admin' | '/recipes' {
   return roleHome(role)
 }

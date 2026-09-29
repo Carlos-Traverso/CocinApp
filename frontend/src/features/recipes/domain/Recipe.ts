@@ -15,4 +15,5 @@ export interface Recipe {
   mealShift?: string
   dietaryTags?: string[]
   featured?: boolean
+  popularity?: number
 }

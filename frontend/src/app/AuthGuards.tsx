@@ -33,7 +33,7 @@ export function RequireAdmin() {
 export function RedirectIfAuthenticated() {
   const session = useAuth()
   if (session) {
-    return <Navigate to={session.role === 'ADMIN' ? '/admin' : '/panel'} replace />
+    return <Navigate to={roleHome(session.role)} replace />
   }
   return <Outlet />
 }
