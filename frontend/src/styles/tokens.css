@@ -7,10 +7,3 @@
   --green-soft: #eaf3ec;
   --surface: #ffffff;
 }
-
-@theme {
-  --color-cocin-ink: var(--ink);
-  --color-cocin-muted: var(--muted);
-  --color-cocin-green: var(--green);
-  --color-cocin-green-dark: var(--green-dark);
-}
