@@ -2,8 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { getAdminData } from '../data/localAdminStore'
 import { hasAdminReferences } from '../data/adminReferences'
-import { createRecipe, deleteRecipe, updateRecipe } from '../data/recipesStore'
+import { createRecipe, createSeedRecipeOverride, deleteRecipe, updateRecipe } from '../data/recipesStore'
 import type { AdminRecipe } from '../domain/adminModels'
+import { getKnownRecipes } from '../../recipes/data/availableRecipes'
 
 const recipeSymbols = ['🍲', '🥗', '🍝', '🍳', '🥞', '🥣', '🍗', '🥑'] as const
 const recipeColors = [
@@ -98,16 +99,22 @@ export function RecipesTab() {
   }
 
   const visibleRecipes = recipes.filter((recipe) => recipe.title.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es')))
+  const seedRecipes = getKnownRecipes().filter((recipe) => !recipes.some((entry) => entry.id === recipe.id)
+    && recipe.name.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es')))
 
   return <div className="panel">
     <div className="section-header"><h2>Recetas oficiales</h2><button className="button button-primary" onClick={() => { setEditor(emptyRecipe()); setError('') }} type="button"><Plus size={16} /> Nueva receta</button></div>
     <label className="field admin-search"><span>Buscar receta</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label>
     <div className="records">
+      {seedRecipes.map((recipe) => <article className="record admin-recipe-record" key={recipe.id}>
+        <span aria-hidden="true" className={`admin-recipe-record-art ${recipe.color}`}>{recipe.symbol}</span><div className="record-main"><strong>{recipe.name}</strong><small>{recipe.category} · {recipe.minutes} min</small><span className="admin-recipe-status published">Inicial · Publicada</span></div>
+        <div className="record-actions"><button className="button button-quiet" onClick={() => { const override = createSeedRecipeOverride(recipe); reload(); setEditor({ ...override, dietaryTags: [...override.dietaryTags], ingredients: override.ingredients.map((item) => ({ ...item })), steps: [...override.steps], stepMeta: override.stepMeta?.map((item) => ({ ...item })) ?? [] }); setError('') }} type="button"><Pencil size={16} /> Administrar</button></div>
+      </article>)}
       {visibleRecipes.map((recipe) => <article className="record admin-recipe-record" key={recipe.id}>
         <span aria-hidden="true" className={`admin-recipe-record-art ${recipe.color}`}>{recipe.symbol}</span><div className="record-main"><strong>{recipe.title}</strong><small>{recipe.mealShift || recipe.category} · {recipe.minutes} min</small><span className={`admin-recipe-status ${recipe.status}`}>{recipe.status === 'published' ? 'Publicada' : 'Borrador'}</span>{recipe.isDeleted && <small className="error">Inactiva</small>}</div>
         <div className="record-actions">{!recipe.isDeleted && <><button aria-label={`Editar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => { setEditor({ ...recipe, dietaryTags: [...recipe.dietaryTags], ingredients: recipe.ingredients.map((item) => ({ ...item })), steps: [...recipe.steps], stepMeta: recipe.stepMeta?.map((item) => ({ ...item })) ?? [] }); setError('') }} type="button"><Pencil size={17} /></button><button aria-label={`Eliminar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => remove(recipe)} type="button"><Trash2 size={17} /></button></>}</div>
       </article>)}
-      {visibleRecipes.length === 0 && <p className="empty">No hay recetas que coincidan con la búsqueda.</p>}
+      {visibleRecipes.length === 0 && seedRecipes.length === 0 && <p className="empty">No hay recetas que coincidan con la búsqueda.</p>}
     </div>
 
     {editor && <dialog aria-labelledby="admin-recipe-title" className="shopping-editor surface admin-recipe-dialog" onCancel={(event) => { event.preventDefault(); setEditor(null) }} ref={(node) => { if (node && !node.open) node.showModal() }}>

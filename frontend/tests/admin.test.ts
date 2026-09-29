@@ -15,7 +15,7 @@ import { getAdminData, saveAdminData } from '../src/features/admin/data/localAdm
 import { createCategory, deleteCategory } from '../src/features/admin/data/categoriesStore'
 import { createUnit, deleteUnit } from '../src/features/admin/data/unitsStore'
 import { createIngredient, deleteIngredient } from '../src/features/admin/data/ingredientsStore'
-import { createRecipe, deleteRecipe } from '../src/features/admin/data/recipesStore'
+import { createRecipe, createSeedRecipeOverride, deleteRecipe, updateRecipe } from '../src/features/admin/data/recipesStore'
 import { getAvailableRecipes } from '../src/features/recipes/data/availableRecipes'
 import { getRecipeById } from '../src/features/recipes/data/availableRecipes'
 
@@ -134,5 +134,18 @@ describe('local admin catalog', () => {
     deleteIngredient(ingredientId)
     assert.equal(getRecipeById(id), undefined)
     assert.equal(getRecipeById(id, true)?.name, 'Pan')
+  })
+
+  test('seed recipes can be adopted, edited and deactivated without duplication', () => {
+    const seeded = getRecipeById('quinoa-bowl')!
+    const override = createSeedRecipeOverride(seeded)
+    assert.equal(getAdminData().recipes.filter((recipe) => recipe.id === seeded.id).length, 1)
+    assert.equal(createSeedRecipeOverride(seeded).id, seeded.id)
+    updateRecipe(override.id, { ...override, title: 'Bowl administrado', status: 'published' })
+    assert.equal(getRecipeById(seeded.id)?.name, 'Bowl administrado')
+    deleteRecipe(seeded.id)
+    assert.equal(getRecipeById(seeded.id), undefined)
+    assert.equal(getRecipeById(seeded.id, true)?.name, 'Bowl administrado')
+    assert.equal(getAdminData().recipes.find((recipe) => recipe.id === seeded.id)?.isDeleted, true)
   })
 })
