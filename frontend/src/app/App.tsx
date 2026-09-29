@@ -12,6 +12,7 @@ import { RecipesPage } from '../pages/RecipesPage'
 import { RecipeDetailPage } from '../pages/RecipeDetailPage'
 import { ShoppingPage } from '../pages/ShoppingPage'
 import { WelcomePage } from '../pages/WelcomePage'
+import { NotFoundPage } from '../pages/NotFoundPage'
 import { AdminShell } from '../components/AdminShell'
 import { RequireAdmin, RequireUser, RedirectIfAuthenticated } from './AuthGuards'
 
@@ -27,7 +28,7 @@ export function App() {
         <Route element={<RequireAdmin />}>
           <Route path="admin" element={<AdminShell />}>
             <Route index element={<AdminPage />} />
-            <Route path="*" element={<Navigate replace to="/admin" />} />
+            <Route path="*" element={<NotFoundPage homeLabel="Volver a Administración" homePath="/admin" />} />
           </Route>
         </Route>
 
@@ -45,8 +46,8 @@ export function App() {
             <Route path="pantry" element={<PantryPage />} />
             <Route path="planner" element={<PlannerPage />} />
             <Route path="shopping" element={<ShoppingPage />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
-          <Route path="*" element={<Navigate replace to="/recipes" />} />
         </Route>
       </Routes>
     </BrowserRouter>
