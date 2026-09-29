@@ -79,11 +79,14 @@ describe('local admin catalog', () => {
       minutes: 30, portions: 2, difficulty: 'Fácil' as const, calories: 200,
       mealShift: 'Desayuno', dietaryTags: ['Vegetariana'], ingredients: [{ ingredientId, quantity: 200, unitId: grams }],
       steps: ['Mezclar.', 'Hornear.'], stepMeta: [{ minutes: 8, tip: 'Usá agua tibia.' }, {}], featured: true, status: 'published' as const, symbol: 'P', color: 'green' as const,
+      image: '/assets/recipes/pan-simple.webp', imageAlt: 'Pan simple recién horneado sobre una tabla',
     }
     assert.throws(() => createRecipe({ ...recipe, ingredients: [{ ingredientId, quantity: 0, unitId: grams }] }), /positiva/i)
     assert.throws(() => createRecipe({ ...recipe, ingredients: [{ ingredientId, quantity: 200, unitId: milliliters }] }), /compatibles/i)
     assert.throws(() => createRecipe({ ...recipe, steps: ['  '] }), /instrucciones/i)
     assert.throws(() => createRecipe({ ...recipe, stepMeta: [{ minutes: 0 }] }), /tiempo de cada paso/i)
+    assert.throws(() => createRecipe({ ...recipe, image: 'https://example.com/pan.webp' }), /archivo local/i)
+    assert.throws(() => createRecipe({ ...recipe, imageAlt: '' }), /texto alternativo/i)
     const draftId = createRecipe({ ...recipe, title: 'Pan en borrador', status: 'draft' })
     assert.equal(getAvailableRecipes().some((entry) => entry.id === draftId), false)
     const id = createRecipe(recipe)
@@ -91,6 +94,7 @@ describe('local admin catalog', () => {
     assert.equal(getAvailableRecipes().find((entry) => entry.id === id)?.ingredients[0]?.unit, 'g')
     assert.deepEqual(getAvailableRecipes().find((entry) => entry.id === id)?.stepMeta?.[0], { minutes: 8, tip: 'Usá agua tibia.' })
     assert.equal(getAvailableRecipes().find((entry) => entry.id === id)?.featured, true)
+    assert.equal(getAvailableRecipes().find((entry) => entry.id === id)?.image, '/assets/recipes/pan-simple.webp')
   })
 
   test('referenced published recipes are retained inactive and hidden from new actions', () => {

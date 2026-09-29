@@ -9,11 +9,12 @@ import { readHistory } from '../features/cooking/data/localCookingStore'
 import { discoverRecipes } from '../features/recipes/domain/recipeDiscovery'
 import { meals } from '../features/planner/domain/planner'
 import type { Recipe } from '../features/recipes/domain/Recipe'
+import { RecipeImage } from '../features/recipes/ui/RecipeImage'
 
 const initialFilters: RecipeFilters = { search: '', category: '', maxMinutes: null, difficulty: '', pantryOnly: false }
 
 function RecipeArtwork({ recipe, size = 'card' }: { recipe: Recipe; size?: 'hero' | 'card' | 'mini' }) {
-  return <div aria-hidden="true" className={`recipe-artwork recipe-artwork-${size} ${recipe.color}`}><span>{recipe.symbol}</span></div>
+  return <RecipeImage className={`recipe-artwork recipe-artwork-${size}`} loading={size === 'hero' ? 'eager' : 'lazy'} recipe={recipe} />
 }
 
 function RecipeRail({ id, eyebrow, title, description, recipes, empty }: {

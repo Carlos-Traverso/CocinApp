@@ -46,6 +46,8 @@ function readRecipe(value: unknown): AdminRecipe | undefined {
     status: value.status === 'published' ? 'published' : 'draft', isDeleted: value.isDeleted === true,
     symbol: typeof value.symbol === 'string' && value.symbol ? value.symbol : value.title.slice(0, 1).toLocaleUpperCase('es'),
     color: value.color === 'gold' || value.color === 'pink' || value.color === 'blue' ? value.color : 'green',
+    image: typeof value.image === 'string' && value.image.startsWith('/assets/recipes/') ? value.image : undefined,
+    imageAlt: typeof value.imageAlt === 'string' && value.imageAlt.trim() ? value.imageAlt.trim() : undefined,
   }
 }
 

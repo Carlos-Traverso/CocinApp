@@ -1,7 +1,7 @@
 import { sampleRecipes } from '../../../mocks/recipes'
 import type { Recipe } from '../domain/Recipe'
 
-export const recipeSeedVersion = 2
+export const recipeSeedVersion = 3
 export const recipeSeed: readonly Recipe[] = sampleRecipes
 
 export function mergeRecipeSeed(seed: readonly Recipe[], administratorRecipes: readonly Recipe[]): Recipe[] {

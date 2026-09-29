@@ -1,6 +1,6 @@
 import type { Recipe } from '../features/recipes/domain/Recipe'
 
-export const sampleRecipes = [
+const recipeDrafts = [
   {
     id: 'quinoa-bowl',
     name: 'Bowl de quinoa y verduras',
@@ -203,4 +203,35 @@ export const sampleRecipes = [
     ingredients: [{ name: 'Calabaza', quantity: 500, unit: 'g' }, { name: 'Zanahoria', quantity: 2, unit: 'u' }, { name: 'Tomate', quantity: 2, unit: 'u' }, { name: 'Aceite de oliva', quantity: 25, unit: 'ml' }],
     steps: ['Cortá y condimentá las verduras.', 'Asalas hasta que estén tiernas.', 'Procesá con agua caliente hasta lograr la textura deseada.'], stepMeta: [{ tip: 'Cortá piezas similares para una cocción pareja.' }, { minutes: 35 }, { tip: 'Agregá el líquido gradualmente.' }], symbol: '🥣', color: 'gold', calories: 220, featured: true,
   },
-] satisfies Recipe[]
+] satisfies Omit<Recipe, 'image' | 'imageAlt'>[]
+
+const recipeImageAlts: Record<(typeof recipeDrafts)[number]['id'], string> = {
+  'quinoa-bowl': 'Bowl de quinoa con tomates cherry y verduras asadas servido en cerámica clara',
+  'pumpkin-pasta': 'Pasta cremosa de calabaza con queso rallado y hojas de salvia',
+  'chickpea-salad': 'Ensalada tibia de garbanzos dorados con hojas verdes y yogur',
+  'chicken-rice': 'Pollo dorado con arroz integral y tomates cherry servido en un plato',
+  'yogurt-fruit': 'Bol de yogur con rodajas de banana y avena',
+  'apple-toast': 'Tostadas integrales con queso untable y láminas de manzana',
+  'vegetable-omelette': 'Omelette de espinaca y tomates cherry servido en un plato claro',
+  'lentil-stew': 'Guiso de lentejas con tomate y zanahoria servido en un cuenco',
+  'avocado-toast': 'Tostadas integrales con palta y huevo cocido',
+  'banana-pancakes': 'Panqueques de banana y avena apilados en un plato',
+  'scrambled-eggs-toast': 'Huevos revueltos cremosos con tostadas integrales',
+  'overnight-oats': 'Avena nocturna con leche y manzana servida en un frasco de vidrio',
+  'caprese-sandwich': 'Sándwich caprese tostado con tomate, queso y hojas verdes',
+  'tuna-rice-salad': 'Ensalada de arroz con atún y tomate servida en un bol',
+  'vegetable-wrap': 'Wrap cortado con hummus, zanahoria y hojas verdes',
+  'tomato-risotto': 'Risotto cremoso de tomate con queso rallado',
+  'baked-fish-potatoes': 'Filet de pescado al horno con papas doradas y limón',
+  'spinach-pie': 'Porción de tarta casera de espinaca, huevo y queso',
+  'pear-yogurt-cup': 'Copa de yogur con pera y avena tostada',
+  'cheese-scones': 'Scones de queso recién horneados servidos en un plato',
+  'banana-smoothie': 'Licuado cremoso de banana y avena servido en un vaso',
+  'roasted-vegetable-soup': 'Sopa de calabaza, zanahoria y tomate asados en un cuenco',
+}
+
+export const sampleRecipes = recipeDrafts.map((recipe) => ({
+  ...recipe,
+  image: `/assets/recipes/${recipe.id}.webp`,
+  imageAlt: recipeImageAlts[recipe.id],
+})) satisfies Recipe[]

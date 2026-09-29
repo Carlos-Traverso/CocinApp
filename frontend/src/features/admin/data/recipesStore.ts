@@ -48,6 +48,7 @@ export function createSeedRecipeOverride(recipe: Recipe): AdminRecipe {
     dietaryTags: recipe.dietaryTags ?? [], featured: recipe.featured ?? false, ingredients,
     steps: [...recipe.steps], stepMeta: recipe.stepMeta?.map((entry) => ({ ...entry })) ?? [],
     status: 'published', isDeleted: false, symbol: recipe.symbol, color: recipe.color,
+    image: recipe.image, imageAlt: recipe.imageAlt,
   }
   data.recipes.push(override)
   saveAdminData(data)

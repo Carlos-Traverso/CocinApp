@@ -42,4 +42,6 @@ export interface AdminRecipe {
   isDeleted: boolean
   symbol: string
   color: 'green' | 'gold' | 'pink' | 'blue'
+  image?: string
+  imageAlt?: string
 }

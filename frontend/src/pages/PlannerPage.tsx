@@ -8,6 +8,7 @@ import { getAvailableRecipes, getRecipeById } from '../features/recipes/data/ava
 import { appendShoppingSuggestions } from '../features/shopping/data/localShoppingStore'
 import { suggestForRecipes } from '../features/shopping/domain/shopping'
 import { RecipePicker } from '../features/planner/ui/RecipePicker'
+import { RecipeImage } from '../features/recipes/ui/RecipeImage'
 
 const dayFormatter = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'short' })
 
@@ -56,7 +57,7 @@ export function PlannerPage() {
             const recipeIsActive = Boolean(recipe && availableRecipes.some((item) => item.id === recipe.id))
             return <div className="planner-slot" key={meal}>
               <span className="planner-meal-label">{meal}</span><button className="planner-pick-button" onClick={() => setPicker({ date, meal, label: dayLabel })} type="button">{recipe ? 'Cambiar receta' : 'Buscar receta'}</button>
-              {recipe && <><p className={`planner-assignment${recipeIsActive ? '' : ' inactive'}`}>{recipe.name}{recipeIsActive ? '' : ' (inactiva)'}</p><div className="planner-slot-links"><Link className="text-link" to={`/recipes/${recipe.id}`}>Ver receta</Link>{recipeIsActive && <Link className="text-link" to={`/recipes/${recipe.id}/cook`}>Cocinar</Link>}<button aria-label={`Quitar ${meal} del ${dayLabel}`} className="text-link" onClick={() => assign(date, meal, '')} type="button">Quitar</button></div></>}
+              {recipe && <><RecipeImage className="planner-assignment-image" recipe={recipe} /><p className={`planner-assignment${recipeIsActive ? '' : ' inactive'}`}>{recipe.name}{recipeIsActive ? '' : ' (inactiva)'}</p><div className="planner-slot-links"><Link className="text-link" to={`/recipes/${recipe.id}`}>Ver receta</Link>{recipeIsActive && <Link className="text-link" to={`/recipes/${recipe.id}/cook`}>Cocinar</Link>}<button aria-label={`Quitar ${meal} del ${dayLabel}`} className="text-link" onClick={() => assign(date, meal, '')} type="button">Quitar</button></div></>}
             </div>
           })}
         </article>

@@ -11,6 +11,8 @@ export interface Recipe {
   stepMeta?: { minutes?: number; tip?: string }[]
   symbol: string
   color: 'green' | 'gold' | 'pink' | 'blue'
+  image?: string
+  imageAlt?: string
   calories?: number
   mealShift?: string
   dietaryTags?: string[]

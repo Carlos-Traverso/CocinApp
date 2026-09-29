@@ -705,3 +705,12 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
   .setup-actions .button, .profile-save-row .button { width: 100%; }
   .surface { padding: 19px; }
 }
+
+/* Recipe photography */
+.recipe-photo { display: block; max-width: 100%; object-fit: cover; }
+.recipe-artwork.recipe-photo, .recipe-art.recipe-photo, .dashboard-suggestion-art.recipe-photo { width: 100%; }
+.recipe-image-fallback { display: grid; place-items: center; overflow: hidden; }
+.dashboard-suggestion-art.compact { width: 92px; min-height: 72px; flex: 0 0 92px; border-radius: 8px; }
+.planner-assignment-image { width: 100%; height: 68px; border-radius: 7px; margin-top: 8px; }
+.cooking-recipe-image { width: calc(100% + 38px); height: 155px; border-radius: 9px 9px 0 0; margin: -19px -19px 18px; }
+.admin-recipe-preview-art { width: 100%; height: 125px; border-radius: 8px; }

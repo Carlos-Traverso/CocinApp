@@ -6,9 +6,10 @@ import { readPantryItems } from '../features/pantry/data/localPantryStore'
 import { getAvailableRecipes, getRecipeById } from '../features/recipes/data/availableRecipes'
 import { readFavoriteIds } from '../features/recipes/data/localFavoritesStore'
 import type { Recipe } from '../features/recipes/domain/Recipe'
+import { RecipeImage } from '../features/recipes/ui/RecipeImage'
 
-function Artwork({ recipe }: { recipe: Recipe }) {
-  return <div aria-hidden="true" className={`dashboard-suggestion-art ${recipe.color}`}><span>{recipe.symbol}</span></div>
+function Artwork({ recipe, compact = false }: { recipe: Recipe; compact?: boolean }) {
+  return <RecipeImage className={`dashboard-suggestion-art${compact ? ' compact' : ''}`} recipe={recipe} />
 }
 
 export function HomePage() {
@@ -30,7 +31,7 @@ export function HomePage() {
 
     <section aria-labelledby="recent-title" className="dashboard-panel-section">
       <div className="section-header"><div><p className="dashboard-recommendation-kicker"><History aria-hidden="true" size={17} /> Historial local</p><h2 id="recent-title">Cocinaste hace poco</h2></div></div>
-      {recent.length === 0 ? <div className="recipe-rail-empty"><History aria-hidden="true" size={20} /><span>Todavía no completaste ninguna receta.</span></div> : <div className="dashboard-recent-list">{recent.map((event) => { const recipe = getRecipeById(event.recipeId, true); if (!recipe) return null; const active = recipes.some((item) => item.id === recipe.id); return <article className="history-row" key={event.id}><Artwork recipe={recipe} /><div className="history-copy"><h3>{recipe.name}</h3><p>{new Date(event.cookedAt).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' })} · {event.portions} {event.portions === 1 ? 'porción' : 'porciones'}</p></div><div className="history-actions"><Link className="button button-quiet" to={`/recipes/${recipe.id}`}>Ver detalle</Link>{active && <Link className="button button-primary" to={`/recipes/${recipe.id}/cook`}>Volver a cocinar</Link>}</div></article> })}</div>}
+      {recent.length === 0 ? <div className="recipe-rail-empty"><History aria-hidden="true" size={20} /><span>Todavía no completaste ninguna receta.</span></div> : <div className="dashboard-recent-list">{recent.map((event) => { const recipe = getRecipeById(event.recipeId, true); if (!recipe) return null; const active = recipes.some((item) => item.id === recipe.id); return <article className="history-row" key={event.id}><Artwork compact recipe={recipe} /><div className="history-copy"><h3>{recipe.name}</h3><p>{new Date(event.cookedAt).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' })} · {event.portions} {event.portions === 1 ? 'porción' : 'porciones'}</p></div><div className="history-actions"><Link className="button button-quiet" to={`/recipes/${recipe.id}`}>Ver detalle</Link>{active && <Link className="button button-primary" to={`/recipes/${recipe.id}/cook`}>Volver a cocinar</Link>}</div></article> })}</div>}
     </section>
 
     <section aria-labelledby="time-title" className="dashboard-panel-section">

@@ -39,6 +39,8 @@ export function validateIngredient(input: Omit<AdminIngredient, 'id' | 'isDelete
 
 export function validateRecipe(input: Omit<AdminRecipe, 'id' | 'isDeleted'>, recipes: AdminRecipe[], ingredients: AdminIngredient[], units: AdminUnit[], exceptId?: string) {
   const title = input.title.trim()
+  const image = input.image?.trim() || undefined
+  const imageAlt = input.imageAlt?.trim() || undefined
   if (!title || !Number.isFinite(input.portions) || input.portions <= 0 || !Number.isInteger(input.portions)) throw new Error('Ingresá un título y una cantidad de porciones válida.')
   if (!Number.isFinite(input.minutes) || input.minutes <= 0 || !Number.isInteger(input.minutes)) throw new Error('El tiempo debe ser un número entero positivo.')
   if (!Number.isFinite(input.calories) || input.calories < 0) throw new Error('Las calorías de referencia deben ser cero o más.')
@@ -55,6 +57,8 @@ export function validateRecipe(input: Omit<AdminRecipe, 'id' | 'isDeleted'>, rec
     return { ...(minutes !== undefined ? { minutes } : {}), ...(tip ? { tip } : {}) }
   })
   if (!['draft', 'published'].includes(input.status)) throw new Error('Elegí si la receta queda como borrador o publicada.')
+  if (image && (!image.startsWith('/assets/recipes/') || !/\.(avif|webp|png|jpe?g)$/i.test(image))) throw new Error('La imagen debe usar un archivo local de /assets/recipes/.')
+  if (image && !imageAlt) throw new Error('Ingresá el texto alternativo de la imagen.')
   if (input.featured !== undefined && typeof input.featured !== 'boolean') throw new Error('La marca destacada debe ser válida.')
   if (recipes.some((item) => item.id !== exceptId && !item.isDeleted && normalizePantryName(item.title) === normalizePantryName(title))) throw new Error('Ya existe una receta con ese título.')
   for (const entry of input.ingredients) {
@@ -64,5 +68,5 @@ export function validateRecipe(input: Omit<AdminRecipe, 'id' | 'isDeleted'>, rec
     const base = ingredient && units.find((item) => item.id === ingredient.baseUnitId && !item.isDeleted)
     if (!ingredient || !unit || !base || unit.dimension !== base.dimension) throw new Error('Cada receta debe usar ingredientes activos y unidades compatibles con su dimensión.')
   }
-  return { ...input, title, steps: input.steps.map((step) => step.trim()), stepMeta, dietaryTags: input.dietaryTags.map((tag) => tag.trim()).filter(Boolean) }
+  return { ...input, title, image, imageAlt, steps: input.steps.map((step) => step.trim()), stepMeta, dietaryTags: input.dietaryTags.map((tag) => tag.trim()).filter(Boolean) }
 }

@@ -5,6 +5,7 @@ import { mergeRecipeSeed, recipeSeed } from './recipeSeed'
 
 function fromAdminRecipe(recipe: AdminRecipe): Recipe {
   const data = getAdminData()
+  const seededRecipe = recipeSeed.find((entry) => entry.id === recipe.id)
   return {
     id: recipe.id,
     name: recipe.title,
@@ -17,6 +18,8 @@ function fromAdminRecipe(recipe: AdminRecipe): Recipe {
     stepMeta: recipe.stepMeta,
     symbol: recipe.symbol || recipe.title.slice(0, 1).toLocaleUpperCase('es'),
     color: recipe.color || 'green',
+    image: recipe.image ?? seededRecipe?.image,
+    imageAlt: recipe.imageAlt ?? seededRecipe?.imageAlt,
     calories: recipe.calories,
     mealShift: recipe.mealShift,
     dietaryTags: recipe.dietaryTags,

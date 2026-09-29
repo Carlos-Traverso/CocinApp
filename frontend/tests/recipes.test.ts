@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { existsSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { sampleRecipes } from '../src/mocks/recipes'
 import { filterRecipes, getIngredientAvailability } from '../src/features/recipes/domain/recipeRules'
 import { readFavoriteIds, writeFavoriteIds } from '../src/features/recipes/data/localFavoritesStore'
@@ -22,12 +24,22 @@ test('ingredient availability checks quantity, unit and expiry', () => {
 })
 
 test('the versioned seed provides a complete varied catalog and remains idempotent', () => {
-  assert.equal(recipeSeedVersion, 2)
+  assert.equal(recipeSeedVersion, 3)
   assert.equal(recipeSeed.length, 22)
   assert.deepEqual(new Set(recipeSeed.map((recipe) => recipe.category)), new Set(['Almuerzo', 'Cena', 'Desayuno', 'Merienda']))
   assert.equal(recipeSeed.every((recipe) => recipe.steps.length > 0 && recipe.ingredients.length > 0 && recipe.symbol), true)
   assert.equal(mergeRecipeSeed(recipeSeed, []).length, 22)
   assert.equal(mergeRecipeSeed(mergeRecipeSeed(recipeSeed, []), []).length, 22)
+})
+
+test('every seeded recipe has a unique local WebP photograph and useful alternative text', () => {
+  const images = recipeSeed.map((recipe) => recipe.image)
+  assert.equal(new Set(images).size, recipeSeed.length)
+  for (const recipe of recipeSeed) {
+    assert.match(recipe.image ?? '', /^\/assets\/recipes\/[a-z0-9-]+\.webp$/)
+    assert.ok((recipe.imageAlt?.trim().length ?? 0) >= 20)
+    assert.equal(existsSync(fileURLToPath(new URL(`../public${recipe.image}`, import.meta.url))), true, recipe.image)
+  }
 })
 
 test('administrator records override a seed recipe without duplicating or losing new seed entries', () => {
