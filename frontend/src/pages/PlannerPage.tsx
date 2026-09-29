@@ -7,6 +7,7 @@ import { meals, setPlannedMeal, weekDates, type Meal, type PlannedMeal } from '.
 import { getAvailableRecipes, getRecipeById } from '../features/recipes/data/availableRecipes'
 import { appendShoppingSuggestions } from '../features/shopping/data/localShoppingStore'
 import { suggestForRecipes } from '../features/shopping/domain/shopping'
+import { RecipePicker } from '../features/planner/ui/RecipePicker'
 
 const dayFormatter = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'short' })
 
@@ -15,6 +16,7 @@ export function PlannerPage() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [plan, setPlan] = useState<PlannedMeal[]>(readMealPlan)
   const [error, setError] = useState('')
+  const [picker, setPicker] = useState<{ date: string; meal: Meal; label: string } | null>(null)
   const target = new Date()
   target.setDate(target.getDate() + weekOffset * 7)
   const dates = weekDates(target)
@@ -53,12 +55,13 @@ export function PlannerPage() {
             const recipe = recipeId ? getRecipeById(recipeId, true) : undefined
             const recipeIsActive = Boolean(recipe && availableRecipes.some((item) => item.id === recipe.id))
             return <div className="planner-slot" key={meal}>
-              <label className="field"><span>{meal}</span><select aria-label={`${meal} del ${dayLabel}`} onChange={(event) => assign(date, meal, event.currentTarget.value)} value={recipeIsActive ? recipeId : ''}><option value="">{recipe && !recipeIsActive ? 'Elegí otra receta' : 'Sin receta'}</option>{availableRecipes.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}</select></label>
+              <span className="planner-meal-label">{meal}</span><button className="planner-pick-button" onClick={() => setPicker({ date, meal, label: dayLabel })} type="button">{recipe ? 'Cambiar receta' : 'Buscar receta'}</button>
               {recipe && <><p className={`planner-assignment${recipeIsActive ? '' : ' inactive'}`}>{recipe.name}{recipeIsActive ? '' : ' (inactiva)'}</p><div className="planner-slot-links"><Link className="text-link" to={`/recipes/${recipe.id}`}>Ver receta</Link>{recipeIsActive && <Link className="text-link" to={`/recipes/${recipe.id}/cook`}>Cocinar</Link>}<button aria-label={`Quitar ${meal} del ${dayLabel}`} className="text-link" onClick={() => assign(date, meal, '')} type="button">Quitar</button></div></>}
             </div>
           })}
         </article>
       })}
     </section>
+    {picker && <RecipePicker onClose={() => setPicker(null)} onSelect={(id) => { assign(picker.date, picker.meal, id); setPicker(null) }} recipes={availableRecipes} title={`${picker.meal} del ${picker.label}`} />}
   </div>
 }

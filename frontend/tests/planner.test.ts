@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { searchPlanRecipes } from '../src/features/planner/domain/recipeSearch'
+import { sampleRecipes } from '../src/mocks/recipes'
 import test from 'node:test'
 import { meals, weekDates, setPlannedMeal } from '../src/features/planner/domain/planner'
 import { readMealPlan, writeMealPlan } from '../src/features/planner/data/localMealPlanStore'
@@ -38,4 +40,13 @@ test('older lunch and dinner records remain alongside four turns and independent
   writeMealPlan(expanded, storage)
   assert.equal(readMealPlan(storage).length, 4)
   assert.equal(readMealPlan(storage).filter((entry) => weekDates(new Date(2026, 8, 23)).includes(entry.date)).length, 3)
+})
+
+test('planner search ignores case and accents while selection works for all four meals', () => {
+  assert.ok(searchPlanRecipes(sampleRecipes, 'ARROZ').some((recipe) => recipe.id === 'chicken-rice'))
+  assert.deepEqual(searchPlanRecipes([{ ...sampleRecipes[0], name: 'Arroz con limón' }], 'LIMON').map((recipe) => recipe.name), ['Arroz con limón'])
+  assert.deepEqual(searchPlanRecipes(sampleRecipes, 'zzzz'), [])
+  const day = '2026-09-23'
+  const selected = meals.reduce((plan, meal) => setPlannedMeal(plan, day, meal, sampleRecipes[0].id), [] as ReturnType<typeof readMealPlan>)
+  assert.deepEqual(selected.map((entry) => entry.meal), meals)
 })
