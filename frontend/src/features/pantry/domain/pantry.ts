@@ -16,7 +16,7 @@ export interface PantryItem {
   quantity: number
   unit: PantryUnit
   minimum: number
-  expiry: string
+  expiry: string | null
   sourceShoppingIds?: string[]
 }
 
@@ -30,7 +30,8 @@ export function normalizePantryName(name: string): string {
   return name.trim().replace(/\s+/g, ' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es')
 }
 
-export function daysUntilExpiry(expiry: string, today = new Date()): number | null {
+export function daysUntilExpiry(expiry: string | null, today = new Date()): number | null {
+  if (!expiry) return null
   if (!/^\d{4}-\d{2}-\d{2}$/.test(expiry)) return null
   const [year, month, day] = expiry.split('-').map(Number)
   const date = new Date(year, month - 1, day)
@@ -96,7 +97,7 @@ export function formatPantryAmount(quantity: number, unit: PantryUnit): string {
 }
 
 export function pantryExpiryText(item: PantryItem, today = new Date()): string {
-  if (!item.expiry) return 'Sin vencimiento registrado'
+  if (!item.expiry) return 'Sin vencimiento informado'
   const days = daysUntilExpiry(item.expiry, today)
   if (days === null) return 'Fecha de vencimiento inválida'
   if (days < 0) return `Venció hace ${-days} ${days === -1 ? 'día' : 'días'}`

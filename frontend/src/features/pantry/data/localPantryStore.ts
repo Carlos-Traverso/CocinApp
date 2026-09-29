@@ -10,13 +10,13 @@ interface PantryStorage {
   setItem(key: string, value: string): void
 }
 
-function isPantryItem(value: unknown): value is PantryItem {
-  if (!value || typeof value !== 'object') return false
+function readPantryItem(value: unknown): PantryItem | undefined {
+  if (!value || typeof value !== 'object') return undefined
   const item = value as Record<string, unknown>
   const activeCategories = getActiveCategories()
   const activeUnits = getActiveUnits()
 
-  return typeof item.id === 'string'
+  const valid = typeof item.id === 'string'
     && item.id.length > 0
     && typeof item.name === 'string'
     && item.name.trim().length > 0
@@ -30,8 +30,12 @@ function isPantryItem(value: unknown): value is PantryItem {
     && Number.isFinite(item.minimum)
     && item.minimum >= 0
     && item.minimum <= 1_000_000
-    && typeof item.expiry === 'string'
-    && (item.expiry === '' || daysUntilExpiry(item.expiry) !== null)
+    && (item.expiry === null || item.expiry === '' || typeof item.expiry === 'string' && daysUntilExpiry(item.expiry) !== null)
+  if (!valid) return undefined
+  const parsed = { ...(item as unknown as PantryItem), expiry: typeof item.expiry === 'string' && item.expiry ? item.expiry : null }
+  if (Array.isArray(item.sourceShoppingIds)) parsed.sourceShoppingIds = item.sourceShoppingIds.filter((id): id is string => typeof id === 'string')
+  else delete parsed.sourceShoppingIds
+  return parsed
 }
 
 export function readPantryItems(storage: PantryStorage = personalStorage): PantryItem[] {
@@ -41,7 +45,10 @@ export function readPantryItems(storage: PantryStorage = personalStorage): Pantr
     if (!stored) return []
     const value: unknown = JSON.parse(stored)
     if (!Array.isArray(value)) return []
-    const items = value.filter(isPantryItem)
+    const items = value.flatMap((item) => {
+      const parsed = readPantryItem(item)
+      return parsed ? [parsed] : []
+    })
     if (current === null && items.length > 0) {
       try { writePantryItems(items, storage) } catch { /* Existing data remains readable. */ }
     }

@@ -81,7 +81,7 @@ function PantryEditor({ item, items, onClose, onSave }: {
         <label className="field"><span>Cantidad disponible</span><input inputMode="decimal" max="1000000" min="0" name="quantity" onChange={(event) => setDraft({ ...draft, quantity: event.currentTarget.value === '' ? Number.NaN : event.currentTarget.valueAsNumber })} required step="any" type="number" value={Number.isNaN(draft.quantity) ? '' : draft.quantity} /></label>
         <label className="field"><span>Unidad</span><select onChange={(event) => setDraft({ ...draft, unit: event.currentTarget.value as PantryUnit })} value={draft.unit}>{getUnitsForIngredient(draft.name).map((unit) => <option key={unit}>{unit}</option>)}</select></label>
         <label className="field"><span>Avisar por debajo de</span><input inputMode="decimal" max="1000000" min="0" name="minimum" onChange={(event) => setDraft({ ...draft, minimum: event.currentTarget.value === '' ? Number.NaN : event.currentTarget.valueAsNumber })} required step="any" type="number" value={Number.isNaN(draft.minimum) ? '' : draft.minimum} /></label>
-        <label className="field"><span>Vencimiento (opcional)</span><input onChange={(event) => setDraft({ ...draft, expiry: event.currentTarget.value })} type="date" value={draft.expiry} /></label>
+        <label className="field"><span>Vencimiento (opcional)</span><input onChange={(event) => setDraft({ ...draft, expiry: event.currentTarget.value || null })} type="date" value={draft.expiry ?? ''} /></label>
       </div>
       <p className="pantry-form-hint">El mínimo usa la misma unidad. Un valor de 0 desactiva la alerta de stock bajo.</p>
       {error && <p className="form-message error" role="alert">{error}</p>}

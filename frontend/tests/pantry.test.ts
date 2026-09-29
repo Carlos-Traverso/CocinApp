@@ -6,7 +6,7 @@ import { readPantryItems, writePantryItems } from '../src/features/pantry/data/l
 const today = new Date(2026, 8, 23)
 const rice: PantryItem = {
   id: 'rice', name: 'Arroz integral', category: 'Granos y legumbres',
-  quantity: 500, unit: 'g', minimum: 200, expiry: '',
+  quantity: 500, unit: 'g', minimum: 200, expiry: null,
 }
 
 test('classifies expiry by local calendar days and keeps stock alerts independent', () => {
@@ -23,7 +23,7 @@ test('summary separates past dates from today and upcoming dates without double 
     { ...rice, id: 'past', expiry: '2026-09-22' },
     { ...rice, id: 'today', expiry: '2026-09-23' },
     { ...rice, id: 'soon', expiry: '2026-09-25' },
-    { ...rice, id: 'none', expiry: '' },
+    { ...rice, id: 'none', expiry: null },
   ]
   assert.deepEqual(countPantryAlerts(items, today), { low: 0, expired: 1, soon: 2 })
   assert.deepEqual(filterPantryItems(items, { search: '', category: '', status: 'expired' }, today).map((item) => item.id), ['past'])
@@ -48,6 +48,14 @@ test('persists valid items and ignores malformed stored entries', () => {
   assert.deepEqual(readPantryItems(storage), [rice])
   entries.set('cocinapp.pantry.v1', JSON.stringify([rice, { ...rice, id: 'bad', quantity: -1 }]))
   assert.deepEqual(readPantryItems(storage), [rice])
+})
+
+test('migrates an empty legacy expiry to null without classifying it as expired', () => {
+  const entries = new Map<string, string>([['cocinapp.pantry.v1', JSON.stringify([{ ...rice, expiry: '' }])]])
+  const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
+  const [item] = readPantryItems(storage)
+  assert.equal(item.expiry, null)
+  assert.equal(getPantryStatus(item, today).kind, 'ok')
 })
 
 test('migrates existing prototype data without replacing an intentionally empty pantry', () => {

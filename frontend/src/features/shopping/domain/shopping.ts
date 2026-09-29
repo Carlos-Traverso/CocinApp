@@ -10,7 +10,8 @@ export interface ShoppingItem {
   unit: PantryUnit
   note: string
   checked: boolean
-  transferred?: boolean
+  transferredToPantry: boolean
+  transferredAt: string | null
   sources: ShoppingSource[]
 }
 
@@ -31,7 +32,7 @@ export function addPurchaseToPantry(pantry: PantryItem[], purchase: ShoppingItem
   })
   if (matchingIndex < 0) return [...pantry, {
     id: crypto.randomUUID(), name: purchase.name, category: purchase.category, quantity: purchase.quantity,
-    unit: purchase.unit, minimum: 0, expiry: '', sourceShoppingIds: [purchase.id],
+    unit: purchase.unit, minimum: 0, expiry: null, sourceShoppingIds: [purchase.id],
   }]
   return pantry.map((item, index) => {
     if (index !== matchingIndex) return item
@@ -115,7 +116,7 @@ export function mergeShoppingSuggestions(items: ShoppingItem[], suggestions: Sho
       existing.quantity = Math.max(existing.quantity, suggestion.quantity)
       if (!existing.sources.includes(suggestion.source)) existing.sources.push(suggestion.source)
     } else {
-      merged.push({ id: crypto.randomUUID(), name: suggestion.name, category: suggestion.category, quantity: suggestion.quantity, unit: suggestion.unit, note: '', checked: false, sources: [suggestion.source] })
+      merged.push({ id: crypto.randomUUID(), name: suggestion.name, category: suggestion.category, quantity: suggestion.quantity, unit: suggestion.unit, note: '', checked: false, transferredToPantry: false, transferredAt: null, sources: [suggestion.source] })
     }
   }
   return merged

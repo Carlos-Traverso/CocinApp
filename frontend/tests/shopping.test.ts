@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { sampleRecipes } from '../src/mocks/recipes'
 import { filterShoppingItems, mergeShoppingSuggestions, suggestForRecipes, suggestPantryRestock, type ShoppingItem } from '../src/features/shopping/domain/shopping'
-import { appendShoppingSuggestions, readShoppingItems, setShoppingPurchased, writeShoppingItems } from '../src/features/shopping/data/localShoppingStore'
+import { appendShoppingSuggestions, markAllShoppingPurchased, readShoppingItems, setShoppingPurchased, transferPurchasedToPantry, writeShoppingItems } from '../src/features/shopping/data/localShoppingStore'
 import { readPantryItems, writePantryItems } from '../src/features/pantry/data/localPantryStore'
 import type { PantryItem } from '../src/features/pantry/domain/pantry'
 
@@ -13,6 +13,11 @@ const pantry: PantryItem[] = [
   { id: 'oil', name: 'Aceite de oliva', category: 'Almacén', quantity: 100, unit: 'ml', minimum: 0, expiry: '' },
   { id: 'tomatoes', name: 'Tomates cherry', category: 'Frutas y verduras', quantity: 200, unit: 'g', minimum: 0, expiry: '2026-09-22' },
 ]
+
+function shoppingItem(overrides: Partial<ShoppingItem> = {}): ShoppingItem {
+  return { id: 'one', name: 'Arroz', category: 'Almacén', quantity: 200, unit: 'g', note: '', checked: false,
+    transferredToPantry: false, transferredAt: null, sources: ['manual'], ...overrides }
+}
 
 test('recipe suggestions sum repeated ingredients before subtracting usable pantry stock once', () => {
   const recipe = sampleRecipes.find((item) => item.id === 'chicken-rice')!
@@ -32,7 +37,7 @@ test('pantry restock suggests low, empty and expired products without duplicates
 })
 
 test('merging suggestions is idempotent and preserves edits and checked state', () => {
-  const current: ShoppingItem[] = [{ id: 'one', name: 'Arroz integral', category: 'Granos y legumbres', quantity: 80, unit: 'g', note: 'Marca habitual', checked: true, sources: ['manual'] }]
+  const current: ShoppingItem[] = [shoppingItem({ name: 'Arroz integral', category: 'Granos y legumbres', quantity: 80, note: 'Marca habitual', checked: true })]
   const suggestions = [{ name: ' arroz  INTEGRAL ', category: 'Granos y legumbres' as const, quantity: 120, unit: 'g' as const, source: 'plan' as const }]
   const merged = mergeShoppingSuggestions(current, suggestions)
   assert.deepEqual(merged, [{ ...current[0], quantity: 120, sources: ['manual', 'plan'] }])
@@ -54,7 +59,7 @@ test('sending recipe faltantes twice keeps one row per ingredient and the correc
 test('shopping storage persists valid items and ignores malformed records', () => {
   const entries = new Map<string, string>()
   const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
-  const item: ShoppingItem = { id: 'one', name: 'Arroz', category: 'Almacén', quantity: 200, unit: 'g', note: '', checked: false, sources: ['manual'] }
+  const item = shoppingItem()
   writeShoppingItems([item], storage)
   assert.deepEqual(readShoppingItems(storage), [item])
   entries.set('cocinapp.shopping.v1', JSON.stringify([item, { ...item, id: 'bad', quantity: -1 }]))
@@ -65,9 +70,9 @@ test('shopping storage persists valid items and ignores malformed records', () =
 
 test('category, search and status filters combine and return an empty result when nothing matches', () => {
   const items: ShoppingItem[] = [
-    { id: 'milk', name: 'Leche', category: 'Lácteos', quantity: 1, unit: 'l', note: '', checked: false, sources: ['manual'] },
-    { id: 'yogurt', name: 'Yogur', category: 'Lácteos', quantity: 1, unit: 'u', note: '', checked: true, sources: ['manual'] },
-    { id: 'apple', name: 'Manzana', category: 'Frutas y verduras', quantity: 2, unit: 'u', note: '', checked: false, sources: ['manual'] },
+    shoppingItem({ id: 'milk', name: 'Leche', category: 'Lácteos', quantity: 1, unit: 'l' }),
+    shoppingItem({ id: 'yogurt', name: 'Yogur', category: 'Lácteos', quantity: 1, unit: 'u', checked: true }),
+    shoppingItem({ id: 'apple', name: 'Manzana', category: 'Frutas y verduras', quantity: 2, unit: 'u' }),
   ]
   assert.deepEqual(filterShoppingItems(items, { search: 'LECHE', category: 'Lácteos', status: 'pending' }).map((item) => item.id), ['milk'])
   assert.deepEqual(filterShoppingItems(items, { search: '', category: 'Lácteos', status: 'checked' }).map((item) => item.id), ['yogurt'])
@@ -75,33 +80,47 @@ test('category, search and status filters combine and return an empty result whe
   assert.equal(filterShoppingItems(items, { search: '', category: '', status: 'all' }).length, 3)
 })
 
-test('purchased items transfer once, persist, and remain after unchecking', () => {
+test('individual and bulk purchase marking persist without transferring to pantry', () => {
   const entries = new Map<string, string>()
   const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
-  const purchase: ShoppingItem = { id: 'milk', name: 'Leche', category: 'Lácteos', quantity: 2, unit: 'l', note: '', checked: false, sources: ['manual'] }
-  writeShoppingItems([purchase], storage)
+  writeShoppingItems([shoppingItem({ id: 'milk', name: 'Leche', category: 'Lácteos', quantity: 2, unit: 'l' }), shoppingItem({ id: 'apple', name: 'Manzana', unit: 'u' })], storage)
   setShoppingPurchased('milk', true, storage)
-  assert.equal(readPantryItems(storage)[0].quantity, 2)
-  assert.equal(readPantryItems(storage)[0].expiry, '')
-  setShoppingPurchased('milk', false, storage)
-  assert.equal(readPantryItems(storage).length, 1)
-  setShoppingPurchased('milk', true, storage)
-  assert.equal(readPantryItems(storage)[0].quantity, 2)
-  assert.equal(readShoppingItems(storage)[0].transferred, true)
+  assert.equal(readPantryItems(storage).length, 0)
+  assert.equal(readShoppingItems(storage)[0].checked, true)
+  assert.equal(markAllShoppingPurchased(storage).every((item) => item.checked), true)
+  assert.equal(readPantryItems(storage).length, 0)
 })
 
-test('existing compatible stock combines quantities and incompatible units remain separate', () => {
+test('only purchased items transfer once; compatible stock combines and incompatible units remain separate', () => {
   const entries = new Map<string, string>()
   const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
   writePantryItems([{ id: 'rice', name: 'Arroz', category: 'Almacén', quantity: 500, unit: 'g', minimum: 100, expiry: '2027-01-01' }], storage)
   writeShoppingItems([
-    { id: 'kg', name: 'Arroz', category: 'Almacén', quantity: 1, unit: 'kg', note: '', checked: false, sources: ['manual'] },
-    { id: 'units', name: 'Arroz', category: 'Almacén', quantity: 2, unit: 'u', note: '', checked: false, sources: ['manual'] },
+    shoppingItem({ id: 'kg', name: 'Arroz', quantity: 1, unit: 'kg', checked: true }),
+    shoppingItem({ id: 'units', name: 'Arroz', quantity: 2, unit: 'u', checked: true }),
+    shoppingItem({ id: 'pending', name: 'Sal', quantity: 1, unit: 'u' }),
   ], storage)
-  setShoppingPurchased('kg', true, storage)
+  const first = transferPurchasedToPantry(storage, new Date('2026-09-28T12:00:00Z'))
+  assert.equal(first.transferredCount, 2)
+  assert.equal(readPantryItems(storage).length, 2)
   assert.equal(readPantryItems(storage)[0].quantity, 1500)
   assert.equal(readPantryItems(storage)[0].expiry, '2027-01-01')
-  setShoppingPurchased('units', true, storage)
-  assert.equal(readPantryItems(storage).length, 2)
   assert.equal(readPantryItems(storage)[1].unit, 'u')
+  assert.equal(readPantryItems(storage).some((item) => item.name === 'Sal'), false)
+  assert.equal(readShoppingItems(storage).filter((item) => item.transferredToPantry).length, 2)
+  assert.equal(transferPurchasedToPantry(storage).transferredCount, 0)
+  assert.equal(readPantryItems(storage)[0].quantity, 1500)
+  setShoppingPurchased('kg', false, storage)
+  assert.equal(readPantryItems(storage)[0].quantity, 1500)
+})
+
+test('new pantry products use a null expiry and legacy checked items are not assumed transferred', () => {
+  const entries = new Map<string, string>()
+  const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
+  const legacy = { id: 'milk', name: 'Leche', category: 'Lácteos', quantity: 2, unit: 'l', note: '', checked: true, sources: ['manual'] }
+  entries.set('cocinapp.shopping.v1', JSON.stringify([legacy]))
+  assert.equal(readShoppingItems(storage)[0].transferredToPantry, false)
+  transferPurchasedToPantry(storage)
+  assert.equal(readPantryItems(storage)[0].expiry, null)
+  assert.deepEqual(readPantryItems(storage)[0].sourceShoppingIds, ['milk'])
 })

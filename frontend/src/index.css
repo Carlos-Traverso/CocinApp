@@ -375,6 +375,11 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
   .recipe-artwork-card { height: 145px; }
 }
 @media (max-width: 500px) { .cooking-main { padding: 24px 16px; } .cooking-step-symbol { width: 58px; height: 58px; margin: 12px auto 20px; } .cooking-step h1 { font-size: 27px; margin-bottom: 22px; } .cooking-footer { position: sticky; bottom: 0; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); } .cooking-footer span { display: none; } .cooking-footer .button { min-width: 0; flex: 1; } .cooking-finish-actions .button { width: 100%; } .history-actions .button { flex: 1; } }
+
+.shopping-primary-actions { justify-content: flex-end; }
+.shopping-state { font-weight: 750; color: var(--ink); }
+.spin { animation: cooking-spin 1s linear infinite; }
+@keyframes cooking-spin { to { transform: rotate(360deg); } }
 .shopping-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 700px) { .shopping-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); } .shopping-controls .field:first-child { grid-column: 1 / -1; } }
 @media (max-width: 400px) { .shopping-form-grid { grid-template-columns: 1fr; } .shopping-imports .button { width: 100%; } .shopping-list { padding-inline: 14px; } }

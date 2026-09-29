@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Heart, CalendarDays, Pencil, Plus, Refrigerator, Search, Trash2, X } from 'lucide-react'
+import { CheckCheck, Heart, CalendarDays, LoaderCircle, Pencil, Plus, Refrigerator, Search, Trash2, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { readPantryItems } from '../features/pantry/data/localPantryStore'
 import { formatPantryAmount, type PantryCategory, type PantryUnit } from '../features/pantry/domain/pantry'
@@ -7,14 +7,14 @@ import { getActiveCategories, getActiveUnits } from '../features/admin/data/loca
 import { readMealPlan } from '../features/planner/data/localMealPlanStore'
 import { weekDates } from '../features/planner/domain/planner'
 import { readFavoriteIds } from '../features/recipes/data/localFavoritesStore'
-import { appendShoppingSuggestions, readShoppingItems, setShoppingPurchased, writeShoppingItems } from '../features/shopping/data/localShoppingStore'
+import { appendShoppingSuggestions, markAllShoppingPurchased, readShoppingItems, setShoppingPurchased, transferPurchasedToPantry, writeShoppingItems } from '../features/shopping/data/localShoppingStore'
 import { filterShoppingItems, shoppingKey, suggestForRecipes, suggestPantryRestock, type ShoppingItem, type ShoppingStatusFilter, type ShoppingSuggestion } from '../features/shopping/domain/shopping'
 import { getAvailableRecipes } from '../features/recipes/data/availableRecipes'
 
 const sourceLabels = { manual: 'Manual', recipe: 'Receta', plan: 'Plan', favorites: 'Favoritos', pantry: 'Despensa' }
 
 function emptyItem(): ShoppingItem {
-  return { id: crypto.randomUUID(), name: '', category: 'Otros', quantity: 1, unit: 'u', note: '', checked: false, sources: ['manual'] }
+  return { id: crypto.randomUUID(), name: '', category: 'Otros', quantity: 1, unit: 'u', note: '', checked: false, transferredToPantry: false, transferredAt: null, sources: ['manual'] }
 }
 
 export function ShoppingPage() {
@@ -26,12 +26,15 @@ export function ShoppingPage() {
   const [status, setStatus] = useState<ShoppingStatusFilter>('all')
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
+  const [transferring, setTransferring] = useState(false)
 
   const categories = [...new Set([...getActiveCategories(), ...items.map((item) => item.category)])]
   const visible = filterShoppingItems(items, { search, category, status })
     .sort((a, b) => categories.indexOf(a.category) - categories.indexOf(b.category) || a.name.localeCompare(b.name, 'es'))
   const groups = categories.map((name) => ({ name, items: visible.filter((item) => item.category === name) })).filter((group) => group.items.length > 0)
   const checkedCount = items.filter((item) => item.checked).length
+  const pendingCount = items.filter((item) => !item.checked && !item.transferredToPantry).length
+  const transferableCount = items.filter((item) => item.checked && !item.transferredToPantry).length
 
   function persist(next: ShoppingItem[], message: string): boolean {
     try { writeShoppingItems(next); setItems(next); setNotice(message); setError(''); return true }
@@ -66,7 +69,7 @@ export function ShoppingPage() {
     event.preventDefault()
     if (!draft) return
     const original = items.find((item) => item.id === draft.id)
-    const candidate = original?.transferred
+    const candidate = original?.transferredToPantry
       ? { ...original, note: draft.note.trim() }
       : { ...draft, name: draft.name.trim().replace(/\s+/g, ' '), note: draft.note.trim() }
     if (!candidate.name || !Number.isFinite(candidate.quantity) || candidate.quantity <= 0 || candidate.quantity > 1_000_000) {
@@ -89,9 +92,26 @@ export function ShoppingPage() {
     try {
       const next = setShoppingPurchased(item.id, checked)
       setItems(next)
-      setNotice(checked ? item.transferred ? 'Compra marcada. El producto ya estaba registrado en tu despensa.' : `${item.name} se agregó a tu despensa. Podés completar su vencimiento allí.` : 'Compra marcada como pendiente. El producto permanece en la despensa.')
+      setNotice(checked ? `${item.name} se marcó como comprado.` : item.transferredToPantry ? `${item.name} sigue en la despensa.` : `${item.name} volvió a pendiente.`)
       setError('')
-    } catch { setError('No se pudo guardar la compra y la despensa. Intentá nuevamente.') }
+    } catch { setError('No se pudo guardar el estado de la compra. Intentá nuevamente.') }
+  }
+
+  function markAll() {
+    try { setItems(markAllShoppingPurchased()); setNotice(`${pendingCount} ${pendingCount === 1 ? 'producto marcado' : 'productos marcados'} como comprados.`); setError('') }
+    catch { setError('No se pudieron marcar las compras. Intentá nuevamente.') }
+  }
+
+  function transferAll() {
+    if (transferableCount > 1 && !window.confirm(`¿Enviar ${transferableCount} productos a la despensa?`)) return
+    setTransferring(true)
+    try {
+      const result = transferPurchasedToPantry()
+      setItems(result.items)
+      setNotice(`${result.transferredCount} ${result.transferredCount === 1 ? 'producto enviado' : 'productos enviados'} a la despensa.`)
+      setError('')
+    } catch { setError('La transferencia no se completó. Podés reintentar sin duplicar productos.') }
+    finally { setTransferring(false) }
   }
 
   return <div className="page shopping-page">
@@ -99,15 +119,17 @@ export function ShoppingPage() {
 
     <section aria-label="Añadir sugerencias" className="shopping-imports"><button className="button button-quiet" onClick={importPlan} type="button"><CalendarDays size={17} /> Desde el plan semanal</button><button className="button button-quiet" onClick={importFavorites} type="button"><Heart size={17} /> Desde favoritos</button><button className="button button-quiet" onClick={() => importSuggestions(suggestPantryRestock(readPantryItems()), 'la despensa')} type="button"><Refrigerator size={17} /> Reponer despensa</button></section>
 
+    <section aria-label="Acciones de compras" className="shopping-imports shopping-primary-actions"><button className="button button-quiet" disabled={pendingCount === 0 || transferring} onClick={markAll} type="button"><CheckCheck size={17} /> Marcar todas como compradas</button><button className="button button-primary" disabled={transferableCount === 0 || transferring} onClick={transferAll} type="button">{transferring ? <LoaderCircle className="spin" size={17} /> : <Refrigerator size={17} />} {transferring ? 'Enviando…' : `Enviar ${transferableCount} ${transferableCount === 1 ? 'producto' : 'productos'} a despensa`}</button></section>
+
     <section aria-label="Filtros de compras" className="shopping-controls"><label className="field"><span>Buscar artículo</span><span className="pantry-search-input"><Search aria-hidden="true" size={17} /><input onChange={(event) => setSearch(event.currentTarget.value)} placeholder="Ej.: arroz" type="search" value={search} /></span></label><label className="field"><span>Estado</span><select onChange={(event) => setStatus(event.currentTarget.value as ShoppingStatusFilter)} value={status}><option value="all">Todos</option><option value="pending">Pendientes</option><option value="checked">Comprados</option></select></label></section>
     <div aria-label="Filtrar por categoría" className="shopping-category-filters" role="group"><button aria-pressed={category === ''} className="shopping-category-chip" onClick={() => setCategory('')} type="button">Todas</button>{categories.map((option) => <button aria-pressed={category === option} className="shopping-category-chip" key={option} onClick={() => setCategory(option)} type="button">{option}</button>)}</div>
     <div className="pantry-results"><span aria-live="polite">{visible.length} visibles · {checkedCount} de {items.length} comprados</span><button onClick={() => { setSearch(''); setCategory(''); setStatus('all') }} type="button">Limpiar filtros</button></div>
     {notice && <p className="form-message pantry-notice" role="status">{notice}</p>}{error && <p className="form-message error" role="alert">{error}</p>}
 
-    {visible.length === 0 ? <section className="pantry-empty"><h2>{items.length ? 'Sin resultados' : 'Tu lista está vacía'}</h2><p>{items.length ? 'Probá otros filtros.' : 'Añadí un artículo o generá sugerencias desde el plan, favoritos o despensa.'}</p></section> : <section aria-label="Artículos de compras" className="shopping-list">{groups.map((group) => <div className="shopping-group" key={group.name}><h2>{group.name}</h2>{group.items.map((item) => <article className={`shopping-row${item.checked ? ' checked' : ''}`} key={item.id}><label className="shopping-check"><input aria-label={`${item.checked ? 'Marcar pendiente' : 'Marcar comprado'}: ${item.name}`} checked={item.checked} onChange={(event) => togglePurchased(item, event.currentTarget.checked)} type="checkbox" /></label><div className="shopping-copy"><strong>{item.name}</strong><span>{formatPantryAmount(item.quantity, item.unit)} · {item.sources.map((source) => sourceLabels[source]).join(', ')}</span>{item.note && <small>{item.note}</small>}</div><div className="shopping-actions"><button aria-label={`Editar ${item.name}`} className="pantry-icon-button" onClick={() => { setDraft({ ...item }); setError('') }} type="button"><Pencil size={17} /></button><button aria-label={`Eliminar ${item.name}`} className="pantry-icon-button" onClick={() => remove(item)} type="button"><Trash2 size={17} /></button></div></article>)}</div>)}</section>}
+    {visible.length === 0 ? <section className="pantry-empty"><h2>{items.length ? 'Sin resultados' : 'Tu lista está vacía'}</h2><p>{items.length ? 'Probá otros filtros.' : 'Añadí un artículo o generá sugerencias desde el plan, favoritos o despensa.'}</p></section> : <section aria-label="Artículos de compras" className="shopping-list">{groups.map((group) => <div className="shopping-group" key={group.name}><h2>{group.name}</h2>{group.items.map((item) => <article className={`shopping-row${item.checked ? ' checked' : ''}`} key={item.id}><label className="shopping-check"><input aria-label={`${item.checked ? 'Marcar pendiente' : 'Marcar comprado'}: ${item.name}`} checked={item.checked} disabled={transferring} onChange={(event) => togglePurchased(item, event.currentTarget.checked)} type="checkbox" /></label><div className="shopping-copy"><strong>{item.name}</strong><span>{formatPantryAmount(item.quantity, item.unit)} · {item.sources.map((source) => sourceLabels[source]).join(', ')}</span><small className="shopping-state">{item.transferredToPantry ? '✓ En despensa' : item.checked ? '✓ Comprado' : '○ Pendiente'}</small>{item.note && <small>{item.note}</small>}</div><div className="shopping-actions"><button aria-label={`Editar ${item.name}`} className="pantry-icon-button" onClick={() => { setDraft({ ...item }); setError('') }} type="button"><Pencil size={17} /></button><button aria-label={`Eliminar ${item.name}`} className="pantry-icon-button" onClick={() => remove(item)} type="button"><Trash2 size={17} /></button></div></article>)}</div>)}</section>}
 
     <p className="pantry-footnote">La lista se guarda en este navegador. <Link className="text-link" to="/pantry">Ver despensa →</Link></p>
-    {draft && <dialog aria-labelledby="shopping-editor-title" className="shopping-editor surface" onCancel={() => { setDraft(null); setError('') }} ref={(node) => { if (node && !node.open) { node.showModal(); node.querySelector<HTMLInputElement>('input:not(:disabled)')?.focus() } }}><div className="shopping-editor-heading"><h2 id="shopping-editor-title">{items.some((item) => item.id === draft.id) ? 'Editar artículo' : 'Añadir artículo'}</h2><button aria-label="Cerrar formulario" className="pantry-icon-button" onClick={() => { setDraft(null); setError('') }} type="button"><X size={19} /></button></div><form onSubmit={saveDraft}>{draft.transferred && <p className="shopping-transfer-note">Este producto ya se sumó a tu despensa. Para corregir nombre, cantidad, unidad o categoría, <Link className="text-link" to="/pantry">editá el stock en Despensa</Link>.</p>}<label className="field"><span>Artículo</span><input disabled={draft.transferred} maxLength={70} onChange={(event) => setDraft({ ...draft, name: event.currentTarget.value })} required value={draft.name} /></label><div className="shopping-form-grid"><label className="field"><span>Cantidad</span><input disabled={draft.transferred} min="0.01" max="1000000" onChange={(event) => setDraft({ ...draft, quantity: event.currentTarget.valueAsNumber })} required step="any" type="number" value={Number.isNaN(draft.quantity) ? '' : draft.quantity} /></label><label className="field"><span>Unidad</span><select disabled={draft.transferred} onChange={(event) => setDraft({ ...draft, unit: event.currentTarget.value as PantryUnit })} value={draft.unit}>{getActiveUnits().map((unit) => <option key={unit}>{unit}</option>)}</select></label></div><label className="field"><span>Categoría</span><select disabled={draft.transferred} onChange={(event) => setDraft({ ...draft, category: event.currentTarget.value as PantryCategory })} value={draft.category}>{getActiveCategories().map((option) => <option key={option}>{option}</option>)}</select></label><label className="field"><span>Notas (opcional)</span><input maxLength={200} onChange={(event) => setDraft({ ...draft, note: event.currentTarget.value })} placeholder="Ej.: marca, tamaño" value={draft.note} /></label>{error && <p className="form-message error" role="alert">{error}</p>}<div className="pantry-dialog-actions"><button className="button button-quiet" onClick={() => { setDraft(null); setError('') }} type="button">Cancelar</button><button className="button button-primary" type="submit">Guardar artículo</button></div></form></dialog>}
+    {draft && <dialog aria-labelledby="shopping-editor-title" className="shopping-editor surface" onCancel={() => { setDraft(null); setError('') }} ref={(node) => { if (node && !node.open) { node.showModal(); node.querySelector<HTMLInputElement>('input:not(:disabled)')?.focus() } }}><div className="shopping-editor-heading"><h2 id="shopping-editor-title">{items.some((item) => item.id === draft.id) ? 'Editar artículo' : 'Añadir artículo'}</h2><button aria-label="Cerrar formulario" className="pantry-icon-button" onClick={() => { setDraft(null); setError('') }} type="button"><X size={19} /></button></div><form onSubmit={saveDraft}>{draft.transferredToPantry && <p className="shopping-transfer-note">Este producto ya se sumó a tu despensa. Para corregir nombre, cantidad, unidad o categoría, <Link className="text-link" to="/pantry">editá el stock en Despensa</Link>.</p>}<label className="field"><span>Artículo</span><input disabled={draft.transferredToPantry} maxLength={70} onChange={(event) => setDraft({ ...draft, name: event.currentTarget.value })} required value={draft.name} /></label><div className="shopping-form-grid"><label className="field"><span>Cantidad</span><input disabled={draft.transferredToPantry} min="0.01" max="1000000" onChange={(event) => setDraft({ ...draft, quantity: event.currentTarget.valueAsNumber })} required step="any" type="number" value={Number.isNaN(draft.quantity) ? '' : draft.quantity} /></label><label className="field"><span>Unidad</span><select disabled={draft.transferredToPantry} onChange={(event) => setDraft({ ...draft, unit: event.currentTarget.value as PantryUnit })} value={draft.unit}>{getActiveUnits().map((unit) => <option key={unit}>{unit}</option>)}</select></label></div><label className="field"><span>Categoría</span><select disabled={draft.transferredToPantry} onChange={(event) => setDraft({ ...draft, category: event.currentTarget.value as PantryCategory })} value={draft.category}>{getActiveCategories().map((option) => <option key={option}>{option}</option>)}</select></label><label className="field"><span>Notas (opcional)</span><input maxLength={200} onChange={(event) => setDraft({ ...draft, note: event.currentTarget.value })} placeholder="Ej.: marca, tamaño" value={draft.note} /></label>{error && <p className="form-message error" role="alert">{error}</p>}<div className="pantry-dialog-actions"><button className="button button-quiet" onClick={() => { setDraft(null); setError('') }} type="button">Cancelar</button><button className="button button-primary" type="submit">Guardar artículo</button></div></form></dialog>}
   </div>
 }
 
