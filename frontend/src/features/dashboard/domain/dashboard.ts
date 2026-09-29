@@ -1,106 +1,84 @@
-import { getPantryFlags, type PantryItem } from '../../pantry/domain/pantry'
-import { getIngredientAvailability } from '../../recipes/domain/recipeRules'
-import type { Recipe } from '../../recipes/domain/Recipe'
-import type { PlannedMeal } from '../../planner/domain/planner'
-import type { ShoppingItem } from '../../shopping/domain/shopping'
 import type { PreparationEvent } from '../../cooking/domain/cooking'
-import { meals, weekDates, type Meal } from '../../planner/domain/planner'
-import { discoverRecipes, type RecipeDiscovery } from '../../recipes/domain/recipeDiscovery'
+import type { PantryItem } from '../../pantry/domain/pantry'
+import type { Meal } from '../../planner/domain/planner'
+import type { Recipe } from '../../recipes/domain/Recipe'
+import { getIngredientAvailability } from '../../recipes/domain/recipeRules'
 
-export interface DashboardData {
-  pantry: PantryItem[]
-  recipes: Recipe[]
-  knownRecipes?: Recipe[]
-  favoriteIds: string[]
-  plan: PlannedMeal[]
-  shopping: ShoppingItem[]
-  history: PreparationEvent[]
+export interface CookingSuggestion {
+  recipe: Recipe
+  availableCount: number
+  missingNames: string[]
+  canCook: boolean
+  reason: string
 }
 
-export interface DashboardSummary {
-  pantry: {
-    totalItems: number
-    lowStock: PantryItem[]
-    expired: PantryItem[]
-    expiringSoon: PantryItem[]
-  }
-  suggestedRecipes: { recipe: Recipe; availableCount: number; missingNames: string[]; canCook: boolean }[]
-  favorites: Recipe[]
-  todayMeals: (PlannedMeal & { recipe: Recipe })[]
-  weeklyMealCount: number
-  shopping: { pendingCount: number; completedCount: number; pendingItems: ShoppingItem[] }
-  recentHistory: PreparationEvent[]
-  discovery: RecipeDiscovery
+export interface RecommendationContext {
+  pantry?: PantryItem[]
+  favoriteIds?: string[]
+  history?: PreparationEvent[]
+  rotation?: number
+  today?: Date
 }
 
-function toLocalDate(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+export interface TimeRecommendation { meal: Meal; recipe?: Recipe; reason?: string }
+
+export function recentPreparations(history: PreparationEvent[], knownRecipeIds: Iterable<string>, limit = 4): PreparationEvent[] {
+  const known = new Set(knownRecipeIds)
+  return [...history].filter((event) => known.has(event.recipeId))
+    .sort((first, second) => second.cookedAt.localeCompare(first.cookedAt)).slice(0, limit)
 }
 
 export function mealForHour(hour: number): Meal {
   const normalizedHour = ((Math.floor(hour) % 24) + 24) % 24
   if (normalizedHour >= 5 && normalizedHour < 11) return 'Desayuno'
-  if (normalizedHour >= 11 && normalizedHour < 16) return 'Almuerzo'
-  if (normalizedHour >= 16 && normalizedHour < 19) return 'Merienda'
+  if (normalizedHour >= 11 && normalizedHour < 15) return 'Almuerzo'
+  if (normalizedHour >= 15 && normalizedHour < 19) return 'Merienda'
   return 'Cena'
 }
 
-export function recommendRecipeForTime(recipes: Recipe[], hour: number): { meal: Meal; recipe?: Recipe } {
+export function buildCookingSuggestions(recipes: Recipe[], pantry: PantryItem[], today = new Date(), limit = 4): CookingSuggestion[] {
+  return recipes.flatMap((recipe): CookingSuggestion[] => {
+    const availability = getIngredientAvailability(recipe, pantry, today)
+    const missingNames = availability.missing.map((ingredient) => ingredient.name)
+    if (missingNames.length > 2) return []
+    const canCook = missingNames.length === 0
+    return [{ recipe, availableCount: availability.available.length, missingNames, canCook,
+      reason: canCook ? 'Tenés todos los ingredientes disponibles.' : `Te ${missingNames.length === 1 ? 'falta' : 'faltan'} ${missingNames.join(' y ')}.` }]
+  }).sort((first, second) => Number(second.canCook) - Number(first.canCook)
+    || first.missingNames.length - second.missingNames.length
+    || second.availableCount - first.availableCount
+    || first.recipe.minutes - second.recipe.minutes)
+    .slice(0, limit)
+}
+
+function localRotation(date: Date): number {
+  return Math.floor(new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() / 86_400_000)
+}
+
+export function recommendRecipeForTime(recipes: Recipe[], hour: number, context: RecommendationContext = {}): TimeRecommendation {
   const meal = mealForHour(hour)
   const matching = recipes.filter((recipe) => recipe.mealShift === meal || recipe.category === meal)
   const candidates = matching.length > 0 ? matching : recipes
-  const recipe = [...candidates].sort((first, second) => (second.popularity ?? 0) - (first.popularity ?? 0)
-    || first.minutes - second.minutes
-    || first.name.localeCompare(second.name, 'es'))[0]
-  return { meal, recipe }
-}
-
-export function buildDashboardSummary(data: DashboardData, today = new Date()): DashboardSummary {
-  const flags = data.pantry.map((item) => ({ item, flags: getPantryFlags(item, today) }))
-  const week = new Set(weekDates(today))
-  const todayKey = toLocalDate(today)
-  const recipeById = new Map((data.knownRecipes ?? data.recipes).map((recipe) => [recipe.id, recipe]))
-  const activeRecipeById = new Map(data.recipes.map((recipe) => [recipe.id, recipe]))
-  const todayMeals = data.plan.flatMap((entry) => {
-    const recipe = recipeById.get(entry.recipeId)
-    return entry.date === todayKey && recipe ? [{ ...entry, recipe }] : []
-  }).sort((first, second) => meals.indexOf(first.meal) - meals.indexOf(second.meal))
-  const pendingItems = data.shopping.filter((item) => !item.checked)
-  const discovery = discoverRecipes(data.recipes, data.knownRecipes ?? data.recipes, data.favoriteIds, data.history)
-
-  return {
-    pantry: {
-      totalItems: data.pantry.length,
-      lowStock: flags.filter(({ flags: itemFlags }) => itemFlags.low || itemFlags.empty).map(({ item }) => item),
-      expired: flags.filter(({ flags: itemFlags }) => itemFlags.expired).map(({ item }) => item),
-      expiringSoon: flags.filter(({ flags: itemFlags }) => itemFlags.soon).map(({ item }) => item),
-    },
-    suggestedRecipes: data.recipes.map((recipe) => {
-      const availability = getIngredientAvailability(recipe, data.pantry, today)
-      return {
-        recipe,
-        availableCount: availability.available.length,
-        missingNames: availability.missing.map((ingredient) => ingredient.name),
-        canCook: availability.missing.length === 0,
-      }
-    }).sort((first, second) => Number(second.canCook) - Number(first.canCook)
-      || second.availableCount - first.availableCount
-      || first.recipe.minutes - second.recipe.minutes),
-    favorites: data.favoriteIds.flatMap((id) => {
-      const recipe = activeRecipeById.get(id)
-      return recipe ? [recipe] : []
-    }),
-    todayMeals,
-    weeklyMealCount: data.plan.filter((entry) => week.has(entry.date) && recipeById.has(entry.recipeId)).length,
-    shopping: {
-      pendingCount: pendingItems.length,
-      completedCount: data.shopping.length - pendingItems.length,
-      pendingItems,
-    },
-    recentHistory: [...data.history]
-      .filter((event) => recipeById.has(event.recipeId))
-      .sort((first, second) => second.cookedAt.localeCompare(first.cookedAt))
-      .slice(0, 4),
-    discovery,
-  }
+  if (candidates.length === 0) return { meal }
+  const pantry = context.pantry ?? []
+  const favorites = new Set(context.favoriteIds ?? [])
+  const historyIds = new Set((context.history ?? []).map((event) => event.recipeId))
+  const ranked = candidates.map((recipe) => {
+    const availability = getIngredientAvailability(recipe, pantry, context.today)
+    const canCook = availability.missing.length === 0 && recipe.ingredients.length > 0
+    const favorite = favorites.has(recipe.id)
+    const known = historyIds.has(recipe.id)
+    const score = Number(canCook) * 8 + Number(favorite) * 4 + Number(known) * 2 + Number(recipe.featured === true)
+    return { recipe, score, canCook, favorite, known }
+  }).sort((first, second) => second.score - first.score || first.recipe.minutes - second.recipe.minutes || first.recipe.id.localeCompare(second.recipe.id))
+  const bestScore = ranked[0].score
+  const tied = ranked.filter((entry) => entry.score === bestScore)
+  const rotation = context.rotation ?? localRotation(context.today ?? new Date())
+  const selected = tied[((rotation % tied.length) + tied.length) % tied.length]
+  const reasons = [`Es apropiada para ${meal.toLocaleLowerCase('es')}`]
+  if (selected.canCook) reasons.push('podés prepararla con tu despensa')
+  if (selected.favorite) reasons.push('está entre tus favoritas')
+  else if (selected.known) reasons.push('ya forma parte de tu historial')
+  else if (selected.recipe.featured) reasons.push('fue destacada por administración')
+  return { meal, recipe: selected.recipe, reason: `${reasons.join(' y ')}.` }
 }

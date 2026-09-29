@@ -40,7 +40,7 @@ test('administrator records override a seed recipe without duplicating or losing
 
 test('recipe filters combine text, category, time, difficulty and pantry availability', () => {
   assert.deepEqual(filterRecipes(sampleRecipes, { search: 'CALABAZA', category: '', maxMinutes: null, difficulty: '', pantryOnly: false }, pantry, today).map((item) => item.id), ['pumpkin-pasta', 'roasted-vegetable-soup'])
-  assert.deepEqual(filterRecipes(sampleRecipes, { search: '', category: 'Almuerzo', maxMinutes: 25, difficulty: 'Fácil', pantryOnly: false }, pantry, today).map((item) => item.id), ['chickpea-salad'])
+  assert.deepEqual(filterRecipes(sampleRecipes, { search: '', category: 'Almuerzo', maxMinutes: 25, difficulty: 'Fácil', pantryOnly: false }, pantry, today).map((item) => item.id), ['chickpea-salad', 'caprese-sandwich', 'tuna-rice-salad', 'vegetable-wrap'])
   assert.deepEqual(filterRecipes(sampleRecipes, { search: '', category: '', maxMinutes: null, difficulty: '', pantryOnly: true }, pantry, today), [])
 })
 
