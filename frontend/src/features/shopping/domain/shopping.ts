@@ -10,7 +10,36 @@ export interface ShoppingItem {
   unit: PantryUnit
   note: string
   checked: boolean
+  transferred?: boolean
   sources: ShoppingSource[]
+}
+
+const baseUnits: Record<string, { dimension: string; factor: number; base: string }> = {
+  g: { dimension: 'mass', factor: 1, base: 'g' }, kg: { dimension: 'mass', factor: 1000, base: 'g' },
+  ml: { dimension: 'volume', factor: 1, base: 'ml' }, l: { dimension: 'volume', factor: 1000, base: 'ml' },
+  u: { dimension: 'count', factor: 1, base: 'u' },
+}
+
+export function addPurchaseToPantry(pantry: PantryItem[], purchase: ShoppingItem): PantryItem[] {
+  if (pantry.some((item) => item.sourceShoppingIds?.includes(purchase.id))) return pantry
+  const incoming = baseUnits[purchase.unit]
+  const matchingIndex = pantry.findIndex((item) => {
+    if (normalizePantryName(item.name) !== normalizePantryName(purchase.name) || item.category !== purchase.category) return false
+    if (item.expiry && (daysUntilExpiry(item.expiry) ?? -1) < 0) return false
+    const stored = baseUnits[item.unit]
+    return item.unit === purchase.unit || Boolean(incoming && stored && incoming.dimension === stored.dimension)
+  })
+  if (matchingIndex < 0) return [...pantry, {
+    id: crypto.randomUUID(), name: purchase.name, category: purchase.category, quantity: purchase.quantity,
+    unit: purchase.unit, minimum: 0, expiry: '', sourceShoppingIds: [purchase.id],
+  }]
+  return pantry.map((item, index) => {
+    if (index !== matchingIndex) return item
+    const stored = baseUnits[item.unit]
+    const converted = incoming && stored ? purchase.quantity * incoming.factor / stored.factor : purchase.quantity
+    return { ...item, quantity: Math.round((item.quantity + converted) * 1000) / 1000,
+      sourceShoppingIds: [...(item.sourceShoppingIds ?? []), purchase.id] }
+  })
 }
 export interface ShoppingSuggestion {
   name: string

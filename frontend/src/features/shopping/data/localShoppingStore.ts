@@ -1,5 +1,7 @@
 import { getKnownCategories, getKnownUnits } from '../../admin/data/localAdminStore'
 import { personalStorage } from '../../auth/data/personalStorage'
+import { readPantryItems, writePantryItems } from '../../pantry/data/localPantryStore'
+import { addPurchaseToPantry } from '../domain/shopping'
 import { mergeShoppingSuggestions, type ShoppingItem, type ShoppingSource, type ShoppingSuggestion } from '../domain/shopping'
 
 const key = 'cocinapp.shopping.v1'
@@ -19,6 +21,7 @@ function isShoppingItem(value: unknown): value is ShoppingItem {
     && typeof item.quantity === 'number' && Number.isFinite(item.quantity) && item.quantity > 0 && item.quantity <= 1_000_000
     && typeof item.note === 'string' && item.note.length <= 200
     && typeof item.checked === 'boolean'
+    && (item.transferred === undefined || typeof item.transferred === 'boolean')
     && Array.isArray(item.sources) && item.sources.length > 0
     && item.sources.every((source: unknown) => sources.includes(source as ShoppingSource))
 }
@@ -44,4 +47,17 @@ export function appendShoppingSuggestions(suggestions: ShoppingSuggestion[], sto
   const merged = mergeShoppingSuggestions(readShoppingItems(storage), suggestions)
   writeShoppingItems(merged, storage)
   return merged
+}
+
+export function setShoppingPurchased(id: string, checked: boolean, storage: StorageLike = personalStorage): ShoppingItem[] {
+  const items = readShoppingItems(storage)
+  const item = items.find((entry) => entry.id === id)
+  if (!item) return items
+  if (checked && !item.transferred) {
+    const pantry = readPantryItems(storage)
+    writePantryItems(addPurchaseToPantry(pantry, item), storage)
+  }
+  const next = items.map((entry) => entry.id === id ? { ...entry, checked, transferred: entry.transferred || checked } : entry)
+  writeShoppingItems(next, storage)
+  return next
 }

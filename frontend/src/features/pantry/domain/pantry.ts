@@ -17,6 +17,7 @@ export interface PantryItem {
   unit: PantryUnit
   minimum: number
   expiry: string
+  sourceShoppingIds?: string[]
 }
 
 export interface PantryFilters {

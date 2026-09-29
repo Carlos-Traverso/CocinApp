@@ -45,7 +45,8 @@ export function readPantryItems(storage: PantryStorage = personalStorage): Pantr
     if (current === null && items.length > 0) {
       try { writePantryItems(items, storage) } catch { /* Existing data remains readable. */ }
     }
-    return items
+    const seen = new Set<string>()
+    return items.filter((item) => { if (seen.has(item.id)) return false; seen.add(item.id); return true })
   } catch {
     return []
   }
@@ -53,5 +54,6 @@ export function readPantryItems(storage: PantryStorage = personalStorage): Pantr
 
 export function writePantryItems(items: PantryItem[], storage: PantryStorage = personalStorage): void {
   storage.setItem(pantryKey, JSON.stringify(items))
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('cocinapp:pantry-updated'))
 }
 

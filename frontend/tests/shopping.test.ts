@@ -2,7 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { sampleRecipes } from '../src/mocks/recipes'
 import { filterShoppingItems, mergeShoppingSuggestions, suggestForRecipes, suggestPantryRestock, type ShoppingItem } from '../src/features/shopping/domain/shopping'
-import { appendShoppingSuggestions, readShoppingItems, writeShoppingItems } from '../src/features/shopping/data/localShoppingStore'
+import { appendShoppingSuggestions, readShoppingItems, setShoppingPurchased, writeShoppingItems } from '../src/features/shopping/data/localShoppingStore'
+import { readPantryItems, writePantryItems } from '../src/features/pantry/data/localPantryStore'
 import type { PantryItem } from '../src/features/pantry/domain/pantry'
 
 const today = new Date(2026, 8, 23)
@@ -72,4 +73,35 @@ test('category, search and status filters combine and return an empty result whe
   assert.deepEqual(filterShoppingItems(items, { search: '', category: 'Lácteos', status: 'checked' }).map((item) => item.id), ['yogurt'])
   assert.deepEqual(filterShoppingItems(items, { search: 'manzana', category: 'Lácteos', status: 'all' }), [])
   assert.equal(filterShoppingItems(items, { search: '', category: '', status: 'all' }).length, 3)
+})
+
+test('purchased items transfer once, persist, and remain after unchecking', () => {
+  const entries = new Map<string, string>()
+  const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
+  const purchase: ShoppingItem = { id: 'milk', name: 'Leche', category: 'Lácteos', quantity: 2, unit: 'l', note: '', checked: false, sources: ['manual'] }
+  writeShoppingItems([purchase], storage)
+  setShoppingPurchased('milk', true, storage)
+  assert.equal(readPantryItems(storage)[0].quantity, 2)
+  assert.equal(readPantryItems(storage)[0].expiry, '')
+  setShoppingPurchased('milk', false, storage)
+  assert.equal(readPantryItems(storage).length, 1)
+  setShoppingPurchased('milk', true, storage)
+  assert.equal(readPantryItems(storage)[0].quantity, 2)
+  assert.equal(readShoppingItems(storage)[0].transferred, true)
+})
+
+test('existing compatible stock combines quantities and incompatible units remain separate', () => {
+  const entries = new Map<string, string>()
+  const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
+  writePantryItems([{ id: 'rice', name: 'Arroz', category: 'Almacén', quantity: 500, unit: 'g', minimum: 100, expiry: '2027-01-01' }], storage)
+  writeShoppingItems([
+    { id: 'kg', name: 'Arroz', category: 'Almacén', quantity: 1, unit: 'kg', note: '', checked: false, sources: ['manual'] },
+    { id: 'units', name: 'Arroz', category: 'Almacén', quantity: 2, unit: 'u', note: '', checked: false, sources: ['manual'] },
+  ], storage)
+  setShoppingPurchased('kg', true, storage)
+  assert.equal(readPantryItems(storage)[0].quantity, 1500)
+  assert.equal(readPantryItems(storage)[0].expiry, '2027-01-01')
+  setShoppingPurchased('units', true, storage)
+  assert.equal(readPantryItems(storage).length, 2)
+  assert.equal(readPantryItems(storage)[1].unit, 'u')
 })
