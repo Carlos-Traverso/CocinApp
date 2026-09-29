@@ -5,7 +5,7 @@ import type { PantryItem } from '../src/features/pantry/domain/pantry'
 import type { PlannedMeal } from '../src/features/planner/domain/planner'
 import type { ShoppingItem } from '../src/features/shopping/domain/shopping'
 import type { PreparationEvent } from '../src/features/cooking/domain/cooking'
-import { buildDashboardSummary } from '../src/features/dashboard/domain/dashboard'
+import { buildDashboardSummary, mealForHour, recommendRecipeForTime } from '../src/features/dashboard/domain/dashboard'
 
 const today = new Date(2026, 8, 23)
 const pantry: PantryItem[] = [
@@ -92,4 +92,18 @@ test('today includes four ordered turns and keeps a historical inactive assignme
   assert.deepEqual(summary.todayMeals.map((entry) => entry.meal), ['Desayuno', 'Almuerzo', 'Merienda', 'Cena'])
   assert.equal(summary.todayMeals[0]?.recipe.id, 'quinoa-bowl')
   assert.equal(summary.weeklyMealCount, 4)
+})
+
+test('time-of-day recommendation follows meal boundaries and popularity', () => {
+  assert.equal(mealForHour(5), 'Desayuno')
+  assert.equal(mealForHour(10), 'Desayuno')
+  assert.equal(mealForHour(11), 'Almuerzo')
+  assert.equal(mealForHour(16), 'Merienda')
+  assert.equal(mealForHour(19), 'Cena')
+  assert.equal(mealForHour(2), 'Cena')
+
+  const breakfast = recommendRecipeForTime(sampleRecipes, 8)
+  assert.equal(breakfast.meal, 'Desayuno')
+  assert.equal(breakfast.recipe?.id, 'avocado-toast')
+  assert.equal(recommendRecipeForTime([], 13).recipe, undefined)
 })

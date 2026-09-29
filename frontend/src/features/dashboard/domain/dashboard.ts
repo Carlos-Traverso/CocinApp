@@ -4,7 +4,7 @@ import type { Recipe } from '../../recipes/domain/Recipe'
 import type { PlannedMeal } from '../../planner/domain/planner'
 import type { ShoppingItem } from '../../shopping/domain/shopping'
 import type { PreparationEvent } from '../../cooking/domain/cooking'
-import { meals, weekDates } from '../../planner/domain/planner'
+import { meals, weekDates, type Meal } from '../../planner/domain/planner'
 import { discoverRecipes, type RecipeDiscovery } from '../../recipes/domain/recipeDiscovery'
 
 export interface DashboardData {
@@ -35,6 +35,24 @@ export interface DashboardSummary {
 
 function toLocalDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+export function mealForHour(hour: number): Meal {
+  const normalizedHour = ((Math.floor(hour) % 24) + 24) % 24
+  if (normalizedHour >= 5 && normalizedHour < 11) return 'Desayuno'
+  if (normalizedHour >= 11 && normalizedHour < 16) return 'Almuerzo'
+  if (normalizedHour >= 16 && normalizedHour < 19) return 'Merienda'
+  return 'Cena'
+}
+
+export function recommendRecipeForTime(recipes: Recipe[], hour: number): { meal: Meal; recipe?: Recipe } {
+  const meal = mealForHour(hour)
+  const matching = recipes.filter((recipe) => recipe.mealShift === meal || recipe.category === meal)
+  const candidates = matching.length > 0 ? matching : recipes
+  const recipe = [...candidates].sort((first, second) => (second.popularity ?? 0) - (first.popularity ?? 0)
+    || first.minutes - second.minutes
+    || first.name.localeCompare(second.name, 'es'))[0]
+  return { meal, recipe }
 }
 
 export function buildDashboardSummary(data: DashboardData, today = new Date()): DashboardSummary {
