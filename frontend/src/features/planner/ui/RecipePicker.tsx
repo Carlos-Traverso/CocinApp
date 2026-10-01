@@ -9,9 +9,10 @@ interface Props {
   recipes: Recipe[]
   onSelect: (id: string) => void
   onClose: () => void
+  selectedId?: string
 }
 
-export function RecipePicker({ title, recipes, onSelect, onClose }: Props) {
+export function RecipePicker({ title, recipes, onSelect, onClose, selectedId }: Props) {
   const dialog = useRef<HTMLDialogElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const listId = useId()
@@ -44,7 +45,10 @@ export function RecipePicker({ title, recipes, onSelect, onClose }: Props) {
     }} placeholder="Ej.: arroz" ref={input} role="combobox" type="search" value={query} />{query && <button aria-label="Limpiar búsqueda" onClick={() => { setQuery(''); setActive(0); input.current?.focus() }} type="button"><X size={17} /></button>}</div>
     <p aria-live="polite" className="recipe-picker-count">{results.length} {results.length === 1 ? 'receta' : 'recetas'}</p>
     <div className="recipe-picker-results" id={`${listId}-results`} role="listbox">
-      {results.length ? results.map((recipe, index) => <button aria-selected={active === index} className={`recipe-picker-option${active === index ? ' active' : ''}`} id={`${listId}-option-${index}`} key={recipe.id} onClick={() => choose(index)} onMouseEnter={() => setActive(index)} role="option" type="button"><RecipeImage className="recipe-picker-thumb" recipe={recipe} /><span><strong>{recipe.name}</strong><small>{recipe.category} · {recipe.minutes} min · {recipe.difficulty}</small></span></button>) : <p className="recipe-picker-empty">No encontramos recetas con ese nombre. Probá otra búsqueda.</p>}
+      {results.length ? results.map((recipe, index) => {
+        const isCurrent = recipe.id === selectedId
+        return <button aria-selected={active === index} className={`recipe-picker-option${active === index ? ' active' : ''}${isCurrent ? ' current' : ''}`} id={`${listId}-option-${index}`} key={recipe.id} onClick={() => choose(index)} onMouseEnter={() => setActive(index)} role="option" type="button"><RecipeImage className="recipe-picker-thumb" recipe={recipe} /><span><strong>{recipe.name}</strong><small>{recipe.category} · {recipe.minutes} min · {recipe.difficulty}</small>{isCurrent && <em className="recipe-picker-current">Planificada actualmente</em>}</span></button>
+      }) : <p className="recipe-picker-empty">No encontramos recetas con ese nombre. Probá otra búsqueda.</p>}
     </div>
   </dialog>
 }

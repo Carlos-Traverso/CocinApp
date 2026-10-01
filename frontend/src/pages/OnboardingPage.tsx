@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowRight, CircleAlert } from 'lucide-react'
 import { type FormEvent, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { BrandLogo } from '../components/BrandLogo'
 import { readLocalProfile, saveLocalProfile } from '../features/profile/data/localProfileStore'
 import { calculateAge, estimateForProfile, profileIsComplete, type ProfileDraft } from '../features/profile/domain/profile'
 import { EnergySummary } from '../features/profile/ui/EnergySummary'
@@ -27,7 +28,7 @@ export function OnboardingPage() {
   }
 
   return <main className="setup-page">
-    <header className="setup-header"><a className="access-wordmark" href="/">Cocin<span>APP</span></a><span>Configuración inicial</span></header>
+    <header className="setup-header"><a aria-label="CocinAPP, inicio" className="access-wordmark" href="/"><BrandLogo /></a><span>Configuración inicial</span></header>
     <section className="setup-card" aria-labelledby="setup-title">
       <div className="setup-progress"><span>Configuración inicial</span><strong>Perfil y preferencias</strong><div><i /></div></div>
       <p className="eyebrow">PRIMEROS PASOS</p>

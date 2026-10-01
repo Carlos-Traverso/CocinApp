@@ -1,6 +1,7 @@
 import { LayoutDashboard, LogOut, ShieldCheck } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { endSession, useAuth } from '../features/auth/data/localAuthStore'
+import { BrandLogo } from './BrandLogo'
 
 export function AdminShell() {
   const session = useAuth()
@@ -12,7 +13,7 @@ export function AdminShell() {
 
   return <div className="app-shell admin-shell">
     <aside className="sidebar admin-sidebar">
-      <NavLink className="wordmark" to="/admin" aria-label="CocinAPP, administración"><img alt="" className="brand-mark" src="/favicon.svg" />Cocin<span>APP</span></NavLink>
+      <NavLink className="wordmark" to="/admin" aria-label="CocinAPP, administración"><BrandLogo /></NavLink>
       <p className="sidebar-label">ADMINISTRACIÓN</p>
       <nav aria-label="Navegación de administración" className="primary-nav">
         <NavLink className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} end to="/admin"><LayoutDashboard size={19} aria-hidden="true" /><span>Resumen y catálogos</span></NavLink>
@@ -23,6 +24,6 @@ export function AdminShell() {
       </div>
       <button className="sidebar-logout" onClick={logout} type="button"><LogOut size={18} aria-hidden="true" /><span>Cerrar sesión</span></button>
     </aside>
-    <main className="main-content"><NavLink className="mobile-brand" to="/admin"><img alt="" className="brand-mark" src="/favicon.svg" />Cocin<span>APP</span></NavLink><Outlet /></main>
+    <main className="main-content"><NavLink aria-label="CocinAPP, administración" className="mobile-brand" to="/admin"><BrandLogo /></NavLink><Outlet /></main>
   </div>
 }

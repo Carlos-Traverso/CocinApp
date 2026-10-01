@@ -6,6 +6,7 @@ import { readLocalProfile, saveLocalProfile } from '../features/profile/data/loc
 import { calculateAge, estimateForProfile, profileIsComplete, type ProfileDraft } from '../features/profile/domain/profile'
 import { EnergySummary } from '../features/profile/ui/EnergySummary'
 import { ProfileFields } from '../features/profile/ui/ProfileFields'
+import { profileHeaderActions } from '../features/profile/ui/profileHeaderActions'
 
 export function ProfilePage() {
   const [profile, setProfile] = useState<ProfileDraft>(() => readLocalProfile())
@@ -28,7 +29,11 @@ export function ProfilePage() {
   return <div className="page profile-page">
     <header className="page-heading">
       <div><p className="eyebrow">CONFIGURACIÓN PERSONAL</p><h1>Mi perfil y preferencias</h1><p className="page-lead">Actualizá tus datos para que CocinAPP pueda priorizar recetas más útiles para vos.</p></div>
-      <Link className="button button-quiet" to="/recipes"><PencilLine size={17} /> Ver recetas</Link>
+      <div className="profile-head-actions" aria-label="Acciones de perfil">
+        {profileHeaderActions.map((action) => action.id === 'recipes'
+          ? <Link className="button button-quiet" key={action.id} to={action.href}><PencilLine aria-hidden="true" size={17} /> {action.label}</Link>
+          : <button className="button button-signout" key={action.id} onClick={endSession} type="button"><LogOut aria-hidden="true" size={17} /> {action.label}</button>)}
+      </div>
     </header>
     <div className="profile-layout">
       <form className="profile-form surface" onSubmit={save}>
@@ -48,11 +53,6 @@ export function ProfilePage() {
         {age !== undefined && <p className="summary-detail">Edad calculada: <strong>{age} años</strong></p>}
         {estimate && <EnergySummary estimate={estimate} />}
         <p className="medical-note compact">Las referencias son estimativas y no reemplazan indicaciones profesionales.</p>
-        <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
-          <button type="button" className="button button-quiet" onClick={() => endSession()} style={{ width: '100%', justifyContent: 'center', color: 'var(--text-error)' }}>
-            <LogOut size={17} /> Cerrar sesión
-          </button>
-        </div>
       </aside>
     </div>
   </div>
