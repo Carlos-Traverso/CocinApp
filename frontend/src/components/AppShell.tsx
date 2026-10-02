@@ -11,21 +11,22 @@ import {
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../features/auth/data/localAuthStore'
 import { BrandLogo } from './BrandLogo'
+import { appNavigation } from './navigation'
 import { ScrollToTopButton } from './ScrollToTopButton'
+
+const navigationIcons = {
+  recipes: CookingPot,
+  panel: LayoutDashboard,
+  pantry: Refrigerator,
+  planner: CalendarDays,
+  shopping: ShoppingCart,
+  favorites: Heart,
+  history: History,
+  profile: UserRound,
+}
 
 export function AppShell() {
   const session = useAuth()
-  
-  const navigation = [
-    { to: '/recipes', label: 'Recetas', mobileLabel: 'Recetas', Icon: CookingPot },
-    { to: '/panel', label: 'Panel', mobileLabel: 'Panel', Icon: LayoutDashboard, end: true },
-    { to: '/pantry', label: 'Despensa', mobileLabel: 'Despensa', Icon: Refrigerator },
-    { to: '/planner', label: 'Planificación', mobileLabel: 'Plan', Icon: CalendarDays },
-    { to: '/shopping', label: 'Lista de compras', mobileLabel: 'Compras', Icon: ShoppingCart },
-    { to: '/favorites', label: 'Favoritos', mobileLabel: 'Favoritos', Icon: Heart },
-    { to: '/history', label: 'Historial', mobileLabel: 'Historial', Icon: History },
-    { to: '/profile', label: 'Perfil', mobileLabel: 'Perfil', Icon: UserRound },
-  ]
 
   return (
     <div className="app-shell">
@@ -35,17 +36,20 @@ export function AppShell() {
         </NavLink>
         <p className="sidebar-label">TU COCINA</p>
         <nav className="primary-nav" aria-label="Navegación principal">
-          {navigation.map(({ to, label, mobileLabel, Icon, end }) => (
+          {appNavigation.map(({ id, to, label, mobileLabel, mobile, ...linkProps }) => {
+            const Icon = navigationIcons[id]
+            return (
             <NavLink
               key={to}
               to={to}
-              end={end}
-              className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+              end={'end' in linkProps ? linkProps.end : undefined}
+              className={({ isActive }) => `nav-link${mobile ? '' : ' nav-link-desktop-only'}${isActive ? ' active' : ''}`}
             >
               <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
               <span className="nav-label-desktop">{label}</span><span className="nav-label-mobile">{mobileLabel}</span>
             </NavLink>
-          ))}
+            )
+          })}
         </nav>
       <NavLink className="sidebar-foot" to="/profile">
           <span className="avatar" aria-hidden="true">{session?.name?.charAt(0) || 'C'}</span>
