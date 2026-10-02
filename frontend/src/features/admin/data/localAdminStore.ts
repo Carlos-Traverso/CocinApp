@@ -1,6 +1,7 @@
 import type { AdminCategory, AdminUnit, AdminIngredient, AdminRecipe } from '../domain/adminModels'
 import { defaultPantryCategories, defaultPantryUnits } from '../../pantry/domain/pantry'
 import { normalizePantryName } from '../../pantry/domain/pantry'
+import { adminCatalogVersion, createInitialAdminData } from './adminSeed'
 
 const ADMIN_KEY = 'cocinapp.admin.v1'
 
@@ -54,6 +55,10 @@ function readRecipe(value: unknown): AdminRecipe | undefined {
     color: value.color === 'gold' || value.color === 'pink' || value.color === 'blue' ? value.color : 'green',
     image: typeof value.image === 'string' && value.image.startsWith('/assets/recipes/') ? value.image : undefined,
     imageAlt: typeof value.imageAlt === 'string' && value.imageAlt.trim() ? value.imageAlt.trim() : undefined,
+    preparationMinutes: typeof value.preparationMinutes === 'number' && value.preparationMinutes >= 0 ? value.preparationMinutes : undefined,
+    cookingMinutes: typeof value.cookingMinutes === 'number' && value.cookingMinutes >= 0 ? value.cookingMinutes : undefined,
+    createdAt: typeof value.createdAt === 'string' && !Number.isNaN(Date.parse(value.createdAt)) ? value.createdAt : undefined,
+    updatedAt: typeof value.updatedAt === 'string' && !Number.isNaN(Date.parse(value.updatedAt)) ? value.updatedAt : undefined,
   }
 }
 
@@ -86,11 +91,13 @@ function getAdminData(): AdminStorageData {
   } catch {
     // Ignore corrupt data
   }
-  return { categories: [], units: [], ingredients: [], recipes: [] }
+  const initial = createInitialAdminData()
+  saveAdminData(initial)
+  return initial
 }
 
 export function saveAdminData(data: AdminStorageData): void {
-  localStorage.setItem(ADMIN_KEY, JSON.stringify(data))
+  localStorage.setItem(ADMIN_KEY, JSON.stringify({ version: adminCatalogVersion, ...data }))
   window.dispatchEvent(new Event('storage'))
 }
 

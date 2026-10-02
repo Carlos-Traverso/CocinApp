@@ -53,4 +53,8 @@ export interface AdminRecipe {
   color: 'green' | 'gold' | 'pink' | 'blue'
   image?: string
   imageAlt?: string
+  preparationMinutes?: number
+  cookingMinutes?: number
+  createdAt?: string
+  updatedAt?: string
 }

@@ -178,3 +178,31 @@ describe('admin navigation', () => {
     assert.equal(getAdminNavigationItem('/admin')?.label, 'Dashboard')
   })
 })
+
+describe('admin persistence', () => {
+  test('initializes versioned categories, units and ingredients only for a new installation', () => {
+    localStorage.clear()
+    const seeded = getAdminData()
+    assert.ok(seeded.categories.length >= 7)
+    assert.ok(seeded.units.some((unit) => unit.abbreviation === 'g'))
+    assert.ok(seeded.ingredients.length >= 20)
+
+    saveAdminData({ categories: [], units: [], ingredients: [], recipes: [] })
+    assert.deepEqual(getAdminData(), { categories: [], units: [], ingredients: [], recipes: [] })
+    assert.equal(JSON.parse(localStorage.getItem('cocinapp.admin.v1')!).version, 2)
+  })
+
+  test('records creation and modification dates without changing the original creation date', () => {
+    const categoryId = createCategory('Panadería')
+    const unitId = createUnit('Gramo', 'g', 'masa')
+    const ingredientId = createIngredient('Harina', categoryId, unitId)
+    const createdAt = new Date('2026-09-30T10:00:00.000Z')
+    const updatedAt = new Date('2026-10-01T12:00:00.000Z')
+    const input = { title: 'Pan casero', author: 'CocinAPP', description: '', category: 'Almuerzo', minutes: 45, portions: 4, difficulty: 'Fácil' as const, calories: 220, mealShift: 'Almuerzo', dietaryTags: [], ingredients: [{ ingredientId, quantity: 400, unitId }], steps: ['Hornear.'], status: 'published' as const, symbol: 'P', color: 'gold' as const }
+    const id = createRecipe(input, createdAt)
+    updateRecipe(id, { ...input, title: 'Pan dorado' }, updatedAt)
+    const recipe = getAdminData().recipes.find((entry) => entry.id === id)!
+    assert.equal(recipe.createdAt, createdAt.toISOString())
+    assert.equal(recipe.updatedAt, updatedAt.toISOString())
+  })
+})
