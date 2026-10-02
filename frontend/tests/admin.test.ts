@@ -19,6 +19,7 @@ import { createRecipe, createSeedRecipeOverride, deleteRecipe, updateRecipe } fr
 import { getAvailableRecipes } from '../src/features/recipes/data/availableRecipes'
 import { getRecipeById } from '../src/features/recipes/data/availableRecipes'
 import { adminNavigation, getAdminNavigationItem } from '../src/features/admin/ui/adminNavigation'
+import { createAdminDashboard } from '../src/features/admin/domain/adminDashboard'
 
 describe('local admin catalog', () => {
   beforeEach(() => {
@@ -204,5 +205,23 @@ describe('admin persistence', () => {
     const recipe = getAdminData().recipes.find((entry) => entry.id === id)!
     assert.equal(recipe.createdAt, createdAt.toISOString())
     assert.equal(recipe.updatedAt, updatedAt.toISOString())
+  })
+})
+
+describe('admin dashboard', () => {
+  test('summarizes active, inactive and incomplete recipes with recent changes', () => {
+    const data = { categories: [], units: [], ingredients: [], recipes: [
+      { id: 'one', title: 'Activa', author: 'CocinAPP', description: '', category: 'Cena', minutes: 20, portions: 2, difficulty: 'Fácil' as const, calories: 100, mealShift: 'Cena', dietaryTags: [], featured: true, ingredients: [{ ingredientId: 'i', quantity: 1, unitId: 'u' }], steps: ['Cocinar'], status: 'published' as const, isDeleted: false, symbol: 'A', color: 'green' as const, updatedAt: '2026-10-01T12:00:00.000Z' },
+      { id: 'two', title: 'Incompleta', author: 'CocinAPP', description: '', category: 'Cena', minutes: 20, portions: 2, difficulty: 'Fácil' as const, calories: 100, mealShift: 'Cena', dietaryTags: [], featured: false, ingredients: [], steps: [], status: 'draft' as const, isDeleted: false, symbol: 'I', color: 'gold' as const, updatedAt: '2026-09-30T12:00:00.000Z' },
+    ] }
+    const known = [
+      { id: 'one', name: 'Activa', description: '', category: 'Cena', minutes: 20, portions: 2, difficulty: 'Fácil' as const, ingredients: [], steps: ['Cocinar'], symbol: 'A', color: 'green' as const, featured: true },
+      { id: 'two', name: 'Incompleta', description: '', category: 'Cena', minutes: 20, portions: 2, difficulty: 'Fácil' as const, ingredients: [], steps: [], symbol: 'I', color: 'gold' as const },
+    ]
+    const summary = createAdminDashboard(data, known, [known[0]])
+    assert.deepEqual(summary.metrics, { total: 2, active: 1, inactive: 1, featured: 1 })
+    assert.equal(summary.alerts.missingImage, 2)
+    assert.equal(summary.alerts.incomplete, 1)
+    assert.equal(summary.recent[0]?.title, 'Activa')
   })
 })

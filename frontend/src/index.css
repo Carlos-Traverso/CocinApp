@@ -665,6 +665,23 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
 .stat { display: grid; align-content: space-between; gap: 12px; min-height: 110px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); padding: 16px; }
 .stat small { color: var(--muted); font-size: 12px; line-height: 1.4; }
 .stat strong { color: var(--green-dark); font-size: 28px; line-height: 1; }
+.stat > svg { color: #738277; }
+.admin-dashboard { display: grid; gap: 18px; }
+.admin-dashboard-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.admin-dashboard-panel { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 19px; }
+.admin-dashboard-panel .section-header { margin-bottom: 14px; }
+.admin-dashboard-panel .section-header h2 { margin: 0; }
+.admin-catalog-links { display: grid; gap: 7px; }
+.admin-catalog-links a { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; border: 1px solid #e2e7df; border-radius: 7px; padding: 11px; color: #536056; font-size: 13px; }
+.admin-catalog-links a:hover { border-color: #b9cdbd; background: #f6f9f5; color: var(--green-dark); }
+.admin-alert-list { display: grid; gap: 0; list-style: none; margin: 0 0 14px; padding: 0; }
+.admin-alert-list li { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e7ebe5; padding: 10px 0; font-size: 13px; }
+.admin-alert-list strong { display: grid; min-width: 26px; height: 26px; place-items: center; border-radius: 14px; background: #f3eee1; color: #806224; }
+.admin-recent-list { display: grid; }
+.admin-recent-list > div { display: flex; min-height: 54px; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid #e7ebe5; }
+.admin-recent-list > div:last-child { border-bottom: 0; }
+.admin-recent-list span { display: grid; gap: 3px; }
+.admin-recent-list small, .admin-recent-list time { color: var(--muted); font-size: 11px; }
 .records { display: grid; gap: 9px; }
 .record { display: flex; align-items: center; justify-content: space-between; gap: 16px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); padding: 14px 16px; }
 .record-main { display: grid; gap: 4px; min-width: 0; }
@@ -711,6 +728,7 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
   .admin-recipe-visual-section { grid-template-columns: 1fr; }
   .admin-recipe-preview { min-height: 175px; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-dashboard-grid { grid-template-columns: 1fr; }
   .admin-recipe-row { grid-template-columns: minmax(0, 1fr) minmax(90px, .55fr); }
   .admin-recipe-row .field:nth-child(3) { grid-column: 1; }
   .admin-recipe-row-actions { grid-column: 2; grid-row: 2; justify-content: end; }
