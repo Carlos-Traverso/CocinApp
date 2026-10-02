@@ -78,7 +78,7 @@ describe('local admin catalog', () => {
       title: 'Pan simple', author: 'CocinAPP', description: 'Pan casero', category: 'Desayuno',
       minutes: 30, portions: 2, difficulty: 'Fácil' as const, calories: 200,
       mealShift: 'Desayuno', dietaryTags: ['Vegetariana'], ingredients: [{ ingredientId, quantity: 200, unitId: grams }],
-      steps: ['Mezclar.', 'Hornear.'], stepMeta: [{ minutes: 8, tip: 'Usá agua tibia.' }, {}], featured: true, status: 'published' as const, symbol: 'P', color: 'green' as const,
+      steps: ['Mezclar.', 'Hornear.'], stepMeta: [{ durationMinutes: 8, ingredientIds: [ingredientId], utensils: ['Bol'], tip: 'Usá agua tibia.', warning: 'No amases de más.', temperature: 'Ambiente' }, {}], featured: true, status: 'published' as const, symbol: 'P', color: 'green' as const,
       image: '/assets/recipes/pan-simple.webp', imageAlt: 'Pan simple recién horneado sobre una tabla',
     }
     assert.throws(() => createRecipe({ ...recipe, ingredients: [{ ingredientId, quantity: 0, unitId: grams }] }), /positiva/i)
@@ -92,7 +92,14 @@ describe('local admin catalog', () => {
     const id = createRecipe(recipe)
     assert.equal(getAvailableRecipes().find((entry) => entry.id === id)?.name, 'Pan simple')
     assert.equal(getAvailableRecipes().find((entry) => entry.id === id)?.ingredients[0]?.unit, 'g')
-    assert.deepEqual(getAvailableRecipes().find((entry) => entry.id === id)?.stepMeta?.[0], { minutes: 8, tip: 'Usá agua tibia.' })
+    assert.deepEqual(getAvailableRecipes().find((entry) => entry.id === id)?.stepMeta?.[0], {
+      durationMinutes: 8,
+      stepIngredients: [{ name: 'Harina', quantity: 200, unit: 'g' }],
+      utensils: ['Bol'],
+      tip: 'Usá agua tibia.',
+      warning: 'No amases de más.',
+      temperature: 'Ambiente',
+    })
     assert.equal(getAvailableRecipes().find((entry) => entry.id === id)?.featured, true)
     assert.equal(getAvailableRecipes().find((entry) => entry.id === id)?.image, '/assets/recipes/pan-simple.webp')
   })

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { sampleRecipes } from '../src/mocks/recipes'
-import { advanceStep, completeStep, cookingCompletionPath, createSession, moveStep, recordPreparation, remainingTimerMs, scaleIngredients, deductIngredients, type CookingSession } from '../src/features/cooking/domain/cooking'
+import { advanceStep, completeStep, cookingCompletionPath, createSession, moveStep, recordPreparation, remainingTimerMs, scaleIngredients, deductIngredients, getStepGuidance, remainingRecipeMinutes, startStepTimer, pauseStepTimer, resetStepTimer, type CookingSession } from '../src/features/cooking/domain/cooking'
 import { clearCookingSession, finalizeCookingSession, readCookingSession, readHistory, saveCookingSession, writeHistory } from '../src/features/cooking/data/localCookingStore'
 import { readPantryItems, writePantryItems } from '../src/features/pantry/data/localPantryStore'
 import type { PantryItem } from '../src/features/pantry/domain/pantry'
@@ -43,6 +43,39 @@ test('timer remaining time uses the deadline after a background gap and persists
   saveCookingSession(session, storage)
   assert.deepEqual(readCookingSession(recipe.id, storage), session)
   assert.equal(advanceStep(session, recipe.steps.length).timer, undefined)
+})
+
+test('step guidance scales its ingredients and estimates remaining cooking time', () => {
+  const guidedRecipe = {
+    ...recipe,
+    portions: 2,
+    steps: ['Preparar', 'Cocinar', 'Servir'],
+    stepMeta: [
+      { durationMinutes: 5, stepIngredients: [{ name: 'Quinoa', quantity: 100, unit: 'g' }], utensils: ['Colador'], tip: 'Enjuagá bien.' },
+      { minutes: 12, temperature: 'Fuego medio', warning: 'No dejes que se seque.' },
+      {},
+    ],
+  }
+  const guidance = getStepGuidance(guidedRecipe, 0, 4)
+  assert.deepEqual(guidance.stepIngredients, [{ name: 'Quinoa', quantity: 200, unit: 'g' }])
+  assert.deepEqual(guidance.utensils, ['Colador'])
+  assert.equal(guidance.durationMinutes, 5)
+  assert.equal(guidance.nextStepPreview, 'Cocinar')
+  assert.equal(remainingRecipeMinutes(guidedRecipe, 0), 17)
+  assert.equal(remainingRecipeMinutes(guidedRecipe, 1, 90_000), 2)
+})
+
+test('timer can start, pause, resume, finish and reset without blocking progress', () => {
+  const session = createSession(recipe, now)
+  const started = startStepTimer(session, 60_000, 100_000)
+  assert.equal(remainingTimerMs(started.timer!, 125_000), 35_000)
+  const paused = pauseStepTimer(started, 125_000)
+  assert.deepEqual(paused.timer, { stepIndex: 0, remainingMs: 35_000 })
+  const resumed = startStepTimer(paused, 60_000, 200_000)
+  assert.equal(resumed.timer?.deadlineAt, 235_000)
+  assert.equal(remainingTimerMs(resumed.timer!, 240_000), 0)
+  assert.equal(advanceStep(resumed, recipe.steps.length).stepIndex, 1)
+  assert.equal(resetStepTimer(resumed).timer, undefined)
 })
 
 test('ingredient scaling and pantry deduction skip expired stock and never go negative', () => {

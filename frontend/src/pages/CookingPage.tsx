@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronLeft, ChevronRight, CookingPot, Minus, Plus, X } from 'lucide-react'
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, Clock3, CookingPot, Lightbulb, Minus, Plus, Thermometer, UtensilsCrossed, X } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { formatPantryAmount } from '../features/pantry/domain/pantry'
 import { finalizeCookingSession, readCookingSession, saveCookingSession } from '../features/cooking/data/localCookingStore'
-import { advanceStep, completeStep, cookingCompletionPath, createSession, moveStep, remainingTimerMs, scaleIngredients, type CookingSession } from '../features/cooking/domain/cooking'
+import { advanceStep, completeStep, cookingCompletionPath, createSession, getStepGuidance, moveStep, pauseStepTimer, remainingRecipeMinutes, remainingTimerMs, resetStepTimer, scaleIngredients, startStepTimer, type CookingSession } from '../features/cooking/domain/cooking'
 import { getRecipeById } from '../features/recipes/data/availableRecipes'
 import { RecipeImage } from '../features/recipes/ui/RecipeImage'
 
@@ -37,6 +37,7 @@ export function CookingPage() {
 function CookingRecipePage({ id }: { id: string }) {
   const navigate = useNavigate()
   const recipe = getRecipeById(id)
+  const [resumedSession] = useState(() => Boolean(recipe && readCookingSession(recipe.id)))
   const [session, setSession] = useState<CookingSession | null>(() => recipe ? readCookingSession(recipe.id) ?? createSession(recipe) : null)
   const [finishing, setFinishing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -71,14 +72,18 @@ function CookingRecipePage({ id }: { id: string }) {
     playTimerSound(audioRef.current)
   }, [session, activeTimer, finishedTimer])
 
-  if (!recipe || !session || session.recipeId !== recipe.id || recipe.steps.length === 0) {
+  if (!recipe) {
     return <main className="cooking-missing"><h1>Receta no encontrada</h1><Link className="button button-primary" to="/recipes">Volver a recetas</Link></main>
+  }
+  if (!session || session.recipeId !== recipe.id || recipe.steps.length === 0) {
+    return <main className="cooking-missing"><h1>Esta receta no tiene pasos válidos</h1><p>Podés volver a su detalle o elegir otra receta para cocinar.</p><Link className="button button-primary" to={`/recipes/${recipe.id}`}>Volver a la receta</Link></main>
   }
 
   const stepCount = recipe.steps.length
   const completedCount = session.completed.length
-  const stepMeta = recipe.stepMeta?.[session.stepIndex]
   const ingredients = scaleIngredients(recipe, session.portions)
+  const guidance = getStepGuidance(recipe, session.stepIndex, session.portions)
+  const estimatedRemaining = remainingRecipeMinutes(recipe, session.stepIndex, activeTimer ? remainingMs : undefined)
 
   function update(next: CookingSession): boolean {
     try { saveCookingSession(next); setSession(next); setError(''); return true }
@@ -86,19 +91,18 @@ function CookingRecipePage({ id }: { id: string }) {
   }
 
   function startTimer() {
-    if (!stepMeta?.minutes) return
+    if (!guidance.durationMinutes) return
     try {
       audioRef.current ??= new AudioContext()
       void audioRef.current.resume()
     } catch { /* Sound is optional in browsers that block audio. */ }
-    const duration = activeTimer && remainingMs > 0 ? remainingMs : stepMeta.minutes * 60_000
     const startedAt = currentTimestamp()
-    if (update({ ...session!, timer: { stepIndex: session!.stepIndex, remainingMs: duration, deadlineAt: startedAt + duration } })) setNow(startedAt)
+    if (update(startStepTimer(session!, guidance.durationMinutes * 60_000, startedAt))) setNow(startedAt)
   }
 
   function pauseTimer() {
     if (!activeTimer?.deadlineAt || finishedTimer) return
-    update({ ...session!, timer: { stepIndex: session!.stepIndex, remainingMs } })
+    update(pauseStepTimer(session!, now))
   }
 
   function leave() {
@@ -130,12 +134,22 @@ function CookingRecipePage({ id }: { id: string }) {
     <div aria-label={`${completedCount} de ${stepCount} pasos completados`} className="cooking-progress" role="progressbar" aria-valuemax={stepCount} aria-valuemin={0} aria-valuenow={completedCount}><div style={{ width: `${completedCount / stepCount * 100}%` }} /></div>
     <main className="cooking-main">
       <section aria-labelledby="cooking-step-title" className="cooking-step">
+        {resumedSession && <p className="cooking-resumed" role="status">Retomaste una sesión interrumpida. Tu paso y temporizador quedaron guardados.</p>}
         <p className="eyebrow">PASO {session.stepIndex + 1} DE {stepCount}</p>
         <div className="cooking-step-symbol"><CookingPot size={35} aria-hidden="true" /></div>
         <h1 id="cooking-step-title">{recipe.steps[session.stepIndex]}</h1>
         {session.completed.includes(session.stepIndex) && <p className="cooking-step-status"><Check size={17} aria-hidden="true" /> Paso completado</p>}
-        {stepMeta?.tip && <aside className="cooking-tip"><strong>Consejo para este paso</strong><p>{stepMeta.tip}</p></aside>}
-        {stepMeta?.minutes && <section aria-label="Temporizador del paso" className="cooking-timer"><span>Tiempo sugerido: {stepMeta.minutes} min</span><output aria-label="Tiempo restante" aria-live="off">{formatTime(activeTimer ? remainingMs : stepMeta.minutes * 60_000)}</output>{finishedTimer && <p role="alert">Tiempo terminado. Podés continuar cuando estés listo.</p>}<div className="cooking-timer-actions">{activeTimer?.deadlineAt && !finishedTimer ? <button className="button button-quiet" onClick={pauseTimer} type="button">Pausar</button> : !finishedTimer ? <button className="button button-quiet" onClick={startTimer} type="button">{activeTimer ? 'Reanudar' : 'Iniciar'}</button> : null}{activeTimer && <button className="button button-quiet" onClick={() => update({ ...session, timer: undefined })} type="button">Reiniciar</button>}</div></section>}
+        {guidance.specialInstructions && <p className="cooking-special-instruction">{guidance.specialInstructions}</p>}
+        <div className="cooking-guidance-grid">
+          <section className="cooking-guidance-card" aria-labelledby="step-ingredients-title"><strong id="step-ingredients-title">Ingredientes de este paso</strong>{guidance.stepIngredients.length > 0 ? <ul>{guidance.stepIngredients.map((ingredient) => <li key={`${ingredient.name}-${ingredient.unit}`}><span>{ingredient.name}</span><b>{formatPantryAmount(ingredient.quantity, ingredient.unit)}</b></li>)}</ul> : <p>No hay ingredientes específicos indicados para este paso.</p>}</section>
+          <section className="cooking-guidance-card" aria-labelledby="step-utensils-title"><strong id="step-utensils-title"><UtensilsCrossed size={17} aria-hidden="true" /> Necesitás</strong>{guidance.utensils.length > 0 ? <ul>{guidance.utensils.map((utensil) => <li key={utensil}>{utensil}</li>)}</ul> : <p>No se indicaron utensilios especiales.</p>}</section>
+          {(guidance.temperature || guidance.durationMinutes > 0) && <section className="cooking-guidance-card"><strong><Clock3 size={17} aria-hidden="true" /> Tiempo y cocción</strong>{guidance.durationMinutes > 0 && <p>{guidance.durationMinutes} min para este paso</p>}{guidance.temperature && <p><Thermometer size={16} aria-hidden="true" /> {guidance.temperature}</p>}</section>}
+          {guidance.tip && <aside className="cooking-guidance-card cooking-tip"><strong><Lightbulb size={17} aria-hidden="true" /> Tip de cocina</strong><p>{guidance.tip}</p></aside>}
+          {guidance.warning && <aside className="cooking-guidance-card cooking-warning"><strong><AlertTriangle size={17} aria-hidden="true" /> Atención</strong><p>{guidance.warning}</p></aside>}
+          {guidance.nextStepPreview && <section className="cooking-guidance-card"><strong>Próximo paso</strong><p>{guidance.nextStepPreview}</p></section>}
+        </div>
+        <p className="cooking-remaining"><Clock3 size={16} aria-hidden="true" /> Tiempo estimado restante: {estimatedRemaining > 0 ? `${estimatedRemaining} min` : 'sin estimación'}</p>
+        {guidance.durationMinutes > 0 && <section aria-label="Temporizador del paso" className={`cooking-timer${finishedTimer ? ' finished' : ''}`}><span>Temporizador · {guidance.durationMinutes} min sugeridos</span><output aria-label="Tiempo restante" aria-live={finishedTimer ? 'assertive' : 'off'}>{formatTime(activeTimer ? remainingMs : guidance.durationMinutes * 60_000)}</output>{finishedTimer && <p role="alert">Tiempo terminado. Podés continuar cuando estés listo.</p>}<div className="cooking-timer-actions">{activeTimer?.deadlineAt && !finishedTimer ? <button className="button button-quiet" onClick={pauseTimer} type="button">Pausar</button> : !finishedTimer ? <button className="button button-quiet" onClick={startTimer} type="button">{activeTimer ? 'Reanudar' : 'Iniciar'}</button> : null}{activeTimer && <button className="button button-quiet" onClick={() => update(resetStepTimer(session))} type="button">Reiniciar</button>}</div></section>}
         {error && <p className="form-message error" role="alert">{error}</p>}
       </section>
       <aside className="cooking-side"><RecipeImage className="cooking-recipe-image" recipe={recipe} /><div className="cooking-portions"><div><strong>Porciones</strong><small>Cantidades para esta preparación</small></div><div><button aria-label="Disminuir porciones" disabled={session.portions <= 1} onClick={() => update({ ...session, portions: session.portions - 1 })} type="button"><Minus size={17} /></button><output aria-live="polite">{session.portions}</output><button aria-label="Aumentar porciones" disabled={session.portions >= 20} onClick={() => update({ ...session, portions: session.portions + 1 })} type="button"><Plus size={17} /></button></div></div><details open><summary>Ingredientes necesarios</summary><ul>{ingredients.map((ingredient) => <li key={ingredient.name}><span>{ingredient.name}</span><strong>{formatPantryAmount(ingredient.quantity, ingredient.unit)}</strong></li>)}</ul></details></aside>

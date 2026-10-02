@@ -6,6 +6,11 @@ import { mergeRecipeSeed, recipeSeed } from './recipeSeed'
 function fromAdminRecipe(recipe: AdminRecipe): Recipe {
   const data = getAdminData()
   const seededRecipe = recipeSeed.find((entry) => entry.id === recipe.id)
+  const ingredients = recipe.ingredients.flatMap((entry) => {
+    const ingredient = data.ingredients.find((item) => item.id === entry.ingredientId)
+    const unit = data.units.find((item) => item.id === entry.unitId)
+    return ingredient && unit ? [{ name: ingredient.name, quantity: entry.quantity, unit: unit.abbreviation }] : []
+  })
   return {
     id: recipe.id,
     name: recipe.title,
@@ -15,7 +20,21 @@ function fromAdminRecipe(recipe: AdminRecipe): Recipe {
     portions: recipe.portions,
     difficulty: recipe.difficulty,
     steps: recipe.steps,
-    stepMeta: recipe.stepMeta,
+    stepMeta: recipe.stepMeta?.map((meta) => ({
+      ...(meta.minutes !== undefined ? { minutes: meta.minutes } : {}),
+      ...(meta.durationMinutes !== undefined ? { durationMinutes: meta.durationMinutes } : {}),
+      ...(meta.ingredientIds?.length ? { stepIngredients: meta.ingredientIds.flatMap((ingredientId) => {
+        const recipeIngredient = recipe.ingredients.find((entry) => entry.ingredientId === ingredientId)
+        const ingredient = data.ingredients.find((entry) => entry.id === ingredientId)
+        const unit = data.units.find((entry) => entry.id === recipeIngredient?.unitId)
+        return recipeIngredient && ingredient && unit ? [{ name: ingredient.name, quantity: recipeIngredient.quantity, unit: unit.abbreviation }] : []
+      }) } : {}),
+      ...(meta.utensils?.length ? { utensils: [...meta.utensils] } : {}),
+      ...(meta.tip ? { tip: meta.tip } : {}),
+      ...(meta.warning ? { warning: meta.warning } : {}),
+      ...(meta.temperature ? { temperature: meta.temperature } : {}),
+      ...(meta.specialInstructions ? { specialInstructions: meta.specialInstructions } : {}),
+    })),
     symbol: recipe.symbol || recipe.title.slice(0, 1).toLocaleUpperCase('es'),
     color: recipe.color || 'green',
     image: recipe.image ?? seededRecipe?.image,
@@ -24,11 +43,7 @@ function fromAdminRecipe(recipe: AdminRecipe): Recipe {
     mealShift: recipe.mealShift,
     dietaryTags: recipe.dietaryTags,
     featured: recipe.featured,
-    ingredients: recipe.ingredients.flatMap((entry) => {
-      const ingredient = data.ingredients.find((item) => item.id === entry.ingredientId)
-      const unit = data.units.find((item) => item.id === entry.unitId)
-      return ingredient && unit ? [{ name: ingredient.name, quantity: entry.quantity, unit: unit.abbreviation }] : []
-    }),
+    ingredients,
   }
 }
 

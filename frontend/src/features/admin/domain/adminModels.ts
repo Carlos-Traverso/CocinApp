@@ -37,7 +37,16 @@ export interface AdminRecipe {
   featured?: boolean
   ingredients: { ingredientId: string; quantity: number; unitId: string; note?: string }[]
   steps: string[]
-  stepMeta?: { minutes?: number; tip?: string }[]
+  stepMeta?: {
+    minutes?: number
+    durationMinutes?: number
+    ingredientIds?: string[]
+    utensils?: string[]
+    tip?: string
+    warning?: string
+    temperature?: string
+    specialInstructions?: string
+  }[]
   status: 'draft' | 'published'
   isDeleted: boolean
   symbol: string

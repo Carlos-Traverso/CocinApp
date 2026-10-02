@@ -327,12 +327,23 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
 .cooking-step-symbol { display: grid; width: 76px; height: 76px; place-items: center; border-radius: 50%; margin: 18px auto 23px; background: var(--green-soft); color: var(--green-dark); }
 .cooking-step h1 { max-width: 700px; margin: 0 auto 30px; font-size: clamp(29px, 3vw, 39px); line-height: 1.3; }
 .cooking-step-status { display: inline-flex; align-items: center; gap: 7px; margin: 0 0 18px; color: var(--green-dark); font-size: 13px; font-weight: 700; }
-.cooking-tip, .cooking-timer { max-width: 560px; margin: 16px auto 0; border: 1px solid #d7e4d6; border-radius: 9px; background: #fff; padding: 16px 18px; text-align: left; }
-.cooking-tip strong, .cooking-timer > span { color: var(--green-dark); font-size: 13px; font-weight: 800; }
-.cooking-tip p { margin: 7px 0 0; color: #435144; font-size: 14px; line-height: 1.5; }
+.cooking-resumed { max-width: 700px; margin: 0 auto 16px; border-radius: 7px; background: #eef5e9; padding: 10px 12px; color: var(--green-dark); font-size: 12px; }
+.cooking-special-instruction { max-width: 700px; margin: -12px auto 18px; color: #435144; font-size: 15px; line-height: 1.55; }
+.cooking-guidance-grid { display: grid; max-width: 700px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0 auto; text-align: left; }
+.cooking-guidance-card { min-width: 0; border: 1px solid #d7e4d6; border-radius: 9px; background: #fff; padding: 14px 15px; }
+.cooking-guidance-card strong { display: flex; align-items: center; gap: 7px; color: var(--green-dark); font-size: 13px; font-weight: 800; }
+.cooking-guidance-card p { margin: 7px 0 0; color: #435144; font-size: 12px; line-height: 1.5; }
+.cooking-guidance-card ul { display: grid; gap: 6px; list-style: none; margin: 9px 0 0; padding: 0; color: #435144; font-size: 12px; }
+.cooking-guidance-card li { display: flex; justify-content: space-between; gap: 8px; }
+.cooking-warning { border-color: #e7c9a0; background: #fff9ed; }
+.cooking-warning strong { color: #89591d; }
+.cooking-remaining { display: flex; justify-content: center; align-items: center; gap: 7px; margin: 15px 0 0; color: var(--muted); font-size: 12px; font-weight: 700; }
+.cooking-timer { max-width: 560px; margin: 16px auto 0; border: 1px solid #d7e4d6; border-radius: 9px; background: #fff; padding: 16px 18px; text-align: left; }
+.cooking-timer > span { color: var(--green-dark); font-size: 13px; font-weight: 800; }
 .cooking-timer { display: grid; justify-items: start; gap: 9px; }
 .cooking-timer output { color: #26372b; font-variant-numeric: tabular-nums; font-size: 34px; font-weight: 800; line-height: 1; }
 .cooking-timer p { margin: 0; color: var(--green-dark); font-size: 13px; font-weight: 700; }
+.cooking-timer.finished { border-color: #b4d3b5; background: #eef8ee; }
 .cooking-timer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .cooking-step .form-message { margin-top: 18px; }
 .cooking-side { align-self: center; border: 1px solid var(--line); border-radius: 9px; background: #fff; padding: 19px; }
@@ -399,7 +410,7 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
   .recipe-filter-footer { align-items: flex-start; flex-direction: column; gap: 5px; }
   .recipe-artwork-card { height: 145px; }
 }
-@media (max-width: 500px) { .cooking-main { padding: 24px 16px; } .cooking-step-symbol { width: 58px; height: 58px; margin: 12px auto 20px; } .cooking-step h1 { font-size: 27px; margin-bottom: 22px; } .cooking-footer { position: sticky; bottom: 0; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); } .cooking-footer span { display: none; } .cooking-footer .button { min-width: 0; flex: 1; } .cooking-finish-actions .button { width: 100%; } .history-actions .button { flex: 1; } }
+@media (max-width: 500px) { .cooking-main { padding: 24px 16px; } .cooking-step-symbol { width: 58px; height: 58px; margin: 12px auto 20px; } .cooking-step h1 { font-size: 27px; margin-bottom: 22px; } .cooking-guidance-grid { grid-template-columns: 1fr; } .cooking-footer { position: sticky; z-index: 10; bottom: 0; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); } .cooking-footer span { display: none; } .cooking-footer .button { min-width: 0; flex: 1; } .cooking-finish-actions .button { width: 100%; } .history-actions .button { flex: 1; } }
 
 .shopping-primary-actions { justify-content: flex-end; }
 .shopping-state { font-weight: 750; color: var(--ink); }
@@ -417,8 +428,8 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
 @media (max-width: 400px) { .shopping-form-grid { grid-template-columns: 1fr; } .shopping-imports .button { width: 100%; } .shopping-list { padding-inline: 14px; } }
 @media (max-width: 1100px) { .planner-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .planner-day { grid-template-rows: auto repeat(4, auto); } }
 @media (max-width: 640px) { .planner-grid { grid-template-columns: 1fr; } .planner-day { grid-template-rows: auto repeat(4, auto); } .planner-slot { min-height: 112px; } .planner-toolbar > div { width: 100%; justify-content: space-between; } }
-@media (max-width: 900px) { .recipe-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); } .recipe-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 640px) { .recipe-controls, .recipe-grid, .recipe-detail-header, .recipe-detail-layout { grid-template-columns: 1fr; } .recipe-detail-header .recipe-art { height: 200px; } }
+@media (max-width: 900px) { .recipe-controls, .recipe-controls.with-search { grid-template-columns: repeat(2, minmax(0, 1fr)); } .recipe-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .recipe-controls, .recipe-controls.with-search, .recipe-grid, .recipe-detail-header, .recipe-detail-layout { grid-template-columns: 1fr; } .recipe-detail-header .recipe-art { height: 200px; } }
 .feature-content { max-width: 640px; border: 1px solid var(--line); border-radius: 7px; background: white; padding: 22px; }
 .feature-content p { margin: 17px 0; color: #626b60; font-size: 13px; line-height: 1.65; }
 .text-link { display: inline-flex; align-items: center; gap: 6px; color: var(--green); font-size: 13px; font-weight: 700; }
@@ -809,7 +820,8 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .scroll-to-top { transition: none; }
+  .scroll-to-top, .recipe-card, .recipe-mini-card, .planner-slot, .cooking-progress div { transition: none; }
+  .spin { animation: none; }
 }
 
 @media (max-width: 850px) {

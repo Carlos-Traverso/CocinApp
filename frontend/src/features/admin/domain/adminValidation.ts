@@ -50,11 +50,27 @@ export function validateRecipe(input: Omit<AdminRecipe, 'id' | 'isDeleted'>, rec
   if (!Array.isArray(input.steps) || input.steps.length === 0 || input.steps.some((step) => !step.trim())) throw new Error('Agregá instrucciones completas y ordenadas.')
   if (input.stepMeta !== undefined && (!Array.isArray(input.stepMeta) || input.stepMeta.length > input.steps.length)) throw new Error('Los datos de los pasos no son válidos.')
   const stepMeta = (input.stepMeta ?? []).map((meta) => {
-    const minutes = meta?.minutes
+    const minutes = meta?.durationMinutes ?? meta?.minutes
     const tip = meta?.tip?.trim() ?? ''
+    const warning = meta?.warning?.trim() ?? ''
+    const temperature = meta?.temperature?.trim() ?? ''
+    const specialInstructions = meta?.specialInstructions?.trim() ?? ''
+    const utensils = [...new Set((meta?.utensils ?? []).map((item) => item.trim()).filter(Boolean))]
+    const ingredientIds = [...new Set(meta?.ingredientIds ?? [])]
     if (minutes !== undefined && (!Number.isInteger(minutes) || minutes < 1 || minutes > 240)) throw new Error('El tiempo de cada paso debe estar entre 1 y 240 minutos.')
     if (tip.length > 240) throw new Error('Cada consejo debe tener hasta 240 caracteres.')
-    return { ...(minutes !== undefined ? { minutes } : {}), ...(tip ? { tip } : {}) }
+    if (warning.length > 240 || temperature.length > 80 || specialInstructions.length > 400) throw new Error('Revisá la longitud de las indicaciones de cada paso.')
+    if (utensils.some((item) => item.length > 80)) throw new Error('Cada utensilio debe tener hasta 80 caracteres.')
+    if (ingredientIds.some((id) => !input.ingredients.some((entry) => entry.ingredientId === id))) throw new Error('Los ingredientes de cada paso deben pertenecer a la receta.')
+    return {
+      ...(minutes !== undefined ? { durationMinutes: minutes } : {}),
+      ...(ingredientIds.length ? { ingredientIds } : {}),
+      ...(utensils.length ? { utensils } : {}),
+      ...(tip ? { tip } : {}),
+      ...(warning ? { warning } : {}),
+      ...(temperature ? { temperature } : {}),
+      ...(specialInstructions ? { specialInstructions } : {}),
+    }
   })
   if (!['draft', 'published'].includes(input.status)) throw new Error('Elegí si la receta queda como borrador o publicada.')
   if (image && (!image.startsWith('/assets/recipes/') || !/\.(avif|webp|png|jpe?g)$/i.test(image))) throw new Error('La imagen debe usar un archivo local de /assets/recipes/.')

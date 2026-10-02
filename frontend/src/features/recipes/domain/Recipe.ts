@@ -1,3 +1,17 @@
+export interface RecipeIngredient { name: string; quantity: number; unit: string }
+
+export interface RecipeStepMeta {
+  /** @deprecated Use durationMinutes for new recipes. */
+  minutes?: number
+  durationMinutes?: number
+  stepIngredients?: RecipeIngredient[]
+  utensils?: string[]
+  tip?: string
+  warning?: string
+  temperature?: string
+  specialInstructions?: string
+}
+
 export interface Recipe {
   id: string
   name: string
@@ -6,9 +20,9 @@ export interface Recipe {
   minutes: number
   portions: number
   difficulty: 'Fácil' | 'Intermedia' | 'Avanzada'
-  ingredients: { name: string; quantity: number; unit: string }[]
+  ingredients: RecipeIngredient[]
   steps: string[]
-  stepMeta?: { minutes?: number; tip?: string }[]
+  stepMeta?: RecipeStepMeta[]
   symbol: string
   color: 'green' | 'gold' | 'pink' | 'blue'
   image?: string

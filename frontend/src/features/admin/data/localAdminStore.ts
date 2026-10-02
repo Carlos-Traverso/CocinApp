@@ -31,7 +31,13 @@ function readRecipe(value: unknown): AdminRecipe | undefined {
     const entry = Array.isArray(value.stepMeta) ? value.stepMeta[index] : undefined
     return isRecord(entry) ? {
       minutes: typeof entry.minutes === 'number' && Number.isFinite(entry.minutes) && entry.minutes > 0 ? entry.minutes : undefined,
+      durationMinutes: typeof entry.durationMinutes === 'number' && Number.isFinite(entry.durationMinutes) && entry.durationMinutes > 0 ? entry.durationMinutes : undefined,
+      ingredientIds: Array.isArray(entry.ingredientIds) ? entry.ingredientIds.filter((id): id is string => typeof id === 'string') : undefined,
+      utensils: Array.isArray(entry.utensils) ? entry.utensils.filter((item): item is string => typeof item === 'string' && item.trim().length > 0) : undefined,
       tip: typeof entry.tip === 'string' ? entry.tip : undefined,
+      warning: typeof entry.warning === 'string' ? entry.warning : undefined,
+      temperature: typeof entry.temperature === 'string' ? entry.temperature : undefined,
+      specialInstructions: typeof entry.specialInstructions === 'string' ? entry.specialInstructions : undefined,
     } : {}
   })
   return {

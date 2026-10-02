@@ -11,7 +11,11 @@ const recipeDrafts = [
     difficulty: 'Fácil',
     ingredients: [{ name: 'Quinoa', quantity: 150, unit: 'g' }, { name: 'Tomates cherry', quantity: 150, unit: 'g' }, { name: 'Aceite de oliva', quantity: 30, unit: 'ml' }, { name: 'Limón', quantity: 1, unit: 'u' }],
     steps: ['Cociná la quinoa según el envase.', 'Cortá los tomates y mezclalos con aceite de oliva.', 'Serví la quinoa con las verduras y terminá con limón.'],
-    stepMeta: [{ minutes: 15, tip: 'Enjuagá la quinoa antes de cocinarla para quitarle el sabor amargo.' }, { tip: 'Cortá los tomates justo antes de servir para conservar su textura.' }],
+    stepMeta: [
+      { durationMinutes: 15, stepIngredients: [{ name: 'Quinoa', quantity: 150, unit: 'g' }], utensils: ['Colador fino', 'Olla con tapa'], temperature: 'Hervor suave', tip: 'Enjuagá la quinoa antes de cocinarla para quitarle el sabor amargo.', warning: 'Usá el colador fino para no perder los granos.' },
+      { durationMinutes: 5, stepIngredients: [{ name: 'Tomates cherry', quantity: 150, unit: 'g' }, { name: 'Aceite de oliva', quantity: 30, unit: 'ml' }], utensils: ['Tabla', 'Cuchillo', 'Bol'], tip: 'Cortá los tomates justo antes de servir para conservar su textura.' },
+      { durationMinutes: 2, stepIngredients: [{ name: 'Limón', quantity: 1, unit: 'u' }], utensils: ['Fuente para servir'], specialInstructions: 'Probá y ajustá el limón justo antes de llevar el plato a la mesa.' },
+    ],
     symbol: '🥗',
     color: 'green',
     featured: true,
@@ -55,6 +59,11 @@ const recipeDrafts = [
     difficulty: 'Fácil',
     ingredients: [{ name: 'Pechuga de pollo', quantity: 300, unit: 'g' }, { name: 'Arroz integral', quantity: 160, unit: 'g' }, { name: 'Tomates cherry', quantity: 120, unit: 'g' }, { name: 'Aceite de oliva', quantity: 20, unit: 'ml' }],
     steps: ['Cociná el arroz integral según las indicaciones del envase.', 'Cortá el pollo y doralo en una sartén con el aceite de oliva.', 'Serví el pollo sobre el arroz y agregá los tomates cortados.'],
+    stepMeta: [
+      { durationMinutes: 25, stepIngredients: [{ name: 'Arroz integral', quantity: 160, unit: 'g' }], utensils: ['Olla con tapa'], temperature: 'Hervor suave', tip: 'Dejá reposar el arroz tapado durante 5 minutos al apagar el fuego.' },
+      { durationMinutes: 10, stepIngredients: [{ name: 'Pechuga de pollo', quantity: 300, unit: 'g' }, { name: 'Aceite de oliva', quantity: 20, unit: 'ml' }], utensils: ['Tabla para carnes', 'Cuchillo', 'Sartén'], temperature: 'Fuego medio-alto', warning: 'Lavá manos y utensilios después de manipular pollo crudo.' },
+      { durationMinutes: 4, stepIngredients: [{ name: 'Tomates cherry', quantity: 120, unit: 'g' }], utensils: ['Tabla', 'Cuchillo'], tip: 'Agregá los tomates al final para conservar su frescura.' },
+    ],
     symbol: '🍗',
     color: 'blue',
   },
@@ -176,7 +185,11 @@ const recipeDrafts = [
   {
     id: 'baked-fish-potatoes', name: 'Pescado al horno con papas', description: 'Cena completa de pescado, papas y limón.', category: 'Cena', minutes: 45, portions: 2, difficulty: 'Intermedia',
     ingredients: [{ name: 'Filet de pescado', quantity: 400, unit: 'g' }, { name: 'Papa', quantity: 500, unit: 'g' }, { name: 'Limón', quantity: 1, unit: 'u' }, { name: 'Aceite de oliva', quantity: 30, unit: 'ml' }],
-    steps: ['Cortá y condimentá las papas.', 'Horneá las papas hasta que empiecen a dorar.', 'Sumá el pescado y cociná hasta que esté tierno.'], stepMeta: [{ tip: 'Cortá las papas del mismo grosor.' }, { minutes: 25 }, { minutes: 15, tip: 'El pescado debe separarse fácilmente con un tenedor.' }], symbol: '🐟', color: 'blue', calories: 530,
+    steps: ['Cortá y condimentá las papas.', 'Horneá las papas hasta que empiecen a dorar.', 'Sumá el pescado y cociná hasta que esté tierno.'], stepMeta: [
+      { durationMinutes: 8, stepIngredients: [{ name: 'Papa', quantity: 500, unit: 'g' }, { name: 'Aceite de oliva', quantity: 30, unit: 'ml' }], utensils: ['Tabla', 'Cuchillo', 'Fuente para horno'], tip: 'Cortá las papas del mismo grosor.' },
+      { durationMinutes: 25, utensils: ['Horno', 'Fuente para horno'], temperature: '200 °C', warning: 'Usá guantes térmicos al mover la fuente.' },
+      { durationMinutes: 15, stepIngredients: [{ name: 'Filet de pescado', quantity: 400, unit: 'g' }, { name: 'Limón', quantity: 1, unit: 'u' }], utensils: ['Fuente para horno', 'Tenedor'], temperature: '200 °C', tip: 'El pescado debe separarse fácilmente con un tenedor.' },
+    ], symbol: '🐟', color: 'blue', calories: 530,
   },
   {
     id: 'spinach-pie', name: 'Tarta de espinaca', description: 'Tarta casera de espinaca, huevo y queso.', category: 'Cena', minutes: 55, portions: 4, difficulty: 'Intermedia',

@@ -46,7 +46,14 @@ export function createSeedRecipeOverride(recipe: Recipe): AdminRecipe {
     category: recipe.category, mealShift: recipe.mealShift ?? recipe.category, minutes: recipe.minutes,
     portions: recipe.portions, difficulty: recipe.difficulty, calories: recipe.calories ?? 0,
     dietaryTags: recipe.dietaryTags ?? [], featured: recipe.featured ?? false, ingredients,
-    steps: [...recipe.steps], stepMeta: recipe.stepMeta?.map((entry) => ({ ...entry })) ?? [],
+    steps: [...recipe.steps], stepMeta: recipe.stepMeta?.map((entry) => ({
+      ...entry,
+      ingredientIds: entry.stepIngredients?.flatMap((stepIngredient) => {
+        const ingredient = data.ingredients.find((item) => normalizePantryName(item.name) === normalizePantryName(stepIngredient.name))
+        return ingredient ? [ingredient.id] : []
+      }),
+      utensils: entry.utensils ? [...entry.utensils] : undefined,
+    })) ?? [],
     status: 'published', isDeleted: false, symbol: recipe.symbol, color: recipe.color,
     image: recipe.image, imageAlt: recipe.imageAlt,
   }
