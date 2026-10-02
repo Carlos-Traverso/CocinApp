@@ -1,96 +1,46 @@
-import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { getAdminData } from '../features/admin/data/localAdminStore'
 import { CategoriesTab } from '../features/admin/ui/CategoriesTab'
 import { UnitsTab } from '../features/admin/ui/UnitsTab'
 import { IngredientsTab } from '../features/admin/ui/IngredientsTab'
 import { RecipesTab } from '../features/admin/ui/RecipesTab'
-import { handleTabListKeyDown } from '../components/tabKeyboard'
 
 export function AdminPage() {
-  const [activeTab, setActiveTab] = useState('overview')
-
   return (
     <div className="page feature-page">
       <header className="page-heading">
         <div>
-          <p className="eyebrow">GESTIÓN DE CONTENIDO</p>
-          <h1>Administración de catálogos</h1>
-          <p className="page-lead">Gestioná los datos disponibles en la experiencia de cocina. Los cambios se guardan en este navegador.</p>
+          <p className="eyebrow">PANEL GENERAL</p>
+          <h1>Dashboard</h1>
+          <p className="page-lead">Estado general de los catálogos que alimentan CocinAPP.</p>
         </div>
       </header>
-
-      <div className="tabs" onKeyDown={handleTabListKeyDown} role="tablist">
-        <button
-          id="admin-tab-overview"
-          aria-controls="admin-catalog-panel"
-          aria-selected={activeTab === 'overview'}
-          tabIndex={activeTab === 'overview' ? 0 : -1}
-          className={activeTab === 'overview' ? 'active' : ''}
-          onClick={() => setActiveTab('overview')}
-          role="tab"
-          type="button"
-        >
-          Resumen
-        </button>
-        <button
-          id="admin-tab-categories"
-          aria-controls="admin-catalog-panel"
-          aria-selected={activeTab === 'categories'}
-          tabIndex={activeTab === 'categories' ? 0 : -1}
-          className={activeTab === 'categories' ? 'active' : ''}
-          onClick={() => setActiveTab('categories')}
-          role="tab"
-          type="button"
-        >
-          Categorías
-        </button>
-        <button
-          id="admin-tab-units"
-          aria-controls="admin-catalog-panel"
-          aria-selected={activeTab === 'units'}
-          tabIndex={activeTab === 'units' ? 0 : -1}
-          className={activeTab === 'units' ? 'active' : ''}
-          onClick={() => setActiveTab('units')}
-          role="tab"
-          type="button"
-        >
-          Unidades
-        </button>
-        <button
-          id="admin-tab-ingredients"
-          aria-controls="admin-catalog-panel"
-          aria-selected={activeTab === 'ingredients'}
-          tabIndex={activeTab === 'ingredients' ? 0 : -1}
-          className={activeTab === 'ingredients' ? 'active' : ''}
-          onClick={() => setActiveTab('ingredients')}
-          role="tab"
-          type="button"
-        >
-          Ingredientes
-        </button>
-        <button
-          id="admin-tab-recipes"
-          aria-controls="admin-catalog-panel"
-          aria-selected={activeTab === 'recipes'}
-          tabIndex={activeTab === 'recipes' ? 0 : -1}
-          className={activeTab === 'recipes' ? 'active' : ''}
-          onClick={() => setActiveTab('recipes')}
-          role="tab"
-          type="button"
-        >
-          Recetas Oficiales
-        </button>
-      </div>
-
-      <section aria-labelledby={`admin-tab-${activeTab}`} className="pane" id="admin-catalog-panel" role="tabpanel" tabIndex={0}>
-        {activeTab === 'overview' && <OverviewTab />}
-        {activeTab === 'categories' && <CategoriesTab />}
-        {activeTab === 'units' && <UnitsTab />}
-        {activeTab === 'ingredients' && <IngredientsTab />}
-        {activeTab === 'recipes' && <RecipesTab />}
-      </section>
+      <OverviewTab />
     </div>
   )
+}
+
+function AdminSection({ eyebrow, title, description, children }: { eyebrow: string; title: string; description: string; children: ReactNode }) {
+  return <div className="page feature-page">
+    <header className="page-heading"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="page-lead">{description}</p></div></header>
+    <section className="pane">{children}</section>
+  </div>
+}
+
+export function AdminRecipesPage() {
+  return <AdminSection eyebrow="CONTENIDO OFICIAL" title="Recetas" description="Creá, revisá y publicá las recetas disponibles para cocinar."><RecipesTab /></AdminSection>
+}
+
+export function AdminIngredientsPage() {
+  return <AdminSection eyebrow="CATÁLOGO MAESTRO" title="Ingredientes" description="Administrá los ingredientes reutilizados por recetas y despensa."><IngredientsTab /></AdminSection>
+}
+
+export function AdminCategoriesPage() {
+  return <AdminSection eyebrow="ORGANIZACIÓN" title="Categorías" description="Clasificá los ingredientes sin perder sus relaciones existentes."><CategoriesTab /></AdminSection>
+}
+
+export function AdminUnitsPage() {
+  return <AdminSection eyebrow="CATÁLOGO MAESTRO" title="Unidades" description="Definí las unidades compatibles con cantidades e ingredientes."><UnitsTab /></AdminSection>
 }
 
 function OverviewTab() {

@@ -18,6 +18,7 @@ import { createIngredient, deleteIngredient } from '../src/features/admin/data/i
 import { createRecipe, createSeedRecipeOverride, deleteRecipe, updateRecipe } from '../src/features/admin/data/recipesStore'
 import { getAvailableRecipes } from '../src/features/recipes/data/availableRecipes'
 import { getRecipeById } from '../src/features/recipes/data/availableRecipes'
+import { adminNavigation, getAdminNavigationItem } from '../src/features/admin/ui/adminNavigation'
 
 describe('local admin catalog', () => {
   beforeEach(() => {
@@ -158,5 +159,22 @@ describe('local admin catalog', () => {
     assert.equal(getRecipeById(seeded.id), undefined)
     assert.equal(getRecipeById(seeded.id, true)?.name, 'Bowl administrado')
     assert.equal(getAdminData().recipes.find((recipe) => recipe.id === seeded.id)?.isDeleted, true)
+  })
+})
+
+describe('admin navigation', () => {
+  test('exposes every catalog required by the functional specification as its own route', () => {
+    assert.deepEqual(adminNavigation.map((item) => item.path), [
+      '/admin',
+      '/admin/recipes',
+      '/admin/ingredients',
+      '/admin/categories',
+      '/admin/units',
+    ])
+  })
+
+  test('resolves nested locations to their breadcrumb section', () => {
+    assert.equal(getAdminNavigationItem('/admin/recipes/new')?.label, 'Recetas')
+    assert.equal(getAdminNavigationItem('/admin')?.label, 'Dashboard')
   })
 })

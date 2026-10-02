@@ -1,7 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { CookingPage } from '../pages/CookingPage'
-import { AdminPage } from '../pages/AdminPage'
+import { AdminCategoriesPage, AdminIngredientsPage, AdminPage, AdminRecipesPage, AdminUnitsPage } from '../pages/AdminPage'
 import { HomePage } from '../pages/HomePage'
 import { HistoryPage } from '../pages/HistoryPage'
 import { OnboardingPage } from '../pages/OnboardingPage'
@@ -28,6 +28,10 @@ export function App() {
         <Route element={<RequireAdmin />}>
           <Route path="admin" element={<AdminShell />}>
             <Route index element={<AdminPage />} />
+            <Route path="recipes" element={<AdminRecipesPage />} />
+            <Route path="ingredients" element={<AdminIngredientsPage />} />
+            <Route path="categories" element={<AdminCategoriesPage />} />
+            <Route path="units" element={<AdminUnitsPage />} />
             <Route path="*" element={<NotFoundPage homeLabel="Volver a Administración" homePath="/admin" />} />
           </Route>
         </Route>
