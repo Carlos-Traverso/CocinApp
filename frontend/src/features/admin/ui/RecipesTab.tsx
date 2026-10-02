@@ -31,6 +31,7 @@ export function RecipesTab() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [search, setSearch] = useState('')
+  const [category, setCategory] = useState('')
   const [status, setStatus] = useState<AdminRecipeFilters['status']>('all')
   const [difficulty, setDifficulty] = useState<AdminRecipeFilters['difficulty']>('all')
   const [maxMinutes, setMaxMinutes] = useState(0)
@@ -133,7 +134,8 @@ export function RecipesTab() {
 
   const knownRecipes = getKnownRecipes()
   const managedRecipes = getManagedRecipes(data, knownRecipes)
-  const filteredRecipes = filterAdminRecipes(managedRecipes, { search, status, difficulty, maxMinutes, featured, sort })
+  const filteredRecipes = filterAdminRecipes(managedRecipes, { search, category, status, difficulty, maxMinutes, featured, sort })
+  const recipeCategories = [...new Set(managedRecipes.map((recipe) => recipe.category))].sort((first, second) => first.localeCompare(second, 'es'))
   const pageCount = Math.max(1, Math.ceil(filteredRecipes.length / pageSize))
   const currentPage = Math.min(page, pageCount)
   const visibleRecipes = filteredRecipes.slice((currentPage - 1) * pageSize, currentPage * pageSize)
@@ -149,6 +151,7 @@ export function RecipesTab() {
     {success && <p className="form-message success" role="status">{success}</p>}
     <div className="admin-filter-bar">
       <label className="field admin-filter-search"><span>Buscar</span><input onChange={(event) => { setSearch(event.currentTarget.value); setPage(1) }} placeholder="Título o categoría" type="search" value={search} /></label>
+      <label className="field"><span>Categoría</span><select onChange={(event) => { setCategory(event.currentTarget.value); setPage(1) }} value={category}><option value="">Todas</option>{recipeCategories.map((item) => <option key={item}>{item}</option>)}</select></label>
       <label className="field"><span>Estado</span><select onChange={(event) => { setStatus(event.currentTarget.value as AdminRecipeFilters['status']); setPage(1) }} value={status}><option value="all">Todos</option><option value="active">Activas</option><option value="draft">Borradores</option><option value="inactive">Inactivas</option></select></label>
       <label className="field"><span>Dificultad</span><select onChange={(event) => { setDifficulty(event.currentTarget.value as AdminRecipeFilters['difficulty']); setPage(1) }} value={difficulty}><option value="all">Todas</option><option>Fácil</option><option>Intermedia</option><option>Avanzada</option></select></label>
       <label className="field"><span>Tiempo máximo</span><select onChange={(event) => { setMaxMinutes(Number(event.currentTarget.value)); setPage(1) }} value={maxMinutes}><option value="0">Cualquier tiempo</option><option value="30">Hasta 30 min</option><option value="60">Hasta 60 min</option><option value="90">Hasta 90 min</option></select></label>

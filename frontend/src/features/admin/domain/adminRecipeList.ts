@@ -20,6 +20,7 @@ export type ManagedAdminRecipe = {
 
 export type AdminRecipeFilters = {
   search: string
+  category: string
   status: 'all' | 'active' | 'draft' | 'inactive'
   difficulty: 'all' | Recipe['difficulty']
   maxMinutes: number
@@ -52,6 +53,7 @@ export function filterAdminRecipes(recipes: ManagedAdminRecipe[], filters: Admin
   const search = normalizePantryName(filters.search)
   return recipes.filter((recipe) => {
     if (search && !normalizePantryName(`${recipe.title} ${recipe.category}`).includes(search)) return false
+    if (filters.category && recipe.category !== filters.category) return false
     if (filters.status === 'active' && !recipe.active) return false
     if (filters.status === 'draft' && recipe.status !== 'draft') return false
     if (filters.status === 'inactive' && recipe.status !== 'inactive') return false

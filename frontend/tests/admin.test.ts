@@ -232,10 +232,10 @@ describe('admin recipe management', () => {
   test('combines search, status, difficulty, duration, featured and sorting filters', () => {
     const known = getKnownRecipes()
     const managed = getManagedRecipes(getAdminData(), known)
-    const result = filterAdminRecipes(managed, { search: 'quinoa', status: 'active', difficulty: 'Fácil', maxMinutes: 60, featured: 'all', sort: 'title-asc' })
+    const result = filterAdminRecipes(managed, { search: 'quinoa', category: '', status: 'active', difficulty: 'Fácil', maxMinutes: 60, featured: 'all', sort: 'title-asc' })
     assert.equal(result[0]?.id, 'quinoa-bowl')
     assert.ok(result.every((recipe) => recipe.active && recipe.minutes <= 60))
-    assert.deepEqual(filterAdminRecipes(managed, { search: '', status: 'all', difficulty: 'all', maxMinutes: 0, featured: 'featured', sort: 'title-asc' }).map((recipe) => recipe.title), [...managed.filter((recipe) => recipe.featured).map((recipe) => recipe.title)].sort((a, b) => a.localeCompare(b, 'es')))
+    assert.deepEqual(filterAdminRecipes(managed, { search: '', category: '', status: 'all', difficulty: 'all', maxMinutes: 0, featured: 'featured', sort: 'title-asc' }).map((recipe) => recipe.title), [...managed.filter((recipe) => recipe.featured).map((recipe) => recipe.title)].sort((a, b) => a.localeCompare(b, 'es')))
   })
 
   test('can feature, deactivate, reactivate and duplicate an initial recipe', () => {
