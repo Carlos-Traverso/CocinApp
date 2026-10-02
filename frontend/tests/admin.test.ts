@@ -15,11 +15,12 @@ import { getAdminData, saveAdminData } from '../src/features/admin/data/localAdm
 import { createCategory, deleteCategory } from '../src/features/admin/data/categoriesStore'
 import { createUnit, deleteUnit } from '../src/features/admin/data/unitsStore'
 import { createIngredient, deleteIngredient } from '../src/features/admin/data/ingredientsStore'
-import { createRecipe, createSeedRecipeOverride, deleteRecipe, updateRecipe } from '../src/features/admin/data/recipesStore'
+import { createRecipe, createSeedRecipeOverride, deleteRecipe, duplicateRecipe, setRecipeActive, setRecipeFeatured, updateRecipe } from '../src/features/admin/data/recipesStore'
 import { getAvailableRecipes } from '../src/features/recipes/data/availableRecipes'
-import { getRecipeById } from '../src/features/recipes/data/availableRecipes'
+import { getKnownRecipes, getRecipeById } from '../src/features/recipes/data/availableRecipes'
 import { adminNavigation, getAdminNavigationItem } from '../src/features/admin/ui/adminNavigation'
 import { createAdminDashboard } from '../src/features/admin/domain/adminDashboard'
+import { filterAdminRecipes, getManagedRecipes } from '../src/features/admin/domain/adminRecipeList'
 
 describe('local admin catalog', () => {
   beforeEach(() => {
@@ -223,5 +224,30 @@ describe('admin dashboard', () => {
     assert.equal(summary.alerts.missingImage, 2)
     assert.equal(summary.alerts.incomplete, 1)
     assert.equal(summary.recent[0]?.title, 'Activa')
+  })
+})
+
+describe('admin recipe management', () => {
+  test('combines search, status, difficulty, duration, featured and sorting filters', () => {
+    const known = getKnownRecipes()
+    const managed = getManagedRecipes(getAdminData(), known)
+    const result = filterAdminRecipes(managed, { search: 'quinoa', status: 'active', difficulty: 'Fácil', maxMinutes: 60, featured: 'all', sort: 'title-asc' })
+    assert.equal(result[0]?.id, 'quinoa-bowl')
+    assert.ok(result.every((recipe) => recipe.active && recipe.minutes <= 60))
+    assert.deepEqual(filterAdminRecipes(managed, { search: '', status: 'all', difficulty: 'all', maxMinutes: 0, featured: 'featured', sort: 'title-asc' }).map((recipe) => recipe.title), [...managed.filter((recipe) => recipe.featured).map((recipe) => recipe.title)].sort((a, b) => a.localeCompare(b, 'es')))
+  })
+
+  test('can feature, deactivate, reactivate and duplicate an initial recipe', () => {
+    const originalTitle = getRecipeById('quinoa-bowl')!.name
+    setRecipeFeatured('quinoa-bowl', true)
+    assert.equal(getAdminData().recipes.find((recipe) => recipe.id === 'quinoa-bowl')?.featured, true)
+    setRecipeActive('quinoa-bowl', false)
+    assert.equal(getRecipeById('quinoa-bowl'), undefined)
+    setRecipeActive('quinoa-bowl', true)
+    assert.equal(getRecipeById('quinoa-bowl')?.name, originalTitle)
+    const duplicateId = duplicateRecipe('quinoa-bowl')
+    const duplicate = getAdminData().recipes.find((recipe) => recipe.id === duplicateId)!
+    assert.match(duplicate.title, /^Copia de /)
+    assert.equal(duplicate.status, 'draft')
   })
 })

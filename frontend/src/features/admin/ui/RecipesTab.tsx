@@ -1,11 +1,14 @@
 import { useState, type FormEvent } from 'react'
-import { ArrowDown, ArrowUp, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Copy, Eye, Pencil, Plus, Power, Star, Trash2, X } from 'lucide-react'
 import { getAdminData } from '../data/localAdminStore'
 import { hasAdminReferences } from '../data/adminReferences'
-import { createRecipe, createSeedRecipeOverride, deleteRecipe, updateRecipe } from '../data/recipesStore'
+import { createRecipe, createSeedRecipeOverride, deleteRecipe, duplicateRecipe, setRecipeActive, setRecipeFeatured, updateRecipe } from '../data/recipesStore'
 import type { AdminRecipe } from '../domain/adminModels'
 import { getKnownRecipes } from '../../recipes/data/availableRecipes'
 import { RecipeImage } from '../../recipes/ui/RecipeImage'
+import { filterAdminRecipes, getManagedRecipes, type AdminRecipeFilters, type ManagedAdminRecipe } from '../domain/adminRecipeList'
+
+const pageSize = 8
 
 const recipeSymbols = ['🍲', '🥗', '🍝', '🍳', '🥞', '🥣', '🍗', '🥑'] as const
 const recipeColors = [
@@ -23,14 +26,40 @@ const emptyRecipe = (): Partial<AdminRecipe> => ({
 })
 
 export function RecipesTab() {
-  const [recipes, setRecipes] = useState(() => getAdminData().recipes)
+  const [, setRecipes] = useState(() => getAdminData().recipes)
   const [editor, setEditor] = useState<Partial<AdminRecipe> | null>(null)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [search, setSearch] = useState('')
+  const [status, setStatus] = useState<AdminRecipeFilters['status']>('all')
+  const [difficulty, setDifficulty] = useState<AdminRecipeFilters['difficulty']>('all')
+  const [maxMinutes, setMaxMinutes] = useState(0)
+  const [featured, setFeatured] = useState<AdminRecipeFilters['featured']>('all')
+  const [sort, setSort] = useState<AdminRecipeFilters['sort']>('title-asc')
+  const [page, setPage] = useState(1)
+  const [preview, setPreview] = useState<ManagedAdminRecipe | null>(null)
+  const [editorBaseline, setEditorBaseline] = useState('')
   const data = getAdminData()
   const availableIngredients = data.ingredients.filter((ingredient) => !ingredient.isDeleted)
   const availableUnits = data.units.filter((unit) => !unit.isDeleted)
   const reload = () => setRecipes(getAdminData().recipes)
+
+  function cloneRecipe(recipe: AdminRecipe): Partial<AdminRecipe> {
+    return { ...recipe, dietaryTags: [...recipe.dietaryTags], ingredients: recipe.ingredients.map((item) => ({ ...item })), steps: [...recipe.steps], stepMeta: recipe.stepMeta?.map((item) => ({ ...item, ingredientIds: item.ingredientIds ? [...item.ingredientIds] : undefined, utensils: item.utensils ? [...item.utensils] : undefined })) ?? [] }
+  }
+
+  function openEditor(recipe?: ManagedAdminRecipe) {
+    const next = recipe ? cloneRecipe(recipe.record ?? createSeedRecipeOverride(recipe.recipe)) : emptyRecipe()
+    setEditor(next)
+    setEditorBaseline(JSON.stringify(next))
+    setError('')
+  }
+
+  function requestCloseEditor() {
+    if (editor && JSON.stringify(editor) !== editorBaseline && !window.confirm('Hay cambios sin guardar. ¿Querés descartarlos?')) return
+    setEditor(null)
+    setError('')
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -45,11 +74,13 @@ export function RecipesTab() {
         ingredients: editor.ingredients ?? [], steps: editor.steps ?? [], stepMeta: editor.stepMeta ?? [],
         status: editor.status ?? 'draft', symbol: editor.symbol?.trim() || editor.title?.trim().slice(0, 1).toLocaleUpperCase('es') || 'R',
         color: editor.color ?? 'green', image: editor.image?.trim() || undefined, imageAlt: editor.imageAlt?.trim() || undefined,
+        preparationMinutes: editor.preparationMinutes, cookingMinutes: editor.cookingMinutes,
       }
       if (editor.id) updateRecipe(editor.id, payload)
       else createRecipe(payload)
       setEditor(null)
       setError('')
+      setSuccess(editor.id ? 'La receta se actualizó correctamente.' : 'La receta se creó como parte del catálogo oficial.')
       reload()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'No se pudo guardar la receta.')
@@ -100,33 +131,52 @@ export function RecipesTab() {
     setEditor({ ...editor, steps: (editor.steps ?? []).filter((_, stepIndex) => stepIndex !== index), stepMeta: (editor.steps ?? []).map((_, stepIndex) => editor.stepMeta?.[stepIndex] ?? {}).filter((_, stepIndex) => stepIndex !== index) })
   }
 
-  const visibleRecipes = recipes.filter((recipe) => recipe.title.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es')))
   const knownRecipes = getKnownRecipes()
-  const seedRecipes = knownRecipes.filter((recipe) => !recipes.some((entry) => entry.id === recipe.id)
-    && recipe.name.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es')))
+  const managedRecipes = getManagedRecipes(data, knownRecipes)
+  const filteredRecipes = filterAdminRecipes(managedRecipes, { search, status, difficulty, maxMinutes, featured, sort })
+  const pageCount = Math.max(1, Math.ceil(filteredRecipes.length / pageSize))
+  const currentPage = Math.min(page, pageCount)
+  const visibleRecipes = filteredRecipes.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+  function quickAction(action: () => void, message: string) {
+    action()
+    reload()
+    setSuccess(message)
+  }
 
   return <div className="panel">
-    <div className="section-header"><h2>Recetas oficiales</h2><button className="button button-primary" onClick={() => { setEditor(emptyRecipe()); setError('') }} type="button"><Plus size={16} /> Nueva receta</button></div>
-    <label className="field admin-search"><span>Buscar receta</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label>
+    <div className="section-header"><div><h2>Recetas oficiales</h2><p className="panel-intro">{filteredRecipes.length} de {managedRecipes.length} recetas</p></div><button className="button button-primary" onClick={() => openEditor()} type="button"><Plus size={16} /> Nueva receta</button></div>
+    {success && <p className="form-message success" role="status">{success}</p>}
+    <div className="admin-filter-bar">
+      <label className="field admin-filter-search"><span>Buscar</span><input onChange={(event) => { setSearch(event.currentTarget.value); setPage(1) }} placeholder="Título o categoría" type="search" value={search} /></label>
+      <label className="field"><span>Estado</span><select onChange={(event) => { setStatus(event.currentTarget.value as AdminRecipeFilters['status']); setPage(1) }} value={status}><option value="all">Todos</option><option value="active">Activas</option><option value="draft">Borradores</option><option value="inactive">Inactivas</option></select></label>
+      <label className="field"><span>Dificultad</span><select onChange={(event) => { setDifficulty(event.currentTarget.value as AdminRecipeFilters['difficulty']); setPage(1) }} value={difficulty}><option value="all">Todas</option><option>Fácil</option><option>Intermedia</option><option>Avanzada</option></select></label>
+      <label className="field"><span>Tiempo máximo</span><select onChange={(event) => { setMaxMinutes(Number(event.currentTarget.value)); setPage(1) }} value={maxMinutes}><option value="0">Cualquier tiempo</option><option value="30">Hasta 30 min</option><option value="60">Hasta 60 min</option><option value="90">Hasta 90 min</option></select></label>
+      <label className="field"><span>Visibilidad</span><select onChange={(event) => { setFeatured(event.currentTarget.value as AdminRecipeFilters['featured']); setPage(1) }} value={featured}><option value="all">Todas</option><option value="featured">Solo destacadas</option></select></label>
+      <label className="field"><span>Ordenar</span><select onChange={(event) => setSort(event.currentTarget.value as AdminRecipeFilters['sort'])} value={sort}><option value="title-asc">Título A–Z</option><option value="title-desc">Título Z–A</option><option value="newest">Más recientes</option><option value="oldest">Más antiguas</option></select></label>
+    </div>
     <div className="records">
-      {seedRecipes.map((recipe) => <article className="record admin-recipe-record" key={recipe.id}>
-        <RecipeImage className="admin-recipe-record-art" recipe={recipe} /><div className="record-main"><strong>{recipe.name}</strong><small>{recipe.category} · {recipe.minutes} min</small><span className="admin-recipe-status published">Inicial · Publicada</span></div>
-        <div className="record-actions"><button className="button button-quiet" onClick={() => { const override = createSeedRecipeOverride(recipe); reload(); setEditor({ ...override, dietaryTags: [...override.dietaryTags], ingredients: override.ingredients.map((item) => ({ ...item })), steps: [...override.steps], stepMeta: override.stepMeta?.map((item) => ({ ...item, ingredientIds: item.ingredientIds ? [...item.ingredientIds] : undefined, utensils: item.utensils ? [...item.utensils] : undefined })) ?? [] }); setError('') }} type="button"><Pencil size={16} /> Administrar</button></div>
-      </article>)}
       {visibleRecipes.map((recipe) => <article className="record admin-recipe-record" key={recipe.id}>
-        <RecipeImage className="admin-recipe-record-art" recipe={{ name: recipe.title, image: recipe.image ?? knownRecipes.find((item) => item.id === recipe.id)?.image, imageAlt: recipe.imageAlt ?? knownRecipes.find((item) => item.id === recipe.id)?.imageAlt, symbol: recipe.symbol, color: recipe.color }} /><div className="record-main"><strong>{recipe.title}</strong><small>{recipe.mealShift || recipe.category} · {recipe.minutes} min</small><span className={`admin-recipe-status ${recipe.status}`}>{recipe.status === 'published' ? 'Publicada' : 'Borrador'}</span>{recipe.isDeleted && <small className="error">Inactiva</small>}</div>
-        <div className="record-actions">{!recipe.isDeleted && <><button aria-label={`Editar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => { setEditor({ ...recipe, dietaryTags: [...recipe.dietaryTags], ingredients: recipe.ingredients.map((item) => ({ ...item })), steps: [...recipe.steps], stepMeta: recipe.stepMeta?.map((item) => ({ ...item, ingredientIds: item.ingredientIds ? [...item.ingredientIds] : undefined, utensils: item.utensils ? [...item.utensils] : undefined })) ?? [] }); setError('') }} type="button"><Pencil size={17} /></button><button aria-label={`Eliminar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => remove(recipe)} type="button"><Trash2 size={17} /></button></>}</div>
+        <RecipeImage className="admin-recipe-record-art" recipe={recipe.recipe} />
+        <div className="record-main"><span className="admin-record-title"><strong>{recipe.title}</strong>{recipe.featured && <Star aria-label="Destacada" fill="currentColor" size={14} />}</span><small>{recipe.category} · {recipe.minutes} min · {recipe.difficulty}</small><span className={`admin-recipe-status ${recipe.status}`}>{recipe.status === 'published' ? recipe.source === 'initial' ? 'Inicial · Publicada' : 'Publicada' : recipe.status === 'draft' ? 'Borrador' : 'Inactiva'}</span><small>{recipe.modifiedAt ? `Modificada ${new Date(recipe.modifiedAt).toLocaleDateString('es-AR')}` : 'Receta inicial versionada'}</small></div>
+        <div className="record-actions admin-record-actions"><button aria-label={`Ver receta ${recipe.title}`} className="pantry-icon-button" onClick={() => setPreview(recipe)} title="Ver" type="button"><Eye size={17} /></button><button aria-label={`Editar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => openEditor(recipe)} title="Editar" type="button"><Pencil size={17} /></button><button aria-label={`Duplicar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => quickAction(() => { duplicateRecipe(recipe.id) }, 'Se creó una copia en borrador.')} title="Duplicar" type="button"><Copy size={17} /></button><button aria-label={recipe.active ? `Desactivar receta ${recipe.title}` : `Activar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => quickAction(() => setRecipeActive(recipe.id, !recipe.active), recipe.active ? 'La receta quedó inactiva.' : 'La receta volvió a estar disponible.')} title={recipe.active ? 'Desactivar' : 'Activar'} type="button"><Power size={17} /></button><button aria-label={recipe.featured ? `Quitar ${recipe.title} de destacadas` : `Destacar receta ${recipe.title}`} className={`pantry-icon-button${recipe.featured ? ' active' : ''}`} onClick={() => quickAction(() => setRecipeFeatured(recipe.id, !recipe.featured), recipe.featured ? 'La receta dejó de estar destacada.' : 'La receta ahora está destacada.')} title="Destacar" type="button"><Star size={17} /></button>{recipe.record && !recipe.record.isDeleted && <button aria-label={`Eliminar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => remove(recipe.record!)} title="Eliminar" type="button"><Trash2 size={17} /></button>}</div>
       </article>)}
-      {visibleRecipes.length === 0 && seedRecipes.length === 0 && <p className="empty">No hay recetas que coincidan con la búsqueda.</p>}
+      {visibleRecipes.length === 0 && <p className="empty">No hay recetas que coincidan con los filtros elegidos.</p>}
     </div>
 
-    {editor && <dialog aria-labelledby="admin-recipe-title" className="shopping-editor surface admin-recipe-dialog" onCancel={(event) => { event.preventDefault(); setEditor(null) }} ref={(node) => { if (node && !node.open) node.showModal() }}>
-      <div className="shopping-editor-heading"><h2 id="admin-recipe-title">{editor.id ? 'Editar receta' : 'Nueva receta oficial'}</h2><button aria-label="Cerrar formulario" className="pantry-icon-button" onClick={() => setEditor(null)} type="button"><X size={19} /></button></div>
+    {pageCount > 1 && <nav aria-label="Paginación de recetas" className="admin-pagination"><button className="button button-quiet" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} type="button">Anterior</button><span>Página {currentPage} de {pageCount}</span><button className="button button-quiet" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)} type="button">Siguiente</button></nav>}
+
+    {preview && <dialog aria-labelledby="admin-preview-title" className="pantry-dialog surface admin-preview-dialog" onCancel={() => setPreview(null)} ref={(node) => { if (node && !node.open) node.showModal() }}><div className="pantry-dialog-header"><div><p className="eyebrow">VISTA PREVIA</p><h2 id="admin-preview-title">{preview.title}</h2></div><button aria-label="Cerrar vista previa" className="pantry-icon-button" onClick={() => setPreview(null)} type="button"><X size={19} /></button></div><RecipeImage className="admin-preview-image" recipe={preview.recipe} /><p>{preview.recipe.description}</p><dl className="admin-preview-facts"><div><dt>Tiempo</dt><dd>{preview.minutes} min</dd></div><div><dt>Porciones</dt><dd>{preview.recipe.portions}</dd></div><div><dt>Dificultad</dt><dd>{preview.difficulty}</dd></div><div><dt>Estado</dt><dd>{preview.status === 'published' ? 'Publicada' : preview.status === 'draft' ? 'Borrador' : 'Inactiva'}</dd></div></dl><div className="pantry-dialog-actions"><button className="button button-quiet" onClick={() => setPreview(null)} type="button">Cerrar</button><button className="button button-primary" onClick={() => { const selected = preview; setPreview(null); openEditor(selected) }} type="button">Editar receta</button></div></dialog>}
+
+    {editor && <dialog aria-labelledby="admin-recipe-title" className="shopping-editor surface admin-recipe-dialog" onCancel={(event) => { event.preventDefault(); requestCloseEditor() }} ref={(node) => { if (node && !node.open) node.showModal() }}>
+      <div className="shopping-editor-heading"><h2 id="admin-recipe-title">{editor.id ? 'Editar receta' : 'Nueva receta oficial'}</h2><button aria-label="Cerrar formulario" className="pantry-icon-button" onClick={requestCloseEditor} type="button"><X size={19} /></button></div>
       <form onSubmit={submit}>
         <div className="shopping-form-grid">
           <label className="field"><span>Título</span><input autoFocus maxLength={90} onChange={(event) => setEditor({ ...editor, title: event.currentTarget.value })} required value={editor.title ?? ''} /></label>
           <label className="field"><span>Porciones</span><input min="1" onChange={(event) => setEditor({ ...editor, portions: event.currentTarget.valueAsNumber })} required type="number" value={editor.portions ?? ''} /></label>
-          <label className="field"><span>Tiempo de preparación (minutos)</span><input min="1" onChange={(event) => setEditor({ ...editor, minutes: event.currentTarget.valueAsNumber })} required type="number" value={editor.minutes ?? ''} /></label>
+          <label className="field"><span>Tiempo total (minutos)</span><input min="1" onChange={(event) => setEditor({ ...editor, minutes: event.currentTarget.valueAsNumber })} required type="number" value={editor.minutes ?? ''} /></label>
+          <label className="field"><span>Preparación (minutos)</span><input min="0" onChange={(event) => setEditor({ ...editor, preparationMinutes: event.currentTarget.value ? event.currentTarget.valueAsNumber : undefined })} type="number" value={editor.preparationMinutes ?? ''} /></label>
+          <label className="field"><span>Cocción (minutos)</span><input min="0" onChange={(event) => setEditor({ ...editor, cookingMinutes: event.currentTarget.value ? event.currentTarget.valueAsNumber : undefined })} type="number" value={editor.cookingMinutes ?? ''} /></label>
           <label className="field"><span>Dificultad</span><select onChange={(event) => setEditor({ ...editor, difficulty: event.currentTarget.value as AdminRecipe['difficulty'] })} value={editor.difficulty ?? 'Fácil'}><option>Fácil</option><option>Intermedia</option><option>Avanzada</option></select></label>
           <label className="field"><span>Calorías de referencia por porción</span><input min="0" step="any" onChange={(event) => setEditor({ ...editor, calories: event.currentTarget.valueAsNumber })} required type="number" value={editor.calories ?? ''} /></label>
           <label className="field"><span>Turno de comida</span><select onChange={(event) => setEditor({ ...editor, mealShift: event.currentTarget.value, category: event.currentTarget.value })} value={editor.mealShift ?? 'Almuerzo'}><option>Desayuno</option><option>Almuerzo</option><option>Merienda</option><option>Cena</option></select></label>
@@ -176,7 +226,7 @@ export function RecipesTab() {
         </section>
 
         {error && <p className="form-message error" role="alert">{error}</p>}
-        <div className="pantry-dialog-actions"><button className="button button-quiet" onClick={() => setEditor(null)} type="button">Cancelar</button><button className="button button-primary" type="submit">Guardar receta</button></div>
+        <div className="pantry-dialog-actions"><button className="button button-quiet" onClick={requestCloseEditor} type="button">Cancelar</button><button className="button button-primary" type="submit">Guardar receta</button></div>
       </form>
     </dialog>}
   </div>

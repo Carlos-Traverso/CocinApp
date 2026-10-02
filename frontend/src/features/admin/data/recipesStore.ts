@@ -85,3 +85,42 @@ export function deleteRecipe(id: string): void {
     saveAdminData(data)
   }
 }
+
+function ensureManagedRecipe(id: string, now = new Date()): AdminRecipe {
+  const existing = getAdminData().recipes.find((recipe) => recipe.id === id)
+  if (existing) return existing
+  const seeded = recipeSeed.find((recipe) => recipe.id === id)
+  if (!seeded) throw new Error('La receta no existe.')
+  return createSeedRecipeOverride(seeded, now)
+}
+
+export function setRecipeActive(id: string, active: boolean, now = new Date()): void {
+  const managed = ensureManagedRecipe(id, now)
+  const data = getAdminData()
+  const recipe = data.recipes.find((entry) => entry.id === managed.id)
+  if (!recipe) return
+  recipe.isDeleted = !active
+  if (active && recipe.status === 'draft') recipe.status = 'published'
+  recipe.updatedAt = now.toISOString()
+  saveAdminData(data)
+}
+
+export function setRecipeFeatured(id: string, featured: boolean, now = new Date()): void {
+  const managed = ensureManagedRecipe(id, now)
+  const data = getAdminData()
+  const recipe = data.recipes.find((entry) => entry.id === managed.id)
+  if (!recipe) return
+  recipe.featured = featured
+  recipe.updatedAt = now.toISOString()
+  saveAdminData(data)
+}
+
+export function duplicateRecipe(id: string, now = new Date()): string {
+  const source = ensureManagedRecipe(id, now)
+  const { id: _id, isDeleted: _isDeleted, createdAt: _createdAt, updatedAt: _updatedAt, ...copy } = source
+  const titles = getAdminData().recipes.map((recipe) => normalizePantryName(recipe.title))
+  let title = `Copia de ${source.title}`
+  let sequence = 2
+  while (titles.includes(normalizePantryName(title))) title = `Copia ${sequence++} de ${source.title}`
+  return createRecipe({ ...copy, title, status: 'draft', featured: false, ingredients: source.ingredients.map((entry) => ({ ...entry })), steps: [...source.steps], stepMeta: source.stepMeta?.map((entry) => ({ ...entry })) }, now)
+}
