@@ -102,16 +102,51 @@ test('only purchased items transfer once; compatible stock combines and incompat
   ], storage)
   const first = transferPurchasedToPantry(storage, new Date('2026-09-28T12:00:00Z'))
   assert.equal(first.transferredCount, 2)
+  assert.equal(first.removedCount, 2)
   assert.equal(readPantryItems(storage).length, 2)
   assert.equal(readPantryItems(storage)[0].quantity, 1500)
   assert.equal(readPantryItems(storage)[0].expiry, '2027-01-01')
   assert.equal(readPantryItems(storage)[1].unit, 'u')
   assert.equal(readPantryItems(storage).some((item) => item.name === 'Sal'), false)
-  assert.equal(readShoppingItems(storage).filter((item) => item.transferredToPantry).length, 2)
+  assert.deepEqual(readShoppingItems(storage).map((item) => item.id), ['pending'])
   assert.equal(transferPurchasedToPantry(storage).transferredCount, 0)
   assert.equal(readPantryItems(storage)[0].quantity, 1500)
-  setShoppingPurchased('kg', false, storage)
+  setShoppingPurchased('pending', false, storage)
   assert.equal(readPantryItems(storage)[0].quantity, 1500)
+})
+
+test('a failed shopping removal restores pantry and keeps every purchase retryable', () => {
+  const entries = new Map<string, string>()
+  let shoppingWrites = 0
+  const storage = {
+    getItem: (key: string) => entries.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      if (key === 'cocinapp.shopping.v1' && shoppingWrites++ === 1) throw new Error('quota')
+      entries.set(key, value)
+    },
+  }
+  writeShoppingItems([
+    shoppingItem({ id: 'milk', name: 'Leche', category: 'Lácteos', quantity: 2, unit: 'l', checked: true }),
+    shoppingItem({ id: 'apple', name: 'Manzana', category: 'Frutas y verduras', quantity: 4, unit: 'u', checked: true }),
+  ], storage)
+
+  assert.throws(() => transferPurchasedToPantry(storage), /transferencia/i)
+  assert.deepEqual(readPantryItems(storage), [])
+  assert.deepEqual(readShoppingItems(storage).map((item) => item.id), ['milk', 'apple'])
+})
+
+test('successful transfers persist an empty shopping state after reload', () => {
+  const entries = new Map<string, string>()
+  const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
+  writeShoppingItems([shoppingItem({ id: 'milk', name: 'Leche', category: 'Lácteos', quantity: 2, unit: 'l', checked: true })], storage)
+
+  const result = transferPurchasedToPantry(storage, new Date('2026-09-28T12:00:00Z'))
+
+  assert.deepEqual(result.items, [])
+  assert.equal(result.transferredCount, 1)
+  assert.equal(result.removedCount, 1)
+  assert.deepEqual(readShoppingItems(storage), [])
+  assert.equal(readPantryItems(storage)[0].name, 'Leche')
 })
 
 test('new pantry products use a null expiry and legacy checked items are not assumed transferred', () => {
@@ -123,4 +158,5 @@ test('new pantry products use a null expiry and legacy checked items are not ass
   transferPurchasedToPantry(storage)
   assert.equal(readPantryItems(storage)[0].expiry, null)
   assert.deepEqual(readPantryItems(storage)[0].sourceShoppingIds, ['milk'])
+  assert.deepEqual(readShoppingItems(storage), [])
 })

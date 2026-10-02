@@ -103,12 +103,12 @@ export function ShoppingPage() {
   }
 
   function transferAll() {
-    if (transferableCount > 1 && !window.confirm(`¿Enviar ${transferableCount} productos a la despensa?`)) return
+    if (transferableCount > 1 && !window.confirm(`Se enviarán ${transferableCount} productos a la despensa y se quitarán de la lista de compras. ¿Continuar?`)) return
     setTransferring(true)
     try {
       const result = transferPurchasedToPantry()
       setItems(result.items)
-      setNotice(`${result.transferredCount} ${result.transferredCount === 1 ? 'producto enviado' : 'productos enviados'} a la despensa.`)
+      setNotice(`${result.transferredCount} ${result.transferredCount === 1 ? 'producto transferido' : 'productos transferidos'} a la despensa y ${result.removedCount} ${result.removedCount === 1 ? 'eliminado' : 'eliminados'} de Compras.`)
       setError('')
     } catch { setError('La transferencia no se completó. Podés reintentar sin duplicar productos.') }
     finally { setTransferring(false) }

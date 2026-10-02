@@ -39,7 +39,7 @@ export function readShoppingItems(storage: StorageLike = personalStorage): Shopp
     const seen = new Set<string>()
     return value.flatMap((value): ShoppingItem[] => {
       const item = readShoppingItem(value, transferredIds)
-      if (!item || seen.has(item.id)) return []
+      if (!item || item.transferredToPantry || seen.has(item.id)) return []
       seen.add(item.id)
       return [item]
     })
@@ -69,20 +69,31 @@ export function markAllShoppingPurchased(storage: StorageLike = personalStorage)
   return next
 }
 
-export interface PantryTransferResult { items: ShoppingItem[]; transferredCount: number }
+export interface PantryTransferResult { items: ShoppingItem[]; transferredCount: number; removedCount: number }
 
 export function transferPurchasedToPantry(storage: StorageLike = personalStorage, now = new Date()): PantryTransferResult {
-  let items = readShoppingItems(storage)
-  let pantry = readPantryItems(storage)
-  let transferredCount = 0
-  for (const purchase of items.filter((item) => item.checked && !item.transferredToPantry)) {
-    pantry = addPurchaseToPantry(pantry, purchase)
-    writePantryItems(pantry, storage)
-    items = items.map((item) => item.id === purchase.id
-      ? { ...item, transferredToPantry: true, transferredAt: now.toISOString() }
-      : item)
-    writeShoppingItems(items, storage)
-    transferredCount += 1
+  const items = readShoppingItems(storage)
+  const pantryBefore = readPantryItems(storage)
+  const purchases = items.filter((item) => item.checked && !item.transferredToPantry)
+  if (purchases.length === 0) return { items, transferredCount: 0, removedCount: 0 }
+
+  const transferredAt = now.toISOString()
+  const transferred = purchases.map((item) => ({ ...item, transferredToPantry: true, transferredAt }))
+  const pantryAfter = transferred.reduce(addPurchaseToPantry, pantryBefore)
+  const transferredIds = new Set(transferred.map((item) => item.id))
+  const shoppingAfter = items.filter((item) => !transferredIds.has(item.id))
+
+  let pantryCommitted = false
+  try {
+    writePantryItems(pantryAfter, storage)
+    pantryCommitted = true
+    writeShoppingItems(shoppingAfter, storage)
+  } catch (cause) {
+    if (pantryCommitted) {
+      try { writePantryItems(pantryBefore, storage) } catch { /* Preserve the original transfer error. */ }
+    }
+    throw new Error('La transferencia no se pudo confirmar.', { cause })
   }
-  return { items, transferredCount }
+
+  return { items: shoppingAfter, transferredCount: transferred.length, removedCount: items.length - shoppingAfter.length }
 }
