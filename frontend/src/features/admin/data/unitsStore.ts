@@ -33,3 +33,11 @@ export function deleteUnit(id: string): void {
     saveAdminData(data)
   }
 }
+
+export function restoreUnit(id: string): void {
+  const data = getAdminData()
+  const unit = data.units.find((entry) => entry.id === id)
+  if (!unit) return
+  unit.isDeleted = false
+  saveAdminData(data)
+}

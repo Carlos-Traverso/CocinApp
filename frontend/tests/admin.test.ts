@@ -12,15 +12,16 @@ global.window = { dispatchEvent: () => {} } as unknown as Window & typeof global
 import assert from 'node:assert/strict'
 import test, { beforeEach, describe } from 'node:test'
 import { getAdminData, saveAdminData } from '../src/features/admin/data/localAdminStore'
-import { createCategory, deleteCategory } from '../src/features/admin/data/categoriesStore'
-import { createUnit, deleteUnit } from '../src/features/admin/data/unitsStore'
-import { createIngredient, deleteIngredient } from '../src/features/admin/data/ingredientsStore'
+import { createCategory, deleteCategory, restoreCategory } from '../src/features/admin/data/categoriesStore'
+import { createUnit, deleteUnit, restoreUnit } from '../src/features/admin/data/unitsStore'
+import { createIngredient, deleteIngredient, restoreIngredient } from '../src/features/admin/data/ingredientsStore'
 import { createRecipe, createSeedRecipeOverride, deleteRecipe, duplicateRecipe, setRecipeActive, setRecipeFeatured, updateRecipe } from '../src/features/admin/data/recipesStore'
 import { getAvailableRecipes } from '../src/features/recipes/data/availableRecipes'
 import { getKnownRecipes, getRecipeById } from '../src/features/recipes/data/availableRecipes'
 import { adminNavigation, getAdminNavigationItem } from '../src/features/admin/ui/adminNavigation'
 import { createAdminDashboard } from '../src/features/admin/domain/adminDashboard'
 import { filterAdminRecipes, getManagedRecipes } from '../src/features/admin/domain/adminRecipeList'
+import { countAdminUsage } from '../src/features/admin/domain/adminUsage'
 
 describe('local admin catalog', () => {
   beforeEach(() => {
@@ -249,5 +250,28 @@ describe('admin recipe management', () => {
     const duplicate = getAdminData().recipes.find((recipe) => recipe.id === duplicateId)!
     assert.match(duplicate.title, /^Copia de /)
     assert.equal(duplicate.status, 'draft')
+  })
+})
+
+describe('admin catalog usage', () => {
+  test('counts recipe associations and restores logically deleted master data', () => {
+    localStorage.clear()
+    const data = getAdminData()
+    const usage = countAdminUsage(data, getKnownRecipes())
+    const quinoa = data.ingredients.find((ingredient) => ingredient.name.toLocaleLowerCase('es').includes('quinoa'))!
+    assert.ok((usage.ingredients[quinoa.id] ?? 0) > 0)
+    createRecipe({ title: 'Prueba de quinoa', author: 'CocinAPP', description: '', category: 'Cena', minutes: 20, portions: 2, difficulty: 'Fácil', calories: 100, mealShift: 'Cena', dietaryTags: [], ingredients: [{ ingredientId: quinoa.id, quantity: 100, unitId: quinoa.baseUnitId }], steps: ['Cocinar.'], status: 'draft', symbol: 'Q', color: 'green' })
+    deleteIngredient(quinoa.id)
+    restoreIngredient(quinoa.id)
+    assert.equal(getAdminData().ingredients.find((ingredient) => ingredient.id === quinoa.id)?.isDeleted, false)
+
+    const category = data.categories.find((entry) => entry.name === 'Otros')!
+    const unit = data.units.find((entry) => entry.abbreviation === 'g')!
+    deleteCategory(category.id)
+    deleteUnit(unit.id)
+    restoreCategory(category.id)
+    restoreUnit(unit.id)
+    assert.equal(getAdminData().categories.find((entry) => entry.id === category.id)?.isDeleted, false)
+    assert.equal(getAdminData().units.find((entry) => entry.id === unit.id)?.isDeleted, false)
   })
 })

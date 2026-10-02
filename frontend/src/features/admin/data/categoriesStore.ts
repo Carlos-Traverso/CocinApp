@@ -33,3 +33,11 @@ export function deleteCategory(id: string): void {
     saveAdminData(data)
   }
 }
+
+export function restoreCategory(id: string): void {
+  const data = getAdminData()
+  const category = data.categories.find((entry) => entry.id === id)
+  if (!category) return
+  category.isDeleted = false
+  saveAdminData(data)
+}

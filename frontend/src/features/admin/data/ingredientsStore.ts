@@ -33,3 +33,11 @@ export function deleteIngredient(id: string): void {
     saveAdminData(data)
   }
 }
+
+export function restoreIngredient(id: string): void {
+  const data = getAdminData()
+  const ingredient = data.ingredients.find((entry) => entry.id === id)
+  if (!ingredient) return
+  ingredient.isDeleted = false
+  saveAdminData(data)
+}

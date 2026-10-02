@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, X } from 'lucide-react'
+import { Plus, Pencil, RotateCcw, Trash2, X } from 'lucide-react'
 import { getAdminData } from '../data/localAdminStore'
 import { hasAdminReferences } from '../data/adminReferences'
-import { createUnit, updateUnit, deleteUnit } from '../data/unitsStore'
+import { createUnit, updateUnit, deleteUnit, restoreUnit } from '../data/unitsStore'
+import { countAdminUsage } from '../domain/adminUsage'
+import { getKnownRecipes } from '../../recipes/data/availableRecipes'
 
 export function UnitsTab() {
   const data = getAdminData()
@@ -17,6 +19,9 @@ export function UnitsTab() {
   } | null>(null)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  const [dimensionFilter, setDimensionFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const [success, setSuccess] = useState('')
 
   const reload = () => setUnits(getAdminData().units)
 
@@ -36,11 +41,17 @@ export function UnitsTab() {
       }
       setEditor(null)
       setError('')
+      setSuccess(editor.id ? 'Unidad actualizada.' : 'Unidad creada.')
       reload()
     } catch (err: any) {
       setError(err.message)
     }
   }
+
+  const usage = countAdminUsage(data, getKnownRecipes())
+  const visibleUnits = units.filter((unit) => `${unit.name} ${unit.abbreviation}`.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es'))
+    && (!dimensionFilter || unit.dimension === dimensionFilter)
+    && (statusFilter === 'all' || (statusFilter === 'inactive') === unit.isDeleted))
 
   const handleDelete = (id: string, name: string, abbreviation: string) => {
     const hasRefs = hasAdminReferences('unit', id, abbreviation)
@@ -56,26 +67,27 @@ export function UnitsTab() {
   return (
     <div className="panel">
       <div className="section-header">
-        <h2>Administrar Unidades</h2>
-        <button className="button" onClick={() => { setEditor({ name: '', abbreviation: '', dimension: 'masa', baseUnitId: '', equivalenceMultiplier: '' }); setError('') }}>
+        <div><h2>Unidades de medida</h2><p className="panel-intro">{visibleUnits.length} de {units.length} unidades</p></div>
+        <button className="button button-primary" onClick={() => { setEditor({ name: '', abbreviation: '', dimension: 'masa', baseUnitId: '', equivalenceMultiplier: '' }); setError('') }} type="button">
           <Plus size={16} /> Nueva unidad
         </button>
       </div>
 
-      <label className="field admin-search"><span>Buscar unidad</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label>
+      {success && <p className="form-message success" role="status">{success}</p>}
+      <div className="admin-catalog-filters"><label className="field admin-filter-search"><span>Buscar unidad</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label><label className="field"><span>Dimensión</span><select onChange={(event) => setDimensionFilter(event.currentTarget.value)} value={dimensionFilter}><option value="">Todas</option><option value="masa">Masa</option><option value="volumen">Volumen</option><option value="conteo">Conteo</option></select></label><label className="field"><span>Estado</span><select onChange={(event) => setStatusFilter(event.currentTarget.value as typeof statusFilter)} value={statusFilter}><option value="all">Todas</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select></label></div>
 
       <div className="records">
-        {units.filter((unit) => `${unit.name} ${unit.abbreviation}`.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es'))).map((u) => {
+        {visibleUnits.map((u) => {
           const base = units.find(x => x.id === u.baseUnitId)
           return (
             <article className="record" key={u.id}>
               <div className="record-main">
                 <strong>{u.name} ({u.abbreviation})</strong>
-                <small>Dimensión: {u.dimension} {base ? `| Equivale a ${u.equivalenceMultiplier} ${base.abbreviation}` : '| Unidad base'}</small>
+                <small>Dimensión: {u.dimension} {base ? `· Equivale a ${u.equivalenceMultiplier} ${base.abbreviation}` : '· Unidad base'} · {usage.units[u.id] ?? 0} usos</small>
                 {u.isDeleted && <small className="error">Inactiva (Baja lógica)</small>}
               </div>
               <div className="record-actions">
-                {!u.isDeleted && (
+                {!u.isDeleted ? (
                   <>
                     <button aria-label={`Editar unidad ${u.name}`} className="pantry-icon-button" onClick={() => setEditor({ id: u.id, name: u.name, abbreviation: u.abbreviation, dimension: u.dimension, baseUnitId: u.baseUnitId || '', equivalenceMultiplier: String(u.equivalenceMultiplier || '') })} type="button">
                       <Pencil size={17} />
@@ -84,12 +96,12 @@ export function UnitsTab() {
                       <Trash2 size={17} />
                     </button>
                   </>
-                )}
+                ) : <button className="button button-quiet" onClick={() => { restoreUnit(u.id); reload(); setSuccess('Unidad reactivada.') }} type="button"><RotateCcw size={15} /> Reactivar</button>}
               </div>
             </article>
           )
         })}
-        {units.length === 0 && <p className="empty">No hay unidades administradas.</p>}
+        {visibleUnits.length === 0 && <p className="empty">No hay unidades que coincidan con los filtros.</p>}
       </div>
 
       {editor && (

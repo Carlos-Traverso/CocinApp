@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, X } from 'lucide-react'
+import { Plus, Pencil, RotateCcw, Trash2, X } from 'lucide-react'
 import { getAdminData } from '../data/localAdminStore'
 import { hasAdminReferences } from '../data/adminReferences'
-import { createCategory, updateCategory, deleteCategory } from '../data/categoriesStore'
+import { createCategory, updateCategory, deleteCategory, restoreCategory } from '../data/categoriesStore'
+import { countAdminUsage } from '../domain/adminUsage'
+import { getKnownRecipes } from '../../recipes/data/availableRecipes'
 
 export function CategoriesTab() {
   const data = getAdminData()
@@ -10,6 +12,8 @@ export function CategoriesTab() {
   const [editor, setEditor] = useState<{ id?: string; name: string } | null>(null)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const [success, setSuccess] = useState('')
 
   const reload = () => setCategories(getAdminData().categories)
 
@@ -24,11 +28,16 @@ export function CategoriesTab() {
       }
       setEditor(null)
       setError('')
+      setSuccess(editor.id ? 'Categoría actualizada.' : 'Categoría creada.')
       reload()
     } catch (err: any) {
       setError(err.message)
     }
   }
+
+  const usage = countAdminUsage(data, getKnownRecipes())
+  const visibleCategories = categories.filter((category) => category.name.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es'))
+    && (statusFilter === 'all' || (statusFilter === 'inactive') === category.isDeleted))
 
   const handleDelete = (id: string, name: string) => {
     const isReferenced = hasAdminReferences('category', id, name)
@@ -44,23 +53,25 @@ export function CategoriesTab() {
   return (
     <div className="panel">
       <div className="section-header">
-        <h2>Administrar Categorías</h2>
-        <button className="button" onClick={() => { setEditor({ name: '' }); setError('') }}>
+        <div><h2>Categorías de ingredientes</h2><p className="panel-intro">{visibleCategories.length} de {categories.length} categorías</p></div>
+        <button className="button button-primary" onClick={() => { setEditor({ name: '' }); setError('') }} type="button">
           <Plus size={16} /> Nueva categoría
         </button>
       </div>
 
-      <label className="field admin-search"><span>Buscar categoría</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label>
+      {success && <p className="form-message success" role="status">{success}</p>}
+      <div className="admin-catalog-filters"><label className="field admin-filter-search"><span>Buscar categoría</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label><label className="field"><span>Estado</span><select onChange={(event) => setStatusFilter(event.currentTarget.value as typeof statusFilter)} value={statusFilter}><option value="all">Todas</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select></label></div>
 
       <div className="records">
-        {categories.filter((category) => category.name.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es'))).map((c) => (
+        {visibleCategories.map((c) => (
           <article className="record" key={c.id}>
             <div className="record-main">
               <strong>{c.name}</strong>
+              <small>{data.ingredients.filter((ingredient) => ingredient.categoryId === c.id).length} ingredientes · {usage.categories[c.id] ?? 0} recetas asociadas</small>
               {c.isDeleted && <small className="error">Inactiva (Baja lógica)</small>}
             </div>
             <div className="record-actions">
-              {!c.isDeleted && (
+              {!c.isDeleted ? (
                 <>
                   <button aria-label={`Editar categoría ${c.name}`} className="pantry-icon-button" onClick={() => setEditor({ id: c.id, name: c.name })} type="button">
                     <Pencil size={17} />
@@ -69,11 +80,11 @@ export function CategoriesTab() {
                     <Trash2 size={17} />
                   </button>
                 </>
-              )}
+              ) : <button className="button button-quiet" onClick={() => { restoreCategory(c.id); reload(); setSuccess('Categoría reactivada.') }} type="button"><RotateCcw size={15} /> Reactivar</button>}
             </div>
           </article>
         ))}
-        {categories.length === 0 && <p className="empty">No hay categorías administradas.</p>}
+        {visibleCategories.length === 0 && <p className="empty">No hay categorías que coincidan con los filtros.</p>}
       </div>
 
       {editor && (

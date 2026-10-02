@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, X } from 'lucide-react'
+import { Plus, Pencil, RotateCcw, Trash2, X } from 'lucide-react'
 import { getAdminData } from '../data/localAdminStore'
 import { hasAdminReferences } from '../data/adminReferences'
-import { createIngredient, updateIngredient, deleteIngredient } from '../data/ingredientsStore'
+import { createIngredient, updateIngredient, deleteIngredient, restoreIngredient } from '../data/ingredientsStore'
+import { countAdminUsage } from '../domain/adminUsage'
+import { getKnownRecipes } from '../../recipes/data/availableRecipes'
 
 export function IngredientsTab() {
   const data = getAdminData()
@@ -18,6 +20,9 @@ export function IngredientsTab() {
   } | null>(null)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const [success, setSuccess] = useState('')
 
   const reload = () => setIngredients(getAdminData().ingredients)
 
@@ -35,11 +40,21 @@ export function IngredientsTab() {
       }
       setEditor(null)
       setError('')
+      setSuccess(editor.id ? 'Ingrediente actualizado.' : 'Ingrediente creado.')
       reload()
     } catch (err: any) {
       setError(err.message)
     }
   }
+
+  const usage = countAdminUsage(data, getKnownRecipes())
+  const visibleIngredients = ingredients.filter((ingredient) => {
+    if (!ingredient.name.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es'))) return false
+    if (categoryFilter && ingredient.categoryId !== categoryFilter) return false
+    if (statusFilter === 'active' && ingredient.isDeleted) return false
+    if (statusFilter === 'inactive' && !ingredient.isDeleted) return false
+    return true
+  })
 
   const handleDelete = (id: string, name: string) => {
     const hasRefs = hasAdminReferences('ingredient', id, name)
@@ -55,27 +70,28 @@ export function IngredientsTab() {
   return (
     <div className="panel">
       <div className="section-header">
-        <h2>Administrar Ingredientes</h2>
-        <button className="button" onClick={() => { setEditor({ name: '', categoryId: categories[0]?.id || '', baseUnitId: units[0]?.id || '' }); setError('') }}>
+        <div><h2>Catálogo de ingredientes</h2><p className="panel-intro">{visibleIngredients.length} de {ingredients.length} ingredientes</p></div>
+        <button className="button button-primary" onClick={() => { setEditor({ name: '', categoryId: categories[0]?.id || '', baseUnitId: units[0]?.id || '' }); setError('') }} type="button">
           <Plus size={16} /> Nuevo ingrediente
         </button>
       </div>
 
-      <label className="field admin-search"><span>Buscar ingrediente</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label>
+      {success && <p className="form-message success" role="status">{success}</p>}
+      <div className="admin-catalog-filters"><label className="field admin-filter-search"><span>Buscar ingrediente</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label><label className="field"><span>Categoría</span><select onChange={(event) => setCategoryFilter(event.currentTarget.value)} value={categoryFilter}><option value="">Todas</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><label className="field"><span>Estado</span><select onChange={(event) => setStatusFilter(event.currentTarget.value as typeof statusFilter)} value={statusFilter}><option value="all">Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select></label></div>
 
       <div className="records">
-        {ingredients.filter((ingredient) => ingredient.name.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es'))).map((i) => {
+        {visibleIngredients.map((i) => {
           const cat = data.categories.find(c => c.id === i.categoryId)
           const unit = data.units.find(u => u.id === i.baseUnitId)
           return (
             <article className="record" key={i.id}>
               <div className="record-main">
                 <strong>{i.name}</strong>
-                <small>{cat?.name || 'Categoría desconocida'} | Unidad base: {unit?.abbreviation || 'Desconocida'}</small>
+                <small>{cat?.name || 'Categoría desconocida'} · Unidad base: {unit?.abbreviation || 'Desconocida'} · {usage.ingredients[i.id] ?? 0} recetas</small>
                 {i.isDeleted && <small className="error">Inactivo (Baja lógica)</small>}
               </div>
               <div className="record-actions">
-                {!i.isDeleted && (
+                {!i.isDeleted ? (
                   <>
                     <button aria-label={`Editar ingrediente ${i.name}`} className="pantry-icon-button" onClick={() => setEditor({ id: i.id, name: i.name, categoryId: i.categoryId, baseUnitId: i.baseUnitId })} type="button">
                       <Pencil size={17} />
@@ -84,12 +100,12 @@ export function IngredientsTab() {
                       <Trash2 size={17} />
                     </button>
                   </>
-                )}
+                ) : <button className="button button-quiet" onClick={() => { restoreIngredient(i.id); reload(); setSuccess('Ingrediente reactivado.') }} type="button"><RotateCcw size={15} /> Reactivar</button>}
               </div>
             </article>
           )
         })}
-        {ingredients.length === 0 && <p className="empty">No hay ingredientes administrados.</p>}
+        {visibleIngredients.length === 0 && <p className="empty">No hay ingredientes que coincidan con los filtros.</p>}
       </div>
 
       {editor && (
