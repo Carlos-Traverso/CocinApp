@@ -8,6 +8,7 @@ import { readFavoriteIds, writeFavoriteIds } from '../src/features/recipes/data/
 import { discoverRecipes } from '../src/features/recipes/domain/recipeDiscovery'
 import type { PantryItem } from '../src/features/pantry/domain/pantry'
 import { mergeRecipeSeed, recipeSeed, recipeSeedVersion } from '../src/features/recipes/data/recipeSeed'
+import { buildRecipeRecommendations } from '../src/features/recipes/domain/recipeRecommendations'
 
 const pantry: PantryItem[] = [
   { id: 'a', name: 'Quinoa', category: 'Granos y legumbres', quantity: 150, unit: 'g', minimum: 0, expiry: '' },
@@ -98,4 +99,20 @@ test('discovery uses local history deterministically and excludes inactive recip
   assert.equal(result.featured.some((recipe) => recipe.id === 'quinoa-bowl'), false)
   assert.equal(result.basedOnHistory.some((recipe) => recipe.id === 'quinoa-bowl' || recipe.id === 'pumpkin-pasta'), false)
   assert.deepEqual(discoverRecipes(active, sampleRecipes, [], []).basedOnHistory, [])
+})
+
+test('recommendations keep their real sections in the panel order without duplicating recipes logic', () => {
+  const history = [{ id: 'history', recipeId: 'quinoa-bowl', cookedAt: '2026-09-23T11:00:00.000Z', portions: 2 }]
+  const recommendations = buildRecipeRecommendations(sampleRecipes, sampleRecipes, pantry, ['chickpea-salad'], history, today)
+  assert.deepEqual(recommendations.sections.map((section) => section.id), [
+    'recipe-featured',
+    'recipe-pantry-ready',
+    'recipe-history-based',
+    'recipe-recook',
+    'recipe-favorites',
+    'recipe-quick',
+  ])
+  assert.equal(recommendations.sections.find((section) => section.id === 'recipe-recook')?.recipes[0]?.id, 'quinoa-bowl')
+  assert.equal(recommendations.sections.find((section) => section.id === 'recipe-favorites')?.recipes[0]?.id, 'chickpea-salad')
+  assert.ok(recommendations.hero)
 })

@@ -7,6 +7,9 @@ import { getAvailableRecipes, getRecipeById } from '../features/recipes/data/ava
 import { readFavoriteIds } from '../features/recipes/data/localFavoritesStore'
 import type { Recipe } from '../features/recipes/domain/Recipe'
 import { RecipeImage } from '../features/recipes/ui/RecipeImage'
+import { getKnownRecipes } from '../features/recipes/data/availableRecipes'
+import { buildRecipeRecommendations } from '../features/recipes/domain/recipeRecommendations'
+import { RecipeRecommendationsView } from '../features/recipes/ui/RecipeRecommendations'
 
 function Artwork({ recipe, compact = false }: { recipe: Recipe; compact?: boolean }) {
   return <RecipeImage className={`dashboard-suggestion-art${compact ? ' compact' : ''}`} recipe={recipe} />
@@ -20,9 +23,12 @@ export function HomePage() {
   const suggestions = buildCookingSuggestions(recipes, pantry, now)
   const timeSuggestion = recommendRecipeForTime(recipes, now.getHours(), { pantry, favoriteIds: readFavoriteIds(), history, today: now })
   const recent = recentPreparations(history, recipes.map((recipe) => recipe.id))
+  const recommendations = buildRecipeRecommendations(recipes, getKnownRecipes(), pantry, readFavoriteIds(), history, now)
 
   return <div className="page dashboard-page dashboard-focus-page">
     <header className="dashboard-focus-heading"><div><p className="eyebrow">MI COCINA</p><h1>Panel</h1><p>Ideas basadas en tu despensa, tu horario y tus preparaciones.</p></div></header>
+
+    <RecipeRecommendationsView pantry={pantry} recommendations={recommendations} today={now} />
 
     <section aria-labelledby="cook-today-title" className="dashboard-panel-section">
       <div className="section-header"><div><p className="dashboard-recommendation-kicker"><PackageCheck aria-hidden="true" size={17} /> Según tu despensa</p><h2 id="cook-today-title">Qué podés cocinar hoy</h2></div></div>
