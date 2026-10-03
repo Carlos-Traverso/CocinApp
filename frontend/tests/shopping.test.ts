@@ -5,6 +5,8 @@ import { filterShoppingItems, mergeShoppingSuggestions, suggestForRecipes, sugge
 import { appendShoppingSuggestions, markAllShoppingPurchased, readShoppingItems, setShoppingPurchased, transferPurchasedToPantry, writeShoppingItems } from '../src/features/shopping/data/localShoppingStore'
 import { readPantryItems, writePantryItems } from '../src/features/pantry/data/localPantryStore'
 import type { PantryItem } from '../src/features/pantry/domain/pantry'
+import type { Recipe } from '../src/features/recipes/domain/Recipe'
+import { getKnownRecipes } from '../src/features/recipes/data/availableRecipes'
 
 const today = new Date(2026, 8, 23)
 const pantry: PantryItem[] = [
@@ -26,6 +28,50 @@ test('recipe suggestions sum repeated ingredients before subtracting usable pant
   assert.equal(suggestions.find((item) => item.name === 'Pechuga de pollo')?.quantity, 500)
   assert.equal(suggestions.find((item) => item.name === 'Tomates cherry')?.quantity, 240)
   assert.equal(suggestions.some((item) => item.name === 'Aceite de oliva'), false)
+})
+
+test('weekly recipe suggestions preserve ingredient categories and only fall back when missing', () => {
+  const recipe: Recipe = {
+    id: 'mixed', name: 'Receta variada', description: '', category: 'Cena', minutes: 20, portions: 2,
+    difficulty: 'Fácil', steps: ['Cocinar'], symbol: 'R', color: 'green', ingredients: [
+      { name: 'Manzana', quantity: 2, unit: 'u', category: 'Frutas y verduras' },
+      { name: 'Leche', quantity: 1, unit: 'l', category: 'Lácteos' },
+      { name: 'Ingrediente desconocido', quantity: 1, unit: 'u' },
+    ],
+  }
+
+  const suggestions = suggestForRecipes([recipe], [], 'plan', today)
+
+  assert.equal(suggestions.find((item) => item.name === 'Manzana')?.category, 'Frutas y verduras')
+  assert.equal(suggestions.find((item) => item.name === 'Leche')?.category, 'Lácteos')
+  assert.equal(suggestions.find((item) => item.name === 'Ingrediente desconocido')?.category, 'Otros')
+  assert.deepEqual(filterShoppingItems(suggestions.map((item, index) => shoppingItem({ ...item, id: String(index) })), { search: '', category: 'Lácteos', status: 'all' }).map((item) => item.name), ['Leche'])
+})
+
+test('the unified recipe repository supplies categories when planning without pantry stock', () => {
+  const recipe = getKnownRecipes().find((item) => item.id === 'chicken-rice')!
+  const suggestions = suggestForRecipes([recipe], [], 'plan', today)
+  assert.equal(suggestions.find((item) => item.name === 'Pechuga de pollo')?.category, 'Carnes y pescados')
+  assert.equal(suggestions.find((item) => item.name === 'Arroz integral')?.category, 'Granos y legumbres')
+  assert.equal(suggestions.find((item) => item.name === 'Tomates cherry')?.category, 'Frutas y verduras')
+})
+
+test('merging repeated products promotes a specific category over Otros', () => {
+  const current = [shoppingItem({ name: 'Leche', category: 'Otros', unit: 'l' })]
+  const merged = mergeShoppingSuggestions(current, [{ name: 'Leche', category: 'Lácteos', quantity: 2, unit: 'l', source: 'plan' }])
+  assert.equal(merged[0].category, 'Lácteos')
+})
+
+test('legacy shopping rows reconstruct a missing category and persist it after reload', () => {
+  const entries = new Map<string, string>()
+  const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
+  const legacy = { id: 'milk', name: 'Leche', quantity: 1, unit: 'l', note: '', checked: false, sources: ['plan'] }
+  entries.set('cocinapp.shopping.v1', JSON.stringify([legacy]))
+
+  const migrated = readShoppingItems(storage)
+  assert.equal(migrated[0]?.category, 'Lácteos')
+  writeShoppingItems(migrated, storage)
+  assert.equal(readShoppingItems(storage)[0]?.category, 'Lácteos')
 })
 
 test('pantry restock suggests low, empty and expired products without duplicates', () => {
@@ -147,6 +193,7 @@ test('successful transfers persist an empty shopping state after reload', () => 
   assert.equal(result.removedCount, 1)
   assert.deepEqual(readShoppingItems(storage), [])
   assert.equal(readPantryItems(storage)[0].name, 'Leche')
+  assert.equal(readPantryItems(storage)[0].category, 'Lácteos')
 })
 
 test('new pantry products use a null expiry and legacy checked items are not assumed transferred', () => {

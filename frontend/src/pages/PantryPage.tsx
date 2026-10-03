@@ -10,6 +10,8 @@ import {
 import { findActiveIngredient, getActiveCategories, getAdminData, getUnitsForIngredient } from '../features/admin/data/localAdminStore'
 import { appendShoppingSuggestions } from '../features/shopping/data/localShoppingStore'
 import { suggestPantryRestock } from '../features/shopping/domain/shopping'
+import { SearchFeedback } from '../shared/search/SearchFeedback'
+import { useDebouncedSearch } from '../shared/search/useDebouncedSearch'
 
 type SortOrder = 'name' | 'expiry' | 'quantity'
 
@@ -75,7 +77,7 @@ function PantryEditor({ item, items, onClose, onSave }: {
     <div className="pantry-dialog-header"><div><p className="eyebrow">DESPENSA</p><h2 id="pantry-editor-title">{editing ? 'Editar ingrediente' : 'Añadir ingrediente'}</h2></div><button aria-label="Cerrar formulario" className="pantry-icon-button" onClick={onClose} title="Cerrar" type="button"><X size={19} /></button></div>
     <p className="pantry-dialog-intro">Registrá el stock disponible y, si querés, un mínimo y un vencimiento.</p>
     <form className="pantry-form" onSubmit={submit}>
-      <label className="field"><span>Ingrediente</span><input autoComplete="off" list="admin-ingredient-catalog" maxLength={70} name="name" onChange={(event) => { const name = event.currentTarget.value; const catalogItem = findActiveIngredient(name); const catalogData = getAdminData(); const category = catalogData.categories.find((item) => item.id === catalogItem?.categoryId)?.name; const baseUnit = catalogData.units.find((item) => item.id === catalogItem?.baseUnitId)?.abbreviation; setDraft({ ...draft, name, ...(category ? { category } : {}), ...(baseUnit ? { unit: baseUnit } : {}) }); setError('') }} placeholder="Ej.: arroz integral" required value={draft.name} /><datalist id="admin-ingredient-catalog">{getAdminData().ingredients.filter((item) => !item.isDeleted).map((item) => <option key={item.id} value={item.name} />)}</datalist></label>
+      <label className="field"><span>Ingrediente</span><input autoComplete="off" list="admin-ingredient-catalog" maxLength={70} name="name" onChange={(event) => { const name = event.currentTarget.value; const catalogItem = findActiveIngredient(name); const catalogData = getAdminData(); const category = catalogData.categories.find((item) => item.id === catalogItem?.categoryId)?.name; const baseUnit = catalogData.units.find((item) => item.id === catalogItem?.baseUnitId)?.abbreviation; setDraft({ ...draft, name, ...(category ? { category } : {}), ...(baseUnit ? { unit: baseUnit } : {}) }); setError('') }} placeholder="Ej.: arroz integral" required value={draft.name} /><datalist id="admin-ingredient-catalog">{getAdminData().ingredients.filter((item) => item.active && !item.isDeleted).map((item) => <option key={item.id} value={item.name} />)}</datalist></label>
       <label className="field"><span>Categoría</span><select onChange={(event) => setDraft({ ...draft, category: event.currentTarget.value as PantryCategory })} value={draft.category}>{getActiveCategories().map((category) => <option key={category}>{category}</option>)}</select></label>
       <div className="pantry-form-grid">
         <label className="field"><span>Cantidad disponible</span><input inputMode="decimal" max="1000000" min="0" name="quantity" onChange={(event) => setDraft({ ...draft, quantity: event.currentTarget.value === '' ? Number.NaN : event.currentTarget.valueAsNumber })} required step="any" type="number" value={Number.isNaN(draft.quantity) ? '' : draft.quantity} /></label>
@@ -123,6 +125,7 @@ export function PantryPage() {
   const [storageError, setStorageError] = useState('')
   const addButtonRef = useRef<HTMLButtonElement>(null)
   const focusBeforeDialog = useRef<HTMLElement | null>(null)
+  const search = useDebouncedSearch(filters.search)
 
   function closeDialog() {
     setEditor(null)
@@ -133,11 +136,12 @@ export function PantryPage() {
   }
 
   const visibleItems = useMemo(() => {
-    const result = filterPantryItems(items, filters)
+    if (search.status === 'waiting') return []
+    const result = filterPantryItems(items, { ...filters, search: search.query })
     if (sortOrder === 'expiry') result.sort((a, b) => (a.expiry || '9999-12-31').localeCompare(b.expiry || '9999-12-31') || a.name.localeCompare(b.name, 'es'))
     if (sortOrder === 'quantity') result.sort((a, b) => a.quantity - b.quantity || a.name.localeCompare(b.name, 'es'))
     return result
-  }, [items, filters, sortOrder])
+  }, [items, filters, search.query, search.status, sortOrder])
 
   const alertCounts = countPantryAlerts(items)
 
@@ -202,11 +206,11 @@ export function PantryPage() {
       <label className="field"><span>Ordenar por</span><select onChange={(event) => setSortOrder(event.currentTarget.value as SortOrder)} value={sortOrder}><option value="name">Nombre</option><option value="expiry">Vencimiento</option><option value="quantity">Cantidad</option></select></label>
     </section>
 
-    <div className="pantry-results"><span aria-live="polite">{visibleItems.length} {visibleItems.length === 1 ? 'ingrediente visible' : 'ingredientes visibles'}</span><button disabled={!filters.search && !filters.category && !filters.status} onClick={() => setFilters(emptyFilters)} type="button">Limpiar filtros</button></div>
+    <div className="pantry-results"><span><SearchFeedback resultCount={visibleItems.length} status={search.status} />{search.status === 'empty' && ` · ${visibleItems.length} ${visibleItems.length === 1 ? 'ingrediente visible' : 'ingredientes visibles'}`}</span><button disabled={!filters.search && !filters.category && !filters.status} onClick={() => setFilters(emptyFilters)} type="button">Limpiar filtros</button></div>
     {notice && <p className="form-message pantry-notice" role="status"><Check size={16} /> {notice}</p>}
     {storageError && <p className="form-message error" role="alert">{storageError}</p>}
 
-    {visibleItems.length === 0 ? <section className="pantry-empty" aria-label="Despensa vacía"><ClipboardList aria-hidden="true" size={34} /><h2>{items.length ? 'Sin resultados para estos filtros' : 'Tu despensa está vacía'}</h2><p>{items.length ? 'Probá otro nombre, categoría o estado.' : 'Añadí un ingrediente o cargá el kit de ejemplo para empezar.'}</p></section> : <section aria-label="Ingredientes de la despensa" className="pantry-list">
+    {search.status !== 'waiting' && (visibleItems.length === 0 ? <section className="pantry-empty" aria-label="Despensa vacía"><ClipboardList aria-hidden="true" size={34} /><h2>{items.length ? 'Sin resultados para estos filtros' : 'Tu despensa está vacía'}</h2><p>{items.length ? 'Probá otro nombre, categoría o estado.' : 'Añadí un ingrediente o cargá el kit de ejemplo para empezar.'}</p></section> : <section aria-label="Ingredientes de la despensa" className="pantry-list">
       {visibleItems.map((item) => {
         const status = getPantryStatus(item)
         return <article className="pantry-item" key={item.id}>
@@ -217,7 +221,7 @@ export function PantryPage() {
           <div className="pantry-item-actions"><button aria-label={`Editar ${item.name}`} className="pantry-icon-button" onClick={(event) => { focusBeforeDialog.current = event.currentTarget; setEditor(item) }} title="Editar ingrediente" type="button"><Pencil size={17} /></button><button aria-label={`Eliminar ${item.name}`} className="pantry-icon-button" onClick={(event) => { focusBeforeDialog.current = event.currentTarget; setDeleting(item) }} title="Eliminar ingrediente" type="button"><Trash2 size={17} /></button></div>
         </article>
       })}
-    </section>}
+    </section>)}
 
     <p className="pantry-footnote">Los datos se guardan en este navegador y se usan para indicar la disponibilidad de ingredientes en recetas.</p>
     {editor && <PantryEditor item={editor} items={items} onClose={closeDialog} onSave={saveItem} />}

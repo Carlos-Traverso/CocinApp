@@ -1,6 +1,6 @@
 import { personalStorage } from '../../auth/data/personalStorage'
 import { daysUntilExpiry, type PantryItem } from '../domain/pantry'
-import { getActiveCategories, getActiveUnits } from '../../admin/data/localAdminStore'
+import { getKnownCategories, getKnownUnits } from '../../admin/data/localAdminStore'
 
 const pantryKey = 'cocinapp.pantry.v1'
 const legacyPantryKey = 'cocinapp-demo-pantry-v1'
@@ -13,15 +13,15 @@ interface PantryStorage {
 function readPantryItem(value: unknown): PantryItem | undefined {
   if (!value || typeof value !== 'object') return undefined
   const item = value as Record<string, unknown>
-  const activeCategories = getActiveCategories()
-  const activeUnits = getActiveUnits()
+  const knownCategories = getKnownCategories()
+  const knownUnits = getKnownUnits()
 
   const valid = typeof item.id === 'string'
     && item.id.length > 0
     && typeof item.name === 'string'
     && item.name.trim().length > 0
-    && activeCategories.includes(item.category as string)
-    && activeUnits.includes(item.unit as string)
+    && knownCategories.includes(item.category as string)
+    && knownUnits.includes(item.unit as string)
     && typeof item.quantity === 'number'
     && Number.isFinite(item.quantity)
     && item.quantity >= 0

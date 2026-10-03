@@ -31,7 +31,7 @@ export type AdminRecipeFilters = {
 export function getManagedRecipes(data: AdminStorageData, knownRecipes: Recipe[]): ManagedAdminRecipe[] {
   return knownRecipes.map((recipe) => {
     const record = data.recipes.find((entry) => entry.id === recipe.id)
-    const active = !record || (!record.isDeleted && record.status === 'published')
+    const active = !record || (record.active && !record.isDeleted && record.status === 'published')
     return {
       id: recipe.id,
       title: recipe.name,
@@ -40,7 +40,7 @@ export function getManagedRecipes(data: AdminStorageData, knownRecipes: Recipe[]
       difficulty: recipe.difficulty,
       featured: recipe.featured ?? false,
       active,
-      status: record?.isDeleted ? 'inactive' : record?.status ?? 'published',
+      status: record && (!record.active || record.isDeleted) ? 'inactive' : record?.status ?? 'published',
       source: record ? 'admin' : 'initial',
       modifiedAt: record?.updatedAt ?? record?.createdAt,
       recipe,

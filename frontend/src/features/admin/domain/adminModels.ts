@@ -1,6 +1,7 @@
 export interface AdminCategory {
   id: string
   name: string
+  active: boolean
   isDeleted: boolean
 }
 
@@ -11,6 +12,7 @@ export interface AdminUnit {
   dimension: 'masa' | 'volumen' | 'conteo'
   baseUnitId?: string // if it's derived
   equivalenceMultiplier?: number
+  active: boolean
   isDeleted: boolean
 }
 
@@ -19,6 +21,7 @@ export interface AdminIngredient {
   name: string
   categoryId: string
   baseUnitId: string
+  active: boolean
   isDeleted: boolean
 }
 
@@ -48,6 +51,7 @@ export interface AdminRecipe {
     specialInstructions?: string
   }[]
   status: 'draft' | 'published'
+  active: boolean
   isDeleted: boolean
   symbol: string
   color: 'green' | 'gold' | 'pink' | 'blue'
@@ -57,4 +61,8 @@ export interface AdminRecipe {
   cookingMinutes?: number
   createdAt?: string
   updatedAt?: string
+}
+
+export function isAdminEntityActive(entity: { active: boolean; isDeleted: boolean }): boolean {
+  return entity.active && !entity.isDeleted
 }

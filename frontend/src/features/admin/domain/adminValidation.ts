@@ -15,7 +15,8 @@ export function validateUnit(input: Omit<AdminUnit, 'id' | 'isDeleted'>, units: 
   if (!['masa', 'volumen', 'conteo'].includes(input.dimension)) throw new Error('Elegí una dimensión válida.')
   if (units.some((unit) => unit.id !== exceptId && !unit.isDeleted && (normalizePantryName(unit.name) === normalizePantryName(name) || unit.abbreviation.toLocaleLowerCase('es') === abbreviation.toLocaleLowerCase('es')))) throw new Error('El nombre o la abreviatura de la unidad ya existe.')
   if (input.baseUnitId) {
-    const base = units.find((unit) => unit.id === input.baseUnitId && !unit.isDeleted)
+    const previous = units.find((unit) => unit.id === exceptId)
+    const base = units.find((unit) => unit.id === input.baseUnitId && !unit.isDeleted && (unit.active || previous?.baseUnitId === unit.id))
     if (!base || base.dimension !== input.dimension || base.baseUnitId) throw new Error('Seleccioná una unidad base compatible.')
     if (!Number.isFinite(input.equivalenceMultiplier) || (input.equivalenceMultiplier ?? 0) <= 0) throw new Error('La equivalencia debe ser un número positivo.')
   } else {
@@ -29,10 +30,11 @@ export function validateUnit(input: Omit<AdminUnit, 'id' | 'isDeleted'>, units: 
 
 export function validateIngredient(input: Omit<AdminIngredient, 'id' | 'isDeleted'>, ingredients: AdminIngredient[], categories: AdminCategory[], units: AdminUnit[], exceptId?: string) {
   const name = input.name.trim()
+  const previous = ingredients.find((item) => item.id === exceptId)
   if (!name || !input.categoryId || !input.baseUnitId) throw new Error('Completá nombre, categoría y unidad base.')
   if (ingredients.some((item) => item.id !== exceptId && !item.isDeleted && normalizePantryName(item.name) === normalizePantryName(name))) throw new Error('El ingrediente ya existe.')
-  if (!categories.some((item) => item.id === input.categoryId && !item.isDeleted)) throw new Error('Seleccioná una categoría activa.')
-  const unit = units.find((item) => item.id === input.baseUnitId && !item.isDeleted)
+  if (!categories.some((item) => item.id === input.categoryId && !item.isDeleted && (item.active || previous?.categoryId === item.id))) throw new Error('Seleccioná una categoría activa.')
+  const unit = units.find((item) => item.id === input.baseUnitId && !item.isDeleted && (item.active || previous?.baseUnitId === item.id))
   if (!unit || unit.baseUnitId) throw new Error('Seleccioná una unidad base activa.')
   return { ...input, name }
 }
@@ -73,6 +75,7 @@ export function validateRecipe(input: Omit<AdminRecipe, 'id' | 'isDeleted'>, rec
     }
   })
   if (!['draft', 'published'].includes(input.status)) throw new Error('Elegí si la receta queda como borrador o publicada.')
+  if (typeof input.active !== 'boolean') throw new Error('Elegí un estado válido para la receta.')
   if (image && (!image.startsWith('/assets/recipes/') || !/\.(avif|webp|png|jpe?g)$/i.test(image))) throw new Error('La imagen debe usar un archivo local de /assets/recipes/.')
   if (image && !imageAlt) throw new Error('Ingresá el texto alternativo de la imagen.')
   if (input.featured !== undefined && typeof input.featured !== 'boolean') throw new Error('La marca destacada debe ser válida.')

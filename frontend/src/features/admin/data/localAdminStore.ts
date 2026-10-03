@@ -2,6 +2,8 @@ import type { AdminCategory, AdminUnit, AdminIngredient, AdminRecipe } from '../
 import { defaultPantryCategories, defaultPantryUnits } from '../../pantry/domain/pantry'
 import { normalizePantryName } from '../../pantry/domain/pantry'
 import { adminCatalogVersion, createInitialAdminData } from './adminSeed'
+import { adminSeedId } from './adminSeed'
+import { inferIngredientCategory } from '../domain/ingredientCategory'
 
 const ADMIN_KEY = 'cocinapp.admin.v1'
 
@@ -50,7 +52,7 @@ function readRecipe(value: unknown): AdminRecipe | undefined {
     calories: typeof value.calories === 'number' && Number.isFinite(value.calories) && value.calories >= 0 ? value.calories : 0,
     dietaryTags: Array.isArray(value.dietaryTags) ? value.dietaryTags.filter((tag): tag is string => typeof tag === 'string') : [],
     featured: value.featured === true, ingredients, steps, stepMeta,
-    status: value.status === 'published' ? 'published' : 'draft', isDeleted: value.isDeleted === true,
+    status: value.status === 'published' ? 'published' : 'draft', active: typeof value.active === 'boolean' ? value.active : value.isDeleted !== true, isDeleted: value.isDeleted === true,
     symbol: typeof value.symbol === 'string' && value.symbol ? value.symbol : value.title.slice(0, 1).toLocaleUpperCase('es'),
     color: value.color === 'gold' || value.color === 'pink' || value.color === 'blue' ? value.color : 'green',
     image: typeof value.image === 'string' && value.image.startsWith('/assets/recipes/') ? value.image : undefined,
@@ -69,24 +71,35 @@ function getAdminData(): AdminStorageData {
       const data: unknown = JSON.parse(raw)
       if (!isRecord(data)) return { categories: [], units: [], ingredients: [], recipes: [] }
       const record = data as Record<string, unknown>
-      return {
-        categories: Array.isArray(record.categories) ? record.categories.filter(isNamedRecord).map((category) => ({ id: category.id, name: category.name, isDeleted: category.isDeleted === true })) : [],
+      const parsed: AdminStorageData = {
+        categories: Array.isArray(record.categories) ? record.categories.filter(isNamedRecord).map((category) => ({ id: category.id, name: category.name, active: typeof category.active === 'boolean' ? category.active : category.isDeleted !== true, isDeleted: category.isDeleted === true })) : [],
         units: Array.isArray(record.units) ? record.units.filter(isNamedRecord).flatMap((unit): AdminUnit[] => {
           const dimension = unit.dimension === 'mass' ? 'masa' : unit.dimension === 'volume' ? 'volumen' : unit.dimension === 'count' || unit.dimension === 'unidad' ? 'conteo' : unit.dimension
           if (dimension !== 'masa' && dimension !== 'volumen' && dimension !== 'conteo' || typeof unit.abbreviation !== 'string') return []
           return [{ id: unit.id, name: unit.name, abbreviation: unit.abbreviation, dimension,
             baseUnitId: typeof unit.baseUnitId === 'string' ? unit.baseUnitId : undefined,
             equivalenceMultiplier: typeof unit.equivalenceMultiplier === 'number' && Number.isFinite(unit.equivalenceMultiplier) ? unit.equivalenceMultiplier : undefined,
+            active: typeof unit.active === 'boolean' ? unit.active : unit.isDeleted !== true,
             isDeleted: unit.isDeleted === true }]
         }) : [],
         ingredients: Array.isArray(record.ingredients) ? record.ingredients.filter(isNamedRecord).flatMap((ingredient): AdminIngredient[] =>
           typeof ingredient.categoryId === 'string' && typeof ingredient.baseUnitId === 'string'
-            ? [{ id: ingredient.id, name: ingredient.name, categoryId: ingredient.categoryId, baseUnitId: ingredient.baseUnitId, isDeleted: ingredient.isDeleted === true }] : []) : [],
+            ? [{ id: ingredient.id, name: ingredient.name, categoryId: ingredient.categoryId, baseUnitId: ingredient.baseUnitId, active: typeof ingredient.active === 'boolean' ? ingredient.active : ingredient.isDeleted !== true, isDeleted: ingredient.isDeleted === true }] : []) : [],
         recipes: Array.isArray(record.recipes) ? record.recipes.flatMap((value): AdminRecipe[] => {
           const recipe = readRecipe(value)
           return recipe ? [recipe] : []
         }) : [],
       }
+      const version = typeof record.version === 'number' ? record.version : 1
+      if (version < 3) {
+        for (const ingredient of parsed.ingredients) {
+          if (!ingredient.id.startsWith('seed-ingredient-')) continue
+          const category = inferIngredientCategory(ingredient.name)
+          if (category) ingredient.categoryId = adminSeedId('category', category)
+        }
+      }
+      if (version < adminCatalogVersion) saveAdminData(parsed)
+      return parsed
     }
   } catch {
     // Ignore corrupt data
@@ -98,22 +111,30 @@ function getAdminData(): AdminStorageData {
 
 export function saveAdminData(data: AdminStorageData): void {
   localStorage.setItem(ADMIN_KEY, JSON.stringify({ version: adminCatalogVersion, ...data }))
-  window.dispatchEvent(new Event('storage'))
+  window.dispatchEvent(new Event('cocinapp:admin-updated'))
 }
 
 // Helpers for merging defaults with admin data
 
 export function getActiveCategories(): string[] {
   const data = getAdminData()
-  const custom = data.categories.filter((c) => c && !c.isDeleted && typeof c.name === 'string').map((c) => c.name)
-  const combined = new Set([...defaultPantryCategories, ...custom])
+  const custom = data.categories.filter((c) => c && c.active && !c.isDeleted && typeof c.name === 'string').map((c) => c.name)
+  const activeDefaults = defaultPantryCategories.filter((name) => {
+    const record = data.categories.find((category) => normalizePantryName(category.name) === normalizePantryName(name))
+    return !record || record.active && !record.isDeleted
+  })
+  const combined = new Set([...activeDefaults, ...custom])
   return Array.from(combined).sort((a, b) => a.localeCompare(b, 'es'))
 }
 
 export function getActiveUnits(): string[] {
   const data = getAdminData()
-  const custom = data.units.filter((u) => u && !u.isDeleted && typeof u.abbreviation === 'string').map((u) => u.abbreviation)
-  const combined = new Set([...defaultPantryUnits, ...custom])
+  const custom = data.units.filter((u) => u && u.active && !u.isDeleted && typeof u.abbreviation === 'string').map((u) => u.abbreviation)
+  const activeDefaults = defaultPantryUnits.filter((abbreviation) => {
+    const record = data.units.find((unit) => unit.abbreviation.toLocaleLowerCase('es') === abbreviation.toLocaleLowerCase('es'))
+    return !record || record.active && !record.isDeleted
+  })
+  const combined = new Set([...activeDefaults, ...custom])
   return Array.from(combined)
 }
 
@@ -128,18 +149,26 @@ export function getKnownUnits(): string[] {
 export function findActiveIngredient(name: string) {
   const normalized = normalizePantryName(name)
   if (!normalized) return undefined
-  return getAdminData().ingredients.find((ingredient) => !ingredient.isDeleted && normalizePantryName(ingredient.name) === normalized)
+  return getAdminData().ingredients.find((ingredient) => ingredient.active && !ingredient.isDeleted && normalizePantryName(ingredient.name) === normalized)
+}
+
+export function resolveIngredientCategory(name: string): string {
+  const data = getAdminData()
+  const ingredient = data.ingredients.find((item) => normalizePantryName(item.name) === normalizePantryName(name))
+  const category = data.categories.find((item) => item.id === ingredient?.categoryId)
+  if (category && category.name !== 'Otros') return category.name
+  return inferIngredientCategory(name) ?? category?.name ?? 'Otros'
 }
 
 export function getUnitsForIngredient(name: string): string[] {
   const data = getAdminData()
   const ingredient = findActiveIngredient(name)
-  const base = data.units.find((unit) => unit.id === ingredient?.baseUnitId && !unit.isDeleted)
+  const base = data.units.find((unit) => unit.id === ingredient?.baseUnitId && unit.active && !unit.isDeleted)
   if (!base) return getActiveUnits()
   const defaultsByDimension: Record<AdminUnit['dimension'], string[]> = {
     masa: ['g', 'kg'], volumen: ['ml', 'l'], conteo: ['u'],
   }
-  return [...new Set([...defaultsByDimension[base.dimension], ...data.units.filter((unit) => !unit.isDeleted && unit.dimension === base.dimension).map((unit) => unit.abbreviation)])]
+  return [...new Set([...defaultsByDimension[base.dimension], ...data.units.filter((unit) => unit.active && !unit.isDeleted && unit.dimension === base.dimension).map((unit) => unit.abbreviation)])]
 }
 
 export { getAdminData }

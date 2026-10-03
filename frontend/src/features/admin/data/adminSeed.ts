@@ -1,8 +1,9 @@
 import { recipeSeed } from '../../recipes/data/recipeSeed'
 import { defaultPantryCategories, normalizePantryName } from '../../pantry/domain/pantry'
 import type { AdminStorageData } from './localAdminStore'
+import { inferIngredientCategory } from '../domain/ingredientCategory'
 
-export const adminCatalogVersion = 2
+export const adminCatalogVersion = 4
 
 export const seedUnitDefinitions = {
   g: { name: 'Gramo', dimension: 'masa' as const },
@@ -17,8 +18,7 @@ export function adminSeedId(prefix: string, value: string): string {
 }
 
 export function createInitialAdminData(): AdminStorageData {
-  const categories = defaultPantryCategories.map((name) => ({ id: adminSeedId('category', name), name, isDeleted: false }))
-  const otherCategoryId = adminSeedId('category', 'Otros')
+  const categories = defaultPantryCategories.map((name) => ({ id: adminSeedId('category', name), name, active: true, isDeleted: false }))
   const units = Object.entries(seedUnitDefinitions).map(([abbreviation, definition]) => {
     const baseAbbreviation = definition.dimension === 'masa' ? 'g' : definition.dimension === 'volumen' ? 'ml' : 'u'
     return {
@@ -28,6 +28,7 @@ export function createInitialAdminData(): AdminStorageData {
       dimension: definition.dimension,
       baseUnitId: baseAbbreviation === abbreviation ? undefined : adminSeedId('unit', baseAbbreviation),
       equivalenceMultiplier: abbreviation === 'kg' || abbreviation === 'l' ? 1000 : undefined,
+      active: true,
       isDeleted: false,
     }
   })
@@ -38,8 +39,9 @@ export function createInitialAdminData(): AdminStorageData {
       if (!ingredientsById.has(id)) ingredientsById.set(id, {
         id,
         name: ingredient.name,
-        categoryId: otherCategoryId,
+        categoryId: adminSeedId('category', inferIngredientCategory(ingredient.name) ?? 'Otros'),
         baseUnitId: adminSeedId('unit', ingredient.unit in seedUnitDefinitions ? ingredient.unit : 'u'),
+        active: true,
         isDeleted: false,
       })
     }

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { searchPlanRecipes } from '../src/features/planner/domain/recipeSearch'
+import { nextPlanRecipeIndex, planRecipeKeyAction, searchPlanRecipes } from '../src/features/planner/domain/recipeSearch'
 import { sampleRecipes } from '../src/mocks/recipes'
 import test from 'node:test'
 import { meals, weekDates, setPlannedMeal } from '../src/features/planner/domain/planner'
@@ -43,10 +43,23 @@ test('older lunch and dinner records remain alongside four turns and independent
 })
 
 test('planner search ignores case and accents while selection works for all four meals', () => {
+  assert.deepEqual(searchPlanRecipes(sampleRecipes, ''), [])
   assert.ok(searchPlanRecipes(sampleRecipes, 'ARROZ').some((recipe) => recipe.id === 'chicken-rice'))
   assert.deepEqual(searchPlanRecipes([{ ...sampleRecipes[0], name: 'Arroz con limón' }], 'LIMON').map((recipe) => recipe.name), ['Arroz con limón'])
   assert.deepEqual(searchPlanRecipes(sampleRecipes, 'zzzz'), [])
   const day = '2026-09-23'
   const selected = meals.reduce((plan, meal) => setPlannedMeal(plan, day, meal, sampleRecipes[0].id), [] as ReturnType<typeof readMealPlan>)
   assert.deepEqual(selected.map((entry) => entry.meal), meals)
+})
+
+test('planner recipe results support keyboard navigation, selection and closing', () => {
+  assert.equal(nextPlanRecipeIndex(0, 3, 'next'), 1)
+  assert.equal(nextPlanRecipeIndex(2, 3, 'next'), 2)
+  assert.equal(nextPlanRecipeIndex(1, 3, 'previous'), 0)
+  assert.equal(nextPlanRecipeIndex(0, 0, 'next'), 0)
+  assert.equal(planRecipeKeyAction('ArrowDown'), 'next')
+  assert.equal(planRecipeKeyAction('ArrowUp'), 'previous')
+  assert.equal(planRecipeKeyAction('Enter'), 'select')
+  assert.equal(planRecipeKeyAction('Escape'), 'close')
+  assert.equal(planRecipeKeyAction('Tab'), null)
 })

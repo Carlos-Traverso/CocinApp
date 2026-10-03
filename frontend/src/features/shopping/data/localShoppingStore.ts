@@ -1,4 +1,4 @@
-import { getKnownCategories, getKnownUnits } from '../../admin/data/localAdminStore'
+import { getKnownCategories, getKnownUnits, resolveIngredientCategory } from '../../admin/data/localAdminStore'
 import { personalStorage } from '../../auth/data/personalStorage'
 import { readPantryItems, writePantryItems } from '../../pantry/data/localPantryStore'
 import { addPurchaseToPantry } from '../domain/shopping'
@@ -13,10 +13,11 @@ function readShoppingItem(value: unknown, transferredIds: Set<string>): Shopping
   const item = value as Record<string, unknown>
   const knownCategories = getKnownCategories()
   const knownUnits = getKnownUnits()
+  const storedCategory = typeof item.category === 'string' && knownCategories.includes(item.category) ? item.category : undefined
+  const category = storedCategory && storedCategory !== 'Otros' ? storedCategory : resolveIngredientCategory(String(item.name ?? ''))
 
   const valid = typeof item.id === 'string' && item.id.length > 0
     && typeof item.name === 'string' && item.name.trim().length > 0 && item.name.length <= 70
-    && knownCategories.includes(item.category as string)
     && knownUnits.includes(item.unit as string)
     && typeof item.quantity === 'number' && Number.isFinite(item.quantity) && item.quantity > 0 && item.quantity <= 1_000_000
     && typeof item.note === 'string' && item.note.length <= 200
@@ -27,7 +28,7 @@ function readShoppingItem(value: unknown, transferredIds: Set<string>): Shopping
     && item.sources.every((source: unknown) => sources.includes(source as ShoppingSource))
   if (!valid) return undefined
   const transferredToPantry = transferredIds.has(item.id as string) || item.transferredToPantry === true
-  return { ...(item as unknown as ShoppingItem), transferredToPantry,
+  return { ...(item as unknown as ShoppingItem), category, transferredToPantry,
     transferredAt: transferredToPantry && typeof item.transferredAt === 'string' ? item.transferredAt : null }
 }
 

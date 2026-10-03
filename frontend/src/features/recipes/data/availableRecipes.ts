@@ -1,4 +1,4 @@
-import { getAdminData } from '../../admin/data/localAdminStore'
+import { getAdminData, resolveIngredientCategory } from '../../admin/data/localAdminStore'
 import type { AdminRecipe } from '../../admin/domain/adminModels'
 import type { Recipe } from '../domain/Recipe'
 import { mergeRecipeSeed, recipeSeed } from './recipeSeed'
@@ -9,7 +9,7 @@ function fromAdminRecipe(recipe: AdminRecipe): Recipe {
   const ingredients = recipe.ingredients.flatMap((entry) => {
     const ingredient = data.ingredients.find((item) => item.id === entry.ingredientId)
     const unit = data.units.find((item) => item.id === entry.unitId)
-    return ingredient && unit ? [{ name: ingredient.name, quantity: entry.quantity, unit: unit.abbreviation }] : []
+    return ingredient && unit ? [{ name: ingredient.name, quantity: entry.quantity, unit: unit.abbreviation, category: resolveIngredientCategory(ingredient.name) }] : []
   })
   return {
     id: recipe.id,
@@ -52,7 +52,7 @@ export function getAvailableRecipes(): Recipe[] {
   return getKnownRecipes().filter((recipe) => {
     const record = data.recipes.find((entry) => entry.id === recipe.id)
     if (!record) return true
-    if (record.isDeleted || record.status !== 'published') return false
+    if (!record.active || record.isDeleted || record.status !== 'published') return false
     return record.steps.length > 0 && record.ingredients.length > 0 && record.ingredients.every((entry) => {
       const ingredient = data.ingredients.find((item) => item.id === entry.ingredientId && !item.isDeleted)
       const unit = data.units.find((item) => item.id === entry.unitId && !item.isDeleted)
@@ -64,7 +64,10 @@ export function getAvailableRecipes(): Recipe[] {
 
 export function getKnownRecipes(): Recipe[] {
   const data = getAdminData()
-  return mergeRecipeSeed(recipeSeed, data.recipes.map(fromAdminRecipe))
+  return mergeRecipeSeed(recipeSeed, data.recipes.map(fromAdminRecipe)).map((recipe) => ({
+    ...recipe,
+    ingredients: recipe.ingredients.map((ingredient) => ({ ...ingredient, category: ingredient.category ?? resolveIngredientCategory(ingredient.name) })),
+  }))
 }
 
 export function getRecipeById(id: string, includeInactive = false): Recipe | undefined {

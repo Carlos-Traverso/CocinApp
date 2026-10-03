@@ -11,10 +11,10 @@ global.window = { dispatchEvent: () => {} } as unknown as Window & typeof global
 
 import assert from 'node:assert/strict'
 import test, { beforeEach, describe } from 'node:test'
-import { getAdminData, saveAdminData } from '../src/features/admin/data/localAdminStore'
-import { createCategory, deleteCategory, restoreCategory } from '../src/features/admin/data/categoriesStore'
-import { createUnit, deleteUnit, restoreUnit } from '../src/features/admin/data/unitsStore'
-import { createIngredient, deleteIngredient, restoreIngredient } from '../src/features/admin/data/ingredientsStore'
+import { findActiveIngredient, getActiveCategories, getActiveUnits, getAdminData, saveAdminData } from '../src/features/admin/data/localAdminStore'
+import { createCategory, deleteCategory, restoreCategory, setCategoryActive, updateCategory } from '../src/features/admin/data/categoriesStore'
+import { createUnit, deleteUnit, restoreUnit, setUnitActive } from '../src/features/admin/data/unitsStore'
+import { createIngredient, deleteIngredient, restoreIngredient, setIngredientActive, updateIngredient } from '../src/features/admin/data/ingredientsStore'
 import { createRecipe, createSeedRecipeOverride, deleteRecipe, duplicateRecipe, setRecipeActive, setRecipeFeatured, updateRecipe } from '../src/features/admin/data/recipesStore'
 import { getAvailableRecipes } from '../src/features/recipes/data/availableRecipes'
 import { getKnownRecipes, getRecipeById } from '../src/features/recipes/data/availableRecipes'
@@ -22,6 +22,7 @@ import { adminNavigation, getAdminNavigationItem } from '../src/features/admin/u
 import { createAdminDashboard } from '../src/features/admin/domain/adminDashboard'
 import { filterAdminRecipes, getManagedRecipes } from '../src/features/admin/domain/adminRecipeList'
 import { countAdminUsage } from '../src/features/admin/domain/adminUsage'
+import { readPantryItems } from '../src/features/pantry/data/localPantryStore'
 
 describe('local admin catalog', () => {
   beforeEach(() => {
@@ -183,6 +184,18 @@ describe('admin navigation', () => {
 })
 
 describe('admin persistence', () => {
+  test('notifies admin changes without impersonating a browser storage event during render', () => {
+    const events: string[] = []
+    const previousWindow = global.window
+    global.window = { dispatchEvent: (event: Event) => { events.push(event.type); return true } } as unknown as Window & typeof globalThis
+    try {
+      saveAdminData({ categories: [], units: [], ingredients: [], recipes: [] })
+      assert.deepEqual(events, ['cocinapp:admin-updated'])
+    } finally {
+      global.window = previousWindow
+    }
+  })
+
   test('initializes versioned categories, units and ingredients only for a new installation', () => {
     localStorage.clear()
     const seeded = getAdminData()
@@ -192,7 +205,7 @@ describe('admin persistence', () => {
 
     saveAdminData({ categories: [], units: [], ingredients: [], recipes: [] })
     assert.deepEqual(getAdminData(), { categories: [], units: [], ingredients: [], recipes: [] })
-    assert.equal(JSON.parse(localStorage.getItem('cocinapp.admin.v1')!).version, 2)
+    assert.equal(JSON.parse(localStorage.getItem('cocinapp.admin.v1')!).version, 4)
   })
 
   test('records creation and modification dates without changing the original creation date', () => {
@@ -265,7 +278,7 @@ describe('admin catalog usage', () => {
     restoreIngredient(quinoa.id)
     assert.equal(getAdminData().ingredients.find((ingredient) => ingredient.id === quinoa.id)?.isDeleted, false)
 
-    const category = data.categories.find((entry) => entry.name === 'Otros')!
+    const category = data.categories.find((entry) => entry.id === quinoa.categoryId)!
     const unit = data.units.find((entry) => entry.abbreviation === 'g')!
     deleteCategory(category.id)
     deleteUnit(unit.id)
@@ -273,5 +286,54 @@ describe('admin catalog usage', () => {
     restoreUnit(unit.id)
     assert.equal(getAdminData().categories.find((entry) => entry.id === category.id)?.isDeleted, false)
     assert.equal(getAdminData().units.find((entry) => entry.id === unit.id)?.isDeleted, false)
+  })
+})
+
+describe('admin active state', () => {
+  test('creates, edits and filters catalog entities without reactivating them accidentally', () => {
+    saveAdminData({ categories: [], units: [], ingredients: [], recipes: [] })
+    const categoryId = createCategory('Temporales', false)
+    const unitId = createUnit('Gramo', 'g', 'masa', undefined, undefined, true)
+    setCategoryActive(categoryId, false)
+    updateCategory(categoryId, 'Temporales editados')
+    assert.equal(getAdminData().categories.find((item) => item.id === categoryId)?.active, false)
+    assert.equal(getActiveCategories().includes('Temporales editados'), false)
+
+    setCategoryActive(categoryId, true)
+    const ingredientId = createIngredient('Ingrediente temporal', categoryId, unitId, false)
+    updateIngredient(ingredientId, 'Ingrediente editado', categoryId, unitId)
+    assert.equal(getAdminData().ingredients.find((item) => item.id === ingredientId)?.active, false)
+    assert.equal(findActiveIngredient('Ingrediente editado'), undefined)
+    setIngredientActive(ingredientId, true)
+    setUnitActive(unitId, false)
+    assert.equal(getAdminData().units.find((item) => item.id === unitId)?.active, false)
+    assert.equal(getActiveUnits().includes('g'), false)
+    setCategoryActive(categoryId, false)
+    const entries = new Map<string, string>([['cocinapp.pantry.v1', JSON.stringify([{ id: 'existing', name: 'Ingrediente editado', category: 'Temporales editados', quantity: 1, unit: 'g', minimum: 0, expiry: null }])]])
+    const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
+    assert.equal(readPantryItems(storage).length, 1)
+  })
+
+  test('inactive recipes remain administrable but disappear from user actions', () => {
+    saveAdminData({ categories: [], units: [], ingredients: [], recipes: [] })
+    const categoryId = createCategory('Granos')
+    const unitId = createUnit('Gramo', 'g', 'masa')
+    const ingredientId = createIngredient('Harina', categoryId, unitId)
+    const id = createRecipe({ title: 'Receta pausada', author: 'CocinAPP', description: '', category: 'Cena', minutes: 20, portions: 2, difficulty: 'Fácil', calories: 100, mealShift: 'Cena', dietaryTags: [], ingredients: [{ ingredientId, quantity: 100, unitId }], steps: ['Cocinar.'], status: 'published', active: false, symbol: 'R', color: 'green' })
+    assert.equal(getRecipeById(id), undefined)
+    assert.equal(getRecipeById(id, true)?.name, 'Receta pausada')
+    setRecipeActive(id, true)
+    assert.equal(getRecipeById(id)?.name, 'Receta pausada')
+  })
+
+  test('migrates legacy active state from logical deletion without losing records', () => {
+    localStorage.setItem('cocinapp.admin.v1', JSON.stringify({ version: 3, categories: [
+      { id: 'active', name: 'Activa', isDeleted: false },
+      { id: 'inactive', name: 'Inactiva', isDeleted: true },
+    ], units: [], ingredients: [], recipes: [] }))
+    const data = getAdminData()
+    assert.equal(data.categories.find((item) => item.id === 'active')?.active, true)
+    assert.equal(data.categories.find((item) => item.id === 'inactive')?.active, false)
+    assert.equal(JSON.parse(localStorage.getItem('cocinapp.admin.v1')!).version, 4)
   })
 })

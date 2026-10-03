@@ -2,19 +2,19 @@ import { getAdminData, saveAdminData } from './localAdminStore'
 import { hasAdminReferences } from './adminReferences'
 import { validateIngredient } from '../domain/adminValidation'
 
-export function createIngredient(name: string, categoryId: string, baseUnitId: string): string {
+export function createIngredient(name: string, categoryId: string, baseUnitId: string, active = true): string {
   const data = getAdminData()
-  const ingredient = validateIngredient({ name, categoryId, baseUnitId }, data.ingredients, data.categories, data.units)
+  const ingredient = validateIngredient({ name, categoryId, baseUnitId, active }, data.ingredients, data.categories, data.units)
   const id = crypto.randomUUID()
   data.ingredients.push({ ...ingredient, id, isDeleted: false })
   saveAdminData(data)
   return id
 }
 
-export function updateIngredient(id: string, name: string, categoryId: string, baseUnitId: string): void {
+export function updateIngredient(id: string, name: string, categoryId: string, baseUnitId: string, active?: boolean): void {
   const data = getAdminData()
-  const ingredient = validateIngredient({ name, categoryId, baseUnitId }, data.ingredients, data.categories, data.units, id)
   const index = data.ingredients.findIndex(i => i.id === id)
+  const ingredient = validateIngredient({ name, categoryId, baseUnitId, active: active ?? data.ingredients[index]?.active ?? true }, data.ingredients, data.categories, data.units, id)
   if (index !== -1) {
     data.ingredients[index] = { ...data.ingredients[index], ...ingredient }
     saveAdminData(data)
@@ -39,5 +39,14 @@ export function restoreIngredient(id: string): void {
   const ingredient = data.ingredients.find((entry) => entry.id === id)
   if (!ingredient) return
   ingredient.isDeleted = false
+  ingredient.active = true
+  saveAdminData(data)
+}
+
+export function setIngredientActive(id: string, active: boolean): void {
+  const data = getAdminData()
+  const ingredient = data.ingredients.find((entry) => entry.id === id)
+  if (!ingredient) return
+  ingredient.active = active
   saveAdminData(data)
 }

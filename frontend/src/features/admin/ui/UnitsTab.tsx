@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { Plus, Pencil, RotateCcw, Trash2, X } from 'lucide-react'
 import { getAdminData } from '../data/localAdminStore'
 import { hasAdminReferences } from '../data/adminReferences'
+import { normalizePantryName } from '../../pantry/domain/pantry'
+import { SearchFeedback } from '../../../shared/search/SearchFeedback'
+import { useDebouncedSearch } from '../../../shared/search/useDebouncedSearch'
 import { createUnit, updateUnit, deleteUnit, restoreUnit } from '../data/unitsStore'
 import { countAdminUsage } from '../domain/adminUsage'
 import { getKnownRecipes } from '../../recipes/data/availableRecipes'
@@ -16,11 +19,13 @@ export function UnitsTab() {
     dimension: string
     baseUnitId: string
     equivalenceMultiplier: string
+    active: boolean
   } | null>(null)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [dimensionFilter, setDimensionFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const debouncedSearch = useDebouncedSearch(search)
   const [success, setSuccess] = useState('')
 
   const reload = () => setUnits(getAdminData().units)
@@ -35,9 +40,9 @@ export function UnitsTab() {
       }
 
       if (editor.id) {
-        updateUnit(editor.id, editor.name.trim(), editor.abbreviation.trim(), editor.dimension, editor.baseUnitId || undefined, multiplier)
+        updateUnit(editor.id, editor.name.trim(), editor.abbreviation.trim(), editor.dimension, editor.baseUnitId || undefined, multiplier, editor.active)
       } else {
-        createUnit(editor.name.trim(), editor.abbreviation.trim(), editor.dimension, editor.baseUnitId || undefined, multiplier)
+        createUnit(editor.name.trim(), editor.abbreviation.trim(), editor.dimension, editor.baseUnitId || undefined, multiplier, editor.active)
       }
       setEditor(null)
       setError('')
@@ -49,9 +54,9 @@ export function UnitsTab() {
   }
 
   const usage = countAdminUsage(data, getKnownRecipes())
-  const visibleUnits = units.filter((unit) => `${unit.name} ${unit.abbreviation}`.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es'))
+  const visibleUnits = units.filter((unit) => debouncedSearch.status !== 'waiting' && normalizePantryName(`${unit.name} ${unit.abbreviation}`).includes(normalizePantryName(debouncedSearch.query))
     && (!dimensionFilter || unit.dimension === dimensionFilter)
-    && (statusFilter === 'all' || (statusFilter === 'inactive') === unit.isDeleted))
+    && (statusFilter === 'all' || (statusFilter === 'active') === (unit.active && !unit.isDeleted)))
 
   const handleDelete = (id: string, name: string, abbreviation: string) => {
     const hasRefs = hasAdminReferences('unit', id, abbreviation)
@@ -67,8 +72,8 @@ export function UnitsTab() {
   return (
     <div className="panel">
       <div className="section-header">
-        <div><h2>Unidades de medida</h2><p className="panel-intro">{visibleUnits.length} de {units.length} unidades</p></div>
-        <button className="button button-primary" onClick={() => { setEditor({ name: '', abbreviation: '', dimension: 'masa', baseUnitId: '', equivalenceMultiplier: '' }); setError('') }} type="button">
+        <div><h2>Unidades de medida</h2><p className="panel-intro"><SearchFeedback resultCount={visibleUnits.length} status={debouncedSearch.status} /> · {units.length} unidades totales</p></div>
+        <button className="button button-primary" onClick={() => { setEditor({ name: '', abbreviation: '', dimension: 'masa', baseUnitId: '', equivalenceMultiplier: '', active: true }); setError('') }} type="button">
           <Plus size={16} /> Nueva unidad
         </button>
       </div>
@@ -84,12 +89,13 @@ export function UnitsTab() {
               <div className="record-main">
                 <strong>{u.name} ({u.abbreviation})</strong>
                 <small>Dimensión: {u.dimension} {base ? `· Equivale a ${u.equivalenceMultiplier} ${base.abbreviation}` : '· Unidad base'} · {usage.units[u.id] ?? 0} usos</small>
-                {u.isDeleted && <small className="error">Inactiva (Baja lógica)</small>}
+                <span className={`admin-entity-status ${u.active && !u.isDeleted ? 'active' : 'inactive'}`}>{u.active && !u.isDeleted ? 'Activo' : 'Inactivo'}</span>
+                {u.isDeleted && <small className="error">Baja lógica por referencias existentes</small>}
               </div>
               <div className="record-actions">
                 {!u.isDeleted ? (
                   <>
-                    <button aria-label={`Editar unidad ${u.name}`} className="pantry-icon-button" onClick={() => setEditor({ id: u.id, name: u.name, abbreviation: u.abbreviation, dimension: u.dimension, baseUnitId: u.baseUnitId || '', equivalenceMultiplier: String(u.equivalenceMultiplier || '') })} type="button">
+                    <button aria-label={`Editar unidad ${u.name}`} className="pantry-icon-button" onClick={() => setEditor({ id: u.id, name: u.name, abbreviation: u.abbreviation, dimension: u.dimension, baseUnitId: u.baseUnitId || '', equivalenceMultiplier: String(u.equivalenceMultiplier || ''), active: u.active })} type="button">
                       <Pencil size={17} />
                     </button>
                     <button aria-label={`Eliminar unidad ${u.name}`} className="pantry-icon-button" onClick={() => handleDelete(u.id, u.name, u.abbreviation)} type="button">
@@ -101,7 +107,7 @@ export function UnitsTab() {
             </article>
           )
         })}
-        {visibleUnits.length === 0 && <p className="empty">No hay unidades que coincidan con los filtros.</p>}
+        {debouncedSearch.status !== 'waiting' && visibleUnits.length === 0 && <p className="empty">No hay unidades que coincidan con los filtros.</p>}
       </div>
 
       {editor && (
@@ -133,7 +139,7 @@ export function UnitsTab() {
               <span>Unidad base (Opcional)</span>
               <select value={editor.baseUnitId} onChange={(e) => setEditor({ ...editor, baseUnitId: e.target.value })}>
                 <option value="">(Esta es una unidad base)</option>
-                {units.filter(u => u.dimension === editor.dimension && u.id !== editor.id && !u.isDeleted).map(u => (
+                {units.filter(u => u.dimension === editor.dimension && u.id !== editor.id && !u.isDeleted && (u.active || u.id === editor.baseUnitId)).map(u => (
                   <option key={u.id} value={u.id}>{u.name} ({u.abbreviation})</option>
                 ))}
               </select>
@@ -144,6 +150,7 @@ export function UnitsTab() {
                 <input required type="number" step="any" min="0.000001" value={editor.equivalenceMultiplier} onChange={(e) => setEditor({ ...editor, equivalenceMultiplier: e.target.value })} placeholder={`Ej.: 1000`} />
               </label>
             )}
+            <label className="field"><span>Estado</span><select onChange={(event) => setEditor({ ...editor, active: event.currentTarget.value === 'active' })} value={editor.active ? 'active' : 'inactive'}><option value="active">Activo · disponible para usar</option><option value="inactive">Inactivo · no disponible para nuevos usos</option></select></label>
             {error && <p className="form-message error" role="alert">{error}</p>}
             <div className="pantry-dialog-actions">
               <button className="button button-quiet" type="button" onClick={() => setEditor(null)}>Cancelar</button>

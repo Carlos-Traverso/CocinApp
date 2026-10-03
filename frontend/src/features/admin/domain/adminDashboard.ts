@@ -12,9 +12,9 @@ export function createAdminDashboard(data: AdminStorageData, knownRecipes: Recip
       featured: availableRecipes.filter((recipe) => recipe.featured).length,
     },
     catalog: {
-      ingredients: data.ingredients.filter((item) => !item.isDeleted).length,
-      categories: data.categories.filter((item) => !item.isDeleted).length,
-      units: data.units.filter((item) => !item.isDeleted).length,
+      ingredients: data.ingredients.filter((item) => item.active && !item.isDeleted).length,
+      categories: data.categories.filter((item) => item.active && !item.isDeleted).length,
+      units: data.units.filter((item) => item.active && !item.isDeleted).length,
     },
     alerts: {
       missingImage: knownRecipes.filter((recipe) => !recipe.image).length,

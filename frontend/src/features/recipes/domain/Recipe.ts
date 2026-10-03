@@ -1,4 +1,4 @@
-export interface RecipeIngredient { name: string; quantity: number; unit: string }
+export interface RecipeIngredient { name: string; quantity: number; unit: string; category?: string }
 
 export interface RecipeStepMeta {
   /** @deprecated Use durationMinutes for new recipes. */

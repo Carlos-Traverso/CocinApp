@@ -77,10 +77,15 @@ export function suggestForRecipes(recipes: Recipe[], pantry: PantryItem[], sourc
   for (const recipe of recipes) for (const ingredient of recipe.ingredients) {
     const key = shoppingKey(ingredient.name, ingredient.unit)
     const existing = needs.get(key)
-    if (existing) existing.quantity += ingredient.quantity
+    if (existing) {
+      existing.quantity += ingredient.quantity
+      if (existing.category === 'Otros' && ingredient.category && ingredient.category !== 'Otros') existing.category = ingredient.category
+    }
     else needs.set(key, {
       name: ingredient.name, unit: ingredient.unit, quantity: ingredient.quantity,
-      category: pantry.find((item) => shoppingKey(item.name, item.unit) === key)?.category ?? 'Otros', source,
+      category: ingredient.category
+        ?? pantry.find((item) => normalizePantryName(item.name) === normalizePantryName(ingredient.name) && item.category !== 'Otros')?.category
+        ?? 'Otros', source,
     })
   }
   return [...needs.entries()].map(([key, need]) => ({
@@ -114,6 +119,7 @@ export function mergeShoppingSuggestions(items: ShoppingItem[], suggestions: Sho
     const existing = merged.find((item) => shoppingKey(item.name, item.unit) === key)
     if (existing) {
       existing.quantity = Math.max(existing.quantity, suggestion.quantity)
+      if (existing.category === 'Otros' && suggestion.category !== 'Otros') existing.category = suggestion.category
       if (!existing.sources.includes(suggestion.source)) existing.sources.push(suggestion.source)
     } else {
       merged.push({ id: crypto.randomUUID(), name: suggestion.name, category: suggestion.category, quantity: suggestion.quantity, unit: suggestion.unit, note: '', checked: false, transferredToPantry: false, transferredAt: null, sources: [suggestion.source] })

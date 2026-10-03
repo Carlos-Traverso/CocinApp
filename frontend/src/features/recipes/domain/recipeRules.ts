@@ -10,13 +10,13 @@ const defaultUnits: Record<string, { dimension: string; base: string; multiplier
 
 function normalizeAmount(quantity: number, abbreviation: string) {
   const data = getAdminData()
-  let unit = data.units.find((candidate) => !candidate.isDeleted && candidate.abbreviation.toLocaleLowerCase('es') === abbreviation.toLocaleLowerCase('es'))
+  let unit = data.units.find((candidate) => candidate.active && !candidate.isDeleted && candidate.abbreviation.toLocaleLowerCase('es') === abbreviation.toLocaleLowerCase('es'))
   let amount = quantity
   const seen = new Set<string>()
   while (unit?.baseUnitId && !seen.has(unit.id)) {
     seen.add(unit.id)
     amount *= unit.equivalenceMultiplier ?? 0
-    unit = data.units.find((candidate) => candidate.id === unit?.baseUnitId && !candidate.isDeleted)
+    unit = data.units.find((candidate) => candidate.id === unit?.baseUnitId && candidate.active && !candidate.isDeleted)
   }
   if (unit) return { dimension: unit.dimension, base: unit.abbreviation.toLocaleLowerCase('es'), amount }
   const fallback = defaultUnits[abbreviation.toLocaleLowerCase('es')]

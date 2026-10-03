@@ -6,13 +6,17 @@ import type { Recipe } from '../../recipes/domain/Recipe'
 import { normalizePantryName } from '../../pantry/domain/pantry'
 import { recipeSeed } from '../../recipes/data/recipeSeed'
 import { adminSeedId, seedUnitDefinitions } from './adminSeed'
+import { inferIngredientCategory } from '../domain/ingredientCategory'
 
 export function createSeedRecipeOverride(recipe: Recipe, now = new Date()): AdminRecipe {
   const data = getAdminData()
   const existing = data.recipes.find((entry) => entry.id === recipe.id)
   if (existing) return existing
-  const categoryId = adminSeedId('category', 'Otros')
-  if (!data.categories.some((entry) => entry.id === categoryId)) data.categories.push({ id: categoryId, name: 'Otros', isDeleted: false })
+  const ensureCategory = (name: string) => {
+    const id = adminSeedId('category', name)
+    if (!data.categories.some((entry) => entry.id === id)) data.categories.push({ id, name, active: true, isDeleted: false })
+    return id
+  }
   const ensureUnit = (abbreviation: string) => {
     const definition = seedUnitDefinitions[abbreviation as keyof typeof seedUnitDefinitions] ?? { name: abbreviation, dimension: 'conteo' as const }
     const id = adminSeedId('unit', abbreviation)
@@ -22,14 +26,15 @@ export function createSeedRecipeOverride(recipe: Recipe, now = new Date()): Admi
       if (baseAbbreviation !== abbreviation) ensureUnit(baseAbbreviation)
       data.units.push({ id, name: definition.name, abbreviation, dimension: definition.dimension,
         baseUnitId: baseAbbreviation === abbreviation ? undefined : baseUnitId,
-        equivalenceMultiplier: abbreviation === 'kg' || abbreviation === 'l' ? 1000 : undefined, isDeleted: false })
+        equivalenceMultiplier: abbreviation === 'kg' || abbreviation === 'l' ? 1000 : undefined, active: true, isDeleted: false })
     }
     return id
   }
   const ingredients = recipe.ingredients.map((ingredient) => {
     const unitId = ensureUnit(ingredient.unit)
     const ingredientId = adminSeedId('ingredient', ingredient.name)
-    if (!data.ingredients.some((entry) => entry.id === ingredientId)) data.ingredients.push({ id: ingredientId, name: ingredient.name, categoryId, baseUnitId: unitId, isDeleted: false })
+    const categoryId = ensureCategory(inferIngredientCategory(ingredient.name) ?? 'Otros')
+    if (!data.ingredients.some((entry) => entry.id === ingredientId)) data.ingredients.push({ id: ingredientId, name: ingredient.name, categoryId, baseUnitId: unitId, active: true, isDeleted: false })
     return { ingredientId, quantity: ingredient.quantity, unitId }
   })
   const override: AdminRecipe = {
@@ -45,7 +50,7 @@ export function createSeedRecipeOverride(recipe: Recipe, now = new Date()): Admi
       }),
       utensils: entry.utensils ? [...entry.utensils] : undefined,
     })) ?? [],
-    status: 'published', isDeleted: false, symbol: recipe.symbol, color: recipe.color,
+    status: 'published', active: true, isDeleted: false, symbol: recipe.symbol, color: recipe.color,
     image: recipe.image, imageAlt: recipe.imageAlt,
     createdAt: now.toISOString(), updatedAt: now.toISOString(),
   }
@@ -54,19 +59,21 @@ export function createSeedRecipeOverride(recipe: Recipe, now = new Date()): Admi
   return override
 }
 
-export function createRecipe(recipe: Omit<AdminRecipe, 'id' | 'isDeleted' | 'createdAt' | 'updatedAt'>, now = new Date()): string {
+type AdminRecipeInput = Omit<AdminRecipe, 'id' | 'active' | 'isDeleted' | 'createdAt' | 'updatedAt'> & { active?: boolean }
+
+export function createRecipe(recipe: AdminRecipeInput, now = new Date()): string {
   const data = getAdminData()
-  const validRecipe = validateRecipe(recipe, data.recipes, data.ingredients, data.units)
+  const validRecipe = validateRecipe({ ...recipe, active: recipe.active ?? true }, data.recipes, data.ingredients, data.units)
   const id = crypto.randomUUID()
   data.recipes.push({ ...validRecipe, id, isDeleted: false, createdAt: now.toISOString(), updatedAt: now.toISOString() })
   saveAdminData(data)
   return id
 }
 
-export function updateRecipe(id: string, recipe: Omit<AdminRecipe, 'id' | 'isDeleted' | 'createdAt' | 'updatedAt'>, now = new Date()): void {
+export function updateRecipe(id: string, recipe: AdminRecipeInput, now = new Date()): void {
   const data = getAdminData()
-  const validRecipe = validateRecipe(recipe, data.recipes, data.ingredients, data.units, id)
   const index = data.recipes.findIndex(r => r.id === id)
+  const validRecipe = validateRecipe({ ...recipe, active: recipe.active ?? data.recipes[index]?.active ?? true }, data.recipes, data.ingredients, data.units, id)
   if (index !== -1) {
     data.recipes[index] = { ...validRecipe, id, isDeleted: data.recipes[index].isDeleted, createdAt: data.recipes[index].createdAt ?? now.toISOString(), updatedAt: now.toISOString() }
     saveAdminData(data)
@@ -99,8 +106,7 @@ export function setRecipeActive(id: string, active: boolean, now = new Date()): 
   const data = getAdminData()
   const recipe = data.recipes.find((entry) => entry.id === managed.id)
   if (!recipe) return
-  recipe.isDeleted = !active
-  if (active && recipe.status === 'draft') recipe.status = 'published'
+  recipe.active = active
   recipe.updatedAt = now.toISOString()
   saveAdminData(data)
 }
