@@ -31,7 +31,7 @@ export function AppShell() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <NavLink className="wordmark" to="/recipes" aria-label="CocinAPP, inicio">
+        <NavLink className="wordmark" to="/panel" aria-label="CocinAPP, inicio">
           <BrandLogo />
         </NavLink>
         <p className="sidebar-label">TU COCINA</p>
@@ -56,7 +56,7 @@ export function AppShell() {
           <span><strong>{session?.name || 'Mi cocina'}</strong><small>Espacio personal</small></span>
         </NavLink>
       </aside>
-      <main className="main-content"><NavLink aria-label="CocinAPP, inicio" className="mobile-brand" to="/recipes"><BrandLogo /></NavLink><Outlet /></main>
+      <main className="main-content"><NavLink aria-label="CocinAPP, inicio" className="mobile-brand" to="/panel"><BrandLogo /></NavLink><Outlet /></main>
       <ScrollToTopButton />
     </div>
   )

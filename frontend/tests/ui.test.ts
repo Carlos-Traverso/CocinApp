@@ -3,7 +3,7 @@ import test from 'node:test'
 import { bindScrollVisibility, scrollBehavior, shouldShowScrollToTop } from '../src/components/scrollToTop'
 import { profileHeaderActions } from '../src/features/profile/ui/profileHeaderActions'
 import { mealBadgeDetails, plannerSlotPresentation } from '../src/features/planner/ui/plannerPresentation'
-import { mobileNavigationPaths } from '../src/components/navigation'
+import { appNavigation, mobileNavigationPaths } from '../src/components/navigation'
 
 test('mobile back-to-top visibility follows scroll and cleans up its listeners', () => {
   assert.equal(shouldShowScrollToTop(0, 390), false)
@@ -54,6 +54,7 @@ test('planner presents four meal badges and explicit slot actions', () => {
 
 test('mobile navigation keeps every user destination including favorites and history', () => {
   assert.deepEqual(mobileNavigationPaths, [
-    '/recipes', '/pantry', '/planner', '/shopping', '/favorites', '/history', '/profile',
+    '/panel', '/recipes', '/pantry', '/planner', '/shopping', '/favorites', '/history', '/profile',
   ])
+  assert.equal(appNavigation[0].to, '/panel')
 })

@@ -1,6 +1,6 @@
 export const appNavigation = [
+  { id: 'panel', to: '/panel', label: 'Panel', mobileLabel: 'Panel', end: true, mobile: true },
   { id: 'recipes', to: '/recipes', label: 'Recetas', mobileLabel: 'Recetas', mobile: true },
-  { id: 'panel', to: '/panel', label: 'Panel', mobileLabel: 'Panel', end: true, mobile: false },
   { id: 'pantry', to: '/pantry', label: 'Despensa', mobileLabel: 'Despensa', mobile: true },
   { id: 'planner', to: '/planner', label: 'Planificación', mobileLabel: 'Plan', mobile: true },
   { id: 'shopping', to: '/shopping', label: 'Lista de compras', mobileLabel: 'Compras', mobile: true },
