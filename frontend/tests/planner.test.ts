@@ -2,12 +2,26 @@ import assert from 'node:assert/strict'
 import { nextPlanRecipeIndex, planRecipeKeyAction, searchPlanRecipes } from '../src/features/planner/domain/recipeSearch'
 import { sampleRecipes } from '../src/mocks/recipes'
 import test from 'node:test'
-import { meals, weekDates, setPlannedMeal } from '../src/features/planner/domain/planner'
+import { getPlannedMealsForDate, localDateKey, meals, weekDates, setPlannedMeal } from '../src/features/planner/domain/planner'
 import { readMealPlan, writeMealPlan } from '../src/features/planner/data/localMealPlanStore'
 
 test('week starts on Monday and crosses month boundaries', () => {
   assert.deepEqual(weekDates(new Date(2026, 8, 23)), ['2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24', '2026-09-25', '2026-09-26', '2026-09-27'])
   assert.equal(weekDates(new Date(2026, 9, 1))[0], '2026-09-28')
+})
+
+test('today plan uses the local calendar date and follows the meal order', () => {
+  const localToday = new Date(2026, 9, 2, 0, 15)
+  const plan = [
+    { date: '2026-10-02', meal: 'Cena' as const, recipeId: 'pumpkin-pasta' },
+    { date: '2026-10-01', meal: 'Almuerzo' as const, recipeId: 'quinoa-bowl' },
+    { date: '2026-10-02', meal: 'Desayuno' as const, recipeId: 'quinoa-bowl' },
+    { date: '2026-10-02', meal: 'Merienda' as const, recipeId: 'chickpea-salad' },
+    { date: '2026-10-02', meal: 'Almuerzo' as const, recipeId: 'chicken-rice' },
+  ]
+
+  assert.equal(localDateKey(localToday), '2026-10-02')
+  assert.deepEqual(getPlannedMealsForDate(plan, localToday).map((entry) => entry.meal), meals)
 })
 
 test('assigning the same day and meal replaces the recipe; empty choice clears it', () => {

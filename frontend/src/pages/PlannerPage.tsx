@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { readPantryItems } from '../features/pantry/data/localPantryStore'
 import { readMealPlan, writeMealPlan } from '../features/planner/data/localMealPlanStore'
-import { meals, setPlannedMeal, weekDates, type Meal, type PlannedMeal } from '../features/planner/domain/planner'
+import { localDateKey, meals, setPlannedMeal, weekDates, type Meal, type PlannedMeal } from '../features/planner/domain/planner'
 import { getAvailableRecipes, getRecipeById } from '../features/recipes/data/availableRecipes'
 import { appendShoppingSuggestions } from '../features/shopping/data/localShoppingStore'
 import { suggestForRecipes } from '../features/shopping/domain/shopping'
@@ -13,10 +13,6 @@ import { plannerSlotPresentation } from '../features/planner/ui/plannerPresentat
 import { RecipeImage } from '../features/recipes/ui/RecipeImage'
 
 const dayFormatter = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'short' })
-
-function localDateKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
 
 export function PlannerPage() {
   const navigate = useNavigate()

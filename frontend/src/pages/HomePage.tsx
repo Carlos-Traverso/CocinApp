@@ -10,6 +10,9 @@ import { RecipeImage } from '../features/recipes/ui/RecipeImage'
 import { getKnownRecipes } from '../features/recipes/data/availableRecipes'
 import { buildRecipeRecommendations } from '../features/recipes/domain/recipeRecommendations'
 import { RecipeRecommendationsView } from '../features/recipes/ui/RecipeRecommendations'
+import { readMealPlan } from '../features/planner/data/localMealPlanStore'
+import { getPlannedMealsForDate } from '../features/planner/domain/planner'
+import { TodayPlanSection } from '../features/dashboard/ui/TodayPlanSection'
 
 function Artwork({ recipe, compact = false }: { recipe: Recipe; compact?: boolean }) {
   return <RecipeImage className={`dashboard-suggestion-art${compact ? ' compact' : ''}`} recipe={recipe} />
@@ -24,9 +27,12 @@ export function HomePage() {
   const timeSuggestion = recommendRecipeForTime(recipes, now.getHours(), { pantry, favoriteIds: readFavoriteIds(), history, today: now })
   const recent = recentPreparations(history, recipes.map((recipe) => recipe.id))
   const recommendations = buildRecipeRecommendations(recipes, getKnownRecipes(), pantry, readFavoriteIds(), history, now)
+  const plannedMeals = getPlannedMealsForDate(readMealPlan(), now)
 
   return <div className="page dashboard-page dashboard-focus-page">
     <header className="dashboard-focus-heading"><div><p className="eyebrow">MI COCINA</p><h1>Panel</h1><p>Ideas basadas en tu despensa, tu horario y tus preparaciones.</p></div></header>
+
+    <TodayPlanSection activeRecipeIds={new Set(recipes.map((recipe) => recipe.id))} plannedMeals={plannedMeals} />
 
     <RecipeRecommendationsView pantry={pantry} recommendations={recommendations} today={now} />
 
