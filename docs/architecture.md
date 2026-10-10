@@ -1,42 +1,34 @@
-# Arquitectura de CocinAPP
+# CocinAPP architecture
 
-## Decisión
+## Current stage
 
-CocinAPP adopta una arquitectura cliente-servidor organizada en capas. React, TypeScript, Vite y Tailwind forman la presentación SPA. Supabase aporta autenticación, PostgreSQL y acceso a servicios backend; las Edge Functions se reservan para operaciones que necesitan secretos o ejecución confiable del lado servidor. No se introduce un servidor propio ni microservicios para las necesidades actuales.
+The shipped app in this repository is the React, TypeScript, and Vite frontend. It uses plain CSS; Tailwind is not installed. Frontend flows run with asynchronous local mock adapters and browser storage. No backend, Supabase Auth, remote database access, RLS policy, RPC, or Edge Function is implemented in this stage.
 
-## Capas y límites
+## Boundaries
 
-| Capa | Ubicación | Responsabilidad |
+| Layer | Location | Responsibility |
 | --- | --- | --- |
-| Presentación | `frontend/src/pages`, `components`, `features/*/ui` | Rutas, interacción, estado visual y accesibilidad. |
-| Aplicación y dominio | `frontend/src/features/*` | Casos de uso, tipos del dominio, validaciones y contratos de repositorio. |
-| Infraestructura cliente | `frontend/src/lib`, `features/*/data` | Adaptadores mock o Supabase; componentes y páginas no consultan Supabase directamente. |
-| Datos y seguridad | `backend/supabase/migrations` | PostgreSQL, constraints, índices, RLS y funciones RPC transaccionales. |
-| Servicios protegidos | `backend/supabase/functions` | Integraciones con credenciales privadas, validación y llamadas externas. |
+| Presentation | `frontend/src/pages`, `components`, `features/*/ui` | Routes, interaction, visual state, and accessibility. |
+| Domain | `frontend/src/features/*/domain`, `frontend/src/shared/domain` | Models, validation, matching, and shared quantity conversion. |
+| Data contracts and adapters | `frontend/src/features/*/data` | Async repository interfaces and replaceable local mock implementations. |
+| Future backend | `backend/` | Reserved for a later stage; it is not required by this frontend. |
 
-## Organización por funcionalidad
+Pages and shared UI should call a domain repository rather than access browser storage directly. Current examples include `AuthRepository`, `ProfileRepository`, `RecipeRepository`, `PantryRepository`, `PlannerRepository`, `ShoppingRepository`, and `DashboardRepository`. The mock implementations may use local storage internally. Model to storage translation belongs in these adapters.
 
-Cada módulo concentra su UI específica, modelo, casos de uso y adaptadores de datos. Las dependencias compartidas viven en `components`, `shared` o `lib` solo cuando son realmente transversales. Las páginas ensamblan funcionalidades; no contienen consultas SQL, reglas críticas ni secretos.
+Legacy standalone HTML screen prototypes are kept under `docs/reference/pantallas/` as design references. They are not part of the Vite public assets or the React application; their demo controls and flows are not maintained as product behavior.
 
-Dominios iniciales: `auth`, `onboarding`, `profile`, `recipes`, `cooking`, `pantry`, `planner`, `shopping`, `favorites` y `admin`. `cooking` se explicita porque “Cocinar Ahora” necesita una operación atómica; `profile` conserva preferencias y datos personales fuera del flujo de autenticación.
+## Domain rules
 
-## Etapas de integración
+- `shared/domain/units.ts` is the source for compatible unit conversion and quantity rounding. It supports mass, volume, and count separately; a conversion across dimensions requires an explicit ingredient equivalence, which this stage does not infer.
+- The profile stores the active dietary preferences. Recipe discovery and recommendation flows filter by those preferences. Dietary tags remain informational and do not guarantee product or preparation safety.
+- The ticket reader is a replaceable `ReceiptScanner` contract. Its mock validates an image locally and returns editable sample data. It does not upload, retain, or log image bytes. A future external recognition service is not implemented.
+- Recipe content is curated mock data and admin managed content. AI generated recipes are outside the current scope.
+- Admin role guards are a visual demo restriction. They do not provide authentication, authorization, or data security.
 
-1. **Frontend:** mantener el contrato de cada repositorio e implementar adaptadores mock. La interfaz no depende de la ubicación de los datos.
-2. **Backend:** crear el esquema relacional normalizado, migraciones, restricciones, índices, RLS, Auth y las RPC requeridas.
-3. **Integración:** reemplazar mocks por adaptadores Supabase bajo los mismos contratos; validar permisos, errores y estados de carga en el cliente.
+## Later integration
 
-## Operaciones con requisitos especiales
+When a backend is introduced, replace each mock adapter behind its existing contract. A backend may add database transactions for stock deductions and server side permission checks. Those guarantees cannot be supplied by browser storage or client side role guards. Keep credentials for external services on the server and never ship private keys in the Vite client bundle.
 
-- **Matching de recetas:** la RPC consulta despensa y recetas, normaliza unidades y devuelve coincidencias; el frontend presenta resultados.
-- **Cocinar Ahora:** una RPC valida stock, descuenta cantidades y registra la preparación dentro de una transacción única.
-- **Escaneo de tickets y recetas con IA:** una Edge Function conserva las credenciales de Gemini del lado servidor; el cliente revisa los datos antes de persistirlos.
-- **Administración:** ocultar controles en la interfaz no concede ni revoca permisos. La autorización se aplica en las políticas RLS y en las operaciones de backend.
+## CSS and build
 
-## Contrato de ejemplo
-
-`features/recipes/data/RecipeRepository.ts` define una interfaz independiente del proveedor. `MockRecipeRepository.ts` es el adaptador inicial y `mocks/recipes.ts` aporta datos locales. La futura implementación Supabase respetará este contrato para que la página no cambie al integrar el backend.
-
-## Migraciones y configuración
-
-Cada cambio de esquema se agrega como una migración SQL nueva y ordenada; no se reescriben migraciones ya compartidas. El cliente utiliza únicamente URL y clave pública anon. Claves de servicio, Gemini y otros secretos se configuran en el entorno de Supabase y nunca en el bundle del navegador.
+The frontend uses standard CSS files (`src/index.css`, `src/App.css`, and feature styles). Vite and TypeScript scripts live in `frontend/package.json`; no Tailwind build plugin or CSS framework is configured.

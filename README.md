@@ -1,8 +1,8 @@
-# CocinAPP
+# CocinAPP · etapa frontend
 
-Aplicación de gestión alimentaria organizada como una SPA cliente y un backend Supabase, con separación por capas. Durante esta etapa, la experiencia navegable utiliza directamente las pantallas HTML originales de `../Pantallas`, preservando su diseño responsive y sus interacciones.
+CocinAPP is a React, TypeScript, and Vite single page frontend for recipes, pantry, weekly planning, shopping, cooking, and personal preferences. This stage runs with local mock adapters so the main flows can be demonstrated without a backend.
 
-## Frontend
+## Start
 
 ```powershell
 cd frontend
@@ -10,20 +10,17 @@ npm install
 npm run dev
 ```
 
-La aplicación queda en `http://localhost:5173/` y abre la pantalla de bienvenida original. Para generar la versión distribuible: `npm run build`.
+Run `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` from `frontend` for checks.
 
-Copiá `.env.example` como `.env` y completá `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` cuando comience la integración. El cliente Supabase se inicializa bajo demanda. Las claves privadas y de servicios externos nunca se guardan en variables `VITE_*`.
+## Architecture
 
-## Organización
+- `frontend/src/app` composes routing and demo role guards.
+- `frontend/src/pages` composes screens.
+- `frontend/src/features` keeps domain rules and async repository contracts together.
+- `frontend/src/components` contains shared shells and navigation.
+- `frontend/src/shared/domain/units.ts` is the shared quantity and unit conversion contract.
+- `docs/architecture.md` describes the current frontend boundary and later integration stages.
 
-- `frontend/src/app`: composición global, rutas y proveedores.
-- `frontend/src/features`: módulos por dominio y sus servicios/repositorios.
-- `frontend/src/pages`: pantallas asociadas a rutas.
-- `frontend/src/components`: interfaz compartida, sin reglas de dominio.
-- `frontend/src/mocks`: datos y adaptadores de demostración.
-- `frontend/src/lib/supabase`: cliente e integración de infraestructura.
-- `backend/supabase/migrations`: evolución versionada del esquema PostgreSQL.
-- `backend/supabase/functions`: operaciones que requieren ejecución segura del lado servidor.
-- `docs`: decisiones y acuerdos arquitectónicos.
+Feature pages use asynchronous repositories backed by local mock adapters. Those adapters store demonstration data in the browser. Backend work, remote persistence, Supabase Auth, RLS, RPC, and external receipt recognition are future work. Admin roles only control the demo interface and are not a security boundary. Do not use real passwords in this demo.
 
-Las pantallas iniciales guardan su estado de demostración en el navegador. Todavía no hay autenticación real ni persistencia remota.
+Receipt scanning currently validates an image and presents editable mock products without uploading or retaining the image. Recipe discovery uses curated recipes and does not generate recipes with AI. Dietary labels are informational and do not guarantee absence of allergens or cross contamination.
