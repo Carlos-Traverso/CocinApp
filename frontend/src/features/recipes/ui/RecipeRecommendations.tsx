@@ -33,7 +33,7 @@ function RecommendationRail({ section }: { section: RecipeRecommendationSection 
     <div className="recipe-rail-heading"><div><p className="eyebrow">{content.eyebrow}</p><h2 id={`${section.id}-title`}>{content.title}</h2><p>{content.description}</p></div><Link className="recipe-rail-catalog-link" to="/recipes#recipe-catalog">Ver catálogo <ArrowRight aria-hidden="true" size={15} /></Link></div>
     {section.recipes.length === 0
       ? <div className="recipe-rail-empty"><Sparkles aria-hidden="true" size={19} /><span>{content.empty}</span></div>
-      : <div className="recipe-rail-items">{section.recipes.slice(0, 4).map((recipe) => <Link className="recipe-mini-card" key={recipe.id} to={`/recipes/${recipe.id}`}><RecommendationArtwork recipe={recipe} size="mini" /><span className="recipe-mini-copy"><span className="recipe-category">{recipeMealShifts(recipe).join(' · ')}</span><strong>{recipe.name}</strong><small><Clock3 aria-hidden="true" size={13} /> {recipe.minutes} min · {recipe.difficulty}</small><DietaryInfo recipe={recipe} /></span><ArrowRight aria-hidden="true" className="recipe-mini-arrow" size={17} /></Link>)}</div>}
+      : <div className="recipe-rail-items">{section.recipes.slice(0, 4).map((recipe) => <Link className="recipe-mini-card" key={recipe.id} to={`/recipes/${recipe.id}`}><RecommendationArtwork recipe={recipe} size="mini" /><span className="recipe-mini-primary"><span className="recipe-category">{recipeMealShifts(recipe).join(' · ')}</span><strong>{recipe.name}</strong><small><Clock3 aria-hidden="true" size={13} /> {recipe.minutes} min · {recipe.difficulty}</small></span><DietaryInfo recipe={recipe} /><ArrowRight aria-hidden="true" className="recipe-mini-arrow" size={17} /></Link>)}</div>}
   </section>
 }
 
