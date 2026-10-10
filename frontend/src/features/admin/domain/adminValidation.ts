@@ -1,5 +1,6 @@
 import { normalizePantryName } from '../../pantry/domain/pantry'
 import type { AdminCategory, AdminIngredient, AdminRecipe, AdminUnit } from './adminModels'
+import { normalizeQuantity } from '../../../shared/domain/units'
 
 export function validateCategoryName(name: string, categories: AdminCategory[], exceptId?: string) {
   const clean = name.trim()
@@ -17,8 +18,22 @@ export function validateUnit(input: Omit<AdminUnit, 'id' | 'isDeleted'>, units: 
   if (input.baseUnitId) {
     const previous = units.find((unit) => unit.id === exceptId)
     const base = units.find((unit) => unit.id === input.baseUnitId && !unit.isDeleted && (unit.active || previous?.baseUnitId === unit.id))
-    if (!base || base.dimension !== input.dimension || base.baseUnitId) throw new Error('Seleccioná una unidad base compatible.')
+    if (!base || base.dimension !== input.dimension) throw new Error('Seleccioná una unidad base compatible.')
     if (!Number.isFinite(input.equivalenceMultiplier) || (input.equivalenceMultiplier ?? 0) <= 0) throw new Error('La equivalencia debe ser un número positivo.')
+    if (base.id === exceptId) throw new Error('Una unidad no puede depender de sí misma.')
+    let ancestor: AdminUnit | undefined = base
+    const visited = new Set<string>()
+    while (ancestor) {
+      if (visited.has(ancestor.id) || ancestor.id === exceptId) throw new Error('La equivalencia crea una cadena de unidades inválida.')
+      visited.add(ancestor.id)
+      if (!ancestor.baseUnitId) break
+      const parentId: string = ancestor.baseUnitId
+      const parent: AdminUnit | undefined = units.find((unit) => unit.id === parentId && unit.active && !unit.isDeleted)
+      if (!parent) throw new Error('La cadena de equivalencias contiene una unidad base inactiva o inexistente.')
+      if (parent.dimension !== input.dimension) throw new Error('La cadena de equivalencias debe conservar la dimensión.')
+      ancestor = parent
+      if (ancestor.baseUnitId && (!Number.isFinite(ancestor.equivalenceMultiplier) || (ancestor.equivalenceMultiplier ?? 0) <= 0)) throw new Error('La cadena contiene una equivalencia inválida.')
+    }
   } else {
     const baseAbbreviation = { masa: 'g', volumen: 'ml', conteo: 'u' }[input.dimension]
     if (abbreviation.toLocaleLowerCase('es') !== baseAbbreviation) throw new Error(`La unidad base de ${input.dimension} debe ser ${baseAbbreviation}.`)
@@ -47,7 +62,9 @@ export function validateRecipe(input: Omit<AdminRecipe, 'id' | 'isDeleted'>, rec
   if (!Number.isFinite(input.minutes) || input.minutes <= 0 || !Number.isInteger(input.minutes)) throw new Error('El tiempo debe ser un número entero positivo.')
   if (!Number.isFinite(input.calories) || input.calories < 0) throw new Error('Las calorías de referencia deben ser cero o más.')
   if (!['Fácil', 'Intermedia', 'Avanzada'].includes(input.difficulty)) throw new Error('Elegí una dificultad válida.')
-  if (!['Desayuno', 'Almuerzo', 'Merienda', 'Cena'].includes(input.mealShift)) throw new Error('Elegí un turno de comida válido.')
+  const allowedMealShifts = ['Desayuno', 'Almuerzo', 'Merienda', 'Cena']
+  const mealShifts = [...new Set(input.mealShifts ?? [input.mealShift])]
+  if (!mealShifts.length || mealShifts.some((shift) => !allowedMealShifts.includes(shift))) throw new Error('Elegí al menos un turno de comida válido.')
   if (!Array.isArray(input.ingredients) || input.ingredients.length === 0) throw new Error('Agregá al menos un ingrediente.')
   if (!Array.isArray(input.steps) || input.steps.length === 0 || input.steps.some((step) => !step.trim())) throw new Error('Agregá instrucciones completas y ordenadas.')
   if (input.stepMeta !== undefined && (!Array.isArray(input.stepMeta) || input.stepMeta.length > input.steps.length)) throw new Error('Los datos de los pasos no son válidos.')
@@ -80,12 +97,19 @@ export function validateRecipe(input: Omit<AdminRecipe, 'id' | 'isDeleted'>, rec
   if (image && !imageAlt) throw new Error('Ingresá el texto alternativo de la imagen.')
   if (input.featured !== undefined && typeof input.featured !== 'boolean') throw new Error('La marca destacada debe ser válida.')
   if (recipes.some((item) => item.id !== exceptId && !item.isDeleted && normalizePantryName(item.title) === normalizePantryName(title))) throw new Error('Ya existe una receta con ese título.')
+  const previousRecipe = recipes.find((item) => item.id === exceptId)
   for (const entry of input.ingredients) {
     if (!Number.isFinite(entry.quantity) || entry.quantity <= 0) throw new Error('Cada ingrediente debe tener una cantidad positiva.')
+    const retainedReference = previousRecipe?.ingredients.some((previous) => previous.ingredientId === entry.ingredientId && previous.unitId === entry.unitId) ?? false
     const ingredient = ingredients.find((item) => item.id === entry.ingredientId && !item.isDeleted)
     const unit = units.find((item) => item.id === entry.unitId && !item.isDeleted)
     const base = ingredient && units.find((item) => item.id === ingredient.baseUnitId && !item.isDeleted)
-    if (!ingredient || !unit || !base || unit.dimension !== base.dimension) throw new Error('Cada receta debe usar ingredientes activos y unidades compatibles con su dimensión.')
+    const normalizedUnit = unit && normalizeQuantity(1, unit.id, units)
+    const normalizedBase = base && normalizeQuantity(1, base.id, units)
+    if (!ingredient || !unit || !base || (!retainedReference && (!ingredient.active || !unit.active || !base.active))
+      || !normalizedUnit || !normalizedBase || normalizedUnit.dimension !== normalizedBase.dimension || normalizedUnit.baseUnit !== normalizedBase.baseUnit) {
+      throw new Error('Cada receta debe usar ingredientes activos y unidades compatibles con su dimensión.')
+    }
   }
-  return { ...input, title, image, imageAlt, steps: input.steps.map((step) => step.trim()), stepMeta, dietaryTags: input.dietaryTags.map((tag) => tag.trim()).filter(Boolean) }
+  return { ...input, title, image, imageAlt, mealShifts, mealShift: mealShifts[0], category: mealShifts[0], steps: input.steps.map((step) => step.trim()), stepMeta, dietaryTags: input.dietaryTags.map((tag) => tag.trim()).filter(Boolean) }
 }

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
-import { nextPlanRecipeIndex, planRecipeKeyAction, searchPlanRecipes } from '../src/features/planner/domain/recipeSearch'
+import { nextPlanRecipeIndex, planRecipeKeyAction, recipesForMeal, searchPlanRecipes, suggestedPlanRecipes } from '../src/features/planner/domain/recipeSearch'
 import { sampleRecipes } from '../src/mocks/recipes'
 import test from 'node:test'
-import { getPlannedMealsForDate, localDateKey, meals, weekDates, setPlannedMeal } from '../src/features/planner/domain/planner'
+import { getPlannedMealsForDate, localDateKey, meals, weekDates, setPlannedMeal, movePlannedMeal } from '../src/features/planner/domain/planner'
 import { readMealPlan, writeMealPlan } from '../src/features/planner/data/localMealPlanStore'
 
 test('week starts on Monday and crosses month boundaries', () => {
@@ -27,7 +27,7 @@ test('today plan uses the local calendar date and follows the meal order', () =>
 test('assigning the same day and meal replaces the recipe; empty choice clears it', () => {
   const first = setPlannedMeal([], '2026-09-23', 'Almuerzo', 'quinoa-bowl')
   const second = setPlannedMeal(first, '2026-09-23', 'Almuerzo', 'chickpea-salad')
-  assert.deepEqual(second, [{ date: '2026-09-23', meal: 'Almuerzo', recipeId: 'chickpea-salad' }])
+  assert.deepEqual(second, [{ date: '2026-09-23', meal: 'Almuerzo', recipeId: 'chickpea-salad', portions: 2 }])
   assert.deepEqual(setPlannedMeal(second, '2026-09-23', 'Almuerzo', ''), [])
   assert.deepEqual(meals, ['Desayuno', 'Almuerzo', 'Merienda', 'Cena'])
   assert.equal(setPlannedMeal(first, '2026-09-23', 'Desayuno', 'quinoa-bowl').length, 2)
@@ -36,7 +36,7 @@ test('assigning the same day and meal replaces the recipe; empty choice clears i
 test('plan storage keeps valid known recipes and ignores invalid entries', () => {
   const entries = new Map<string, string>()
   const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
-  const plan = [{ date: '2026-09-23', meal: 'Cena' as const, recipeId: 'pumpkin-pasta' }]
+  const plan = [{ date: '2026-09-23', meal: 'Cena' as const, recipeId: 'pumpkin-pasta', portions: 4 }]
   writeMealPlan(plan, storage)
   assert.deepEqual(readMealPlan(storage), plan)
   entries.set('cocinapp.planner.v1', JSON.stringify([...plan, { date: '2026-09-31', meal: 'Cena', recipeId: 'pumpkin-pasta' }, { date: '2026-09-24', meal: 'Cena', recipeId: 'missing' }]))
@@ -49,7 +49,7 @@ test('older lunch and dinner records remain alongside four turns and independent
   const legacy = [{ date: '2026-09-23', meal: 'Almuerzo', recipeId: 'quinoa-bowl' }, { date: '2026-09-23', meal: 'Cena', recipeId: 'pumpkin-pasta' }]
   entries.set('cocinapp.planner.v1', JSON.stringify(legacy))
   const migrated = readMealPlan(storage)
-  assert.deepEqual(migrated, legacy)
+  assert.deepEqual(migrated, legacy.map((entry) => ({ ...entry, portions: entry.recipeId === 'pumpkin-pasta' ? 3 : 2 })))
   const expanded = setPlannedMeal(setPlannedMeal(migrated, '2026-09-23', 'Desayuno', 'quinoa-bowl'), '2026-09-30', 'Merienda', 'chickpea-salad')
   writeMealPlan(expanded, storage)
   assert.equal(readMealPlan(storage).length, 4)
@@ -76,4 +76,35 @@ test('planner recipe results support keyboard navigation, selection and closing'
   assert.equal(planRecipeKeyAction('Enter'), 'select')
   assert.equal(planRecipeKeyAction('Escape'), 'close')
   assert.equal(planRecipeKeyAction('Tab'), null)
+})
+
+test('planner suggestions and search stay within the chosen meal and normalize accents and case', () => {
+  const breakfast = recipesForMeal(sampleRecipes, 'Desayuno')
+  assert.ok(breakfast.length >= 4)
+  assert.deepEqual(suggestedPlanRecipes(sampleRecipes, 'Desayuno'), suggestedPlanRecipes(sampleRecipes, 'Desayuno'))
+  assert.equal(suggestedPlanRecipes(sampleRecipes, 'Desayuno').length, 4)
+  assert.ok(searchPlanRecipes(breakfast, 'AVENA').every((recipe) => recipesForMeal([recipe], 'Desayuno').length === 1))
+
+  const shifted = { ...sampleRecipes[0], id: 'shifted-breakfast', category: 'otra', mealShift: 'DESAYÚNO' }
+  assert.deepEqual(recipesForMeal([shifted], 'Desayuno').map((recipe) => recipe.id), ['shifted-breakfast'])
+  assert.deepEqual(suggestedPlanRecipes([shifted], 'Desayuno').map((recipe) => recipe.id), ['shifted-breakfast'])
+
+  const multiShift = { ...shifted, id: 'multi-shift', mealShift: 'Almuerzo', mealShifts: ['Desayuno', 'Merienda'] }
+  assert.deepEqual(recipesForMeal([multiShift], 'Desayuno').map((recipe) => recipe.id), ['multi-shift'])
+  assert.deepEqual(recipesForMeal([multiShift], 'Merienda').map((recipe) => recipe.id), ['multi-shift'])
+  assert.deepEqual(recipesForMeal([multiShift], 'Almuerzo'), [])
+  const categoryFallback = { ...shifted, id: 'category-fallback', mealShift: undefined, category: 'Cena' }
+  assert.deepEqual(recipesForMeal([categoryFallback], 'Cena').map((recipe) => recipe.id), ['category-fallback'])
+})
+
+test('planned portions persist per slot and moving an assignment swaps an occupied destination', () => {
+  const weekOne = weekDates(new Date(2026, 9, 7))
+  const weekTwo = weekDates(new Date(2026, 9, 14))
+  const first = setPlannedMeal([], weekOne[0], 'Desayuno', 'quinoa-bowl', 3)
+  const both = setPlannedMeal(first, weekTwo[0], 'Cena', 'pumpkin-pasta', 5)
+  const occupied = setPlannedMeal(both, weekOne[1], 'Almuerzo', 'chickpea-salad', 4)
+  const moved = movePlannedMeal(occupied, { date: weekOne[0], meal: 'Desayuno' }, { date: weekOne[1], meal: 'Almuerzo' })
+  assert.deepEqual(moved.find((item) => item.date === weekOne[1]), { date: weekOne[1], meal: 'Almuerzo', recipeId: 'quinoa-bowl', portions: 3 })
+  assert.deepEqual(moved.find((item) => item.date === weekOne[0]), { date: weekOne[0], meal: 'Desayuno', recipeId: 'chickpea-salad', portions: 4 })
+  assert.deepEqual(moved.find((item) => item.date === weekTwo[0]), { date: weekTwo[0], meal: 'Cena', recipeId: 'pumpkin-pasta', portions: 5 })
 })

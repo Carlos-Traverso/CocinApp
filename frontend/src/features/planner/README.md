@@ -1,1 +1,3 @@
-Plan semanal de comidas y porciones. Mantener la edición de agenda en este módulo y delegar el cálculo consistente de compras a servicios de dominio.
+# Planner
+
+`PlannerRepository` asynchronously reads and writes independent weekly meal plans with portions. Its local mock adapter supports assigning, moving, removing, and generating shopping suggestions from planned meals.

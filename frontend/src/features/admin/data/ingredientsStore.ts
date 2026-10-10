@@ -1,6 +1,7 @@
 import { getAdminData, saveAdminData } from './localAdminStore'
 import { hasAdminReferences } from './adminReferences'
 import { validateIngredient } from '../domain/adminValidation'
+import type { DeleteResult } from './deleteResult'
 
 export function createIngredient(name: string, categoryId: string, baseUnitId: string, active = true): string {
   const data = getAdminData()
@@ -21,17 +22,19 @@ export function updateIngredient(id: string, name: string, categoryId: string, b
   }
 }
 
-export function deleteIngredient(id: string): void {
+export function deleteIngredient(id: string): DeleteResult {
   const data = getAdminData()
   const index = data.ingredients.findIndex(i => i.id === id)
-  if (index !== -1) {
-    if (hasAdminReferences('ingredient', id, data.ingredients[index].name)) {
-      data.ingredients[index].isDeleted = true
-    } else {
-      data.ingredients.splice(index, 1)
-    }
-    saveAdminData(data)
-  }
+  if (index === -1) return 'not-found'
+  const ingredient = data.ingredients[index]
+  if (ingredient.isDeleted) return 'deactivated'
+  const deactivated = hasAdminReferences('ingredient', id, ingredient.name)
+  if (deactivated) {
+    ingredient.isDeleted = true
+    ingredient.active = false
+  } else data.ingredients.splice(index, 1)
+  saveAdminData(data)
+  return deactivated ? 'deactivated' : 'deleted'
 }
 
 export function restoreIngredient(id: string): void {

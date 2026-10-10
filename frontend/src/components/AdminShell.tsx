@@ -1,9 +1,10 @@
-import { BookOpen, Boxes, FolderTree, LayoutDashboard, LogOut, Menu, Ruler, ShieldCheck, X } from 'lucide-react'
+import { BookOpen, Boxes, FolderTree, LayoutDashboard, LogOut, Menu, Ruler, ShieldCheck, UsersRound, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { endSession, useAuth } from '../features/auth/data/localAuthStore'
+import { authRepository, useAuth } from '../features/auth/data/AuthRepository'
 import { adminNavigation, getAdminNavigationItem, type AdminNavigationKey } from '../features/admin/ui/adminNavigation'
 import { BrandLogo } from './BrandLogo'
+import { useNotifications } from '../shared/notifications/NotificationProvider'
 
 const icons = {
   dashboard: LayoutDashboard,
@@ -11,13 +12,16 @@ const icons = {
   ingredients: Boxes,
   categories: FolderTree,
   units: Ruler,
+  users: UsersRound,
 } satisfies Record<AdminNavigationKey, typeof LayoutDashboard>
 
 export function AdminShell() {
-  const session = useAuth()
+  const { session } = useAuth()
+  const { notify } = useNotifications()
   const navigate = useNavigate()
   const location = useLocation()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const firstLinkRef = useRef<HTMLAnchorElement>(null)
   const currentSection = getAdminNavigationItem(location.pathname)
@@ -35,9 +39,11 @@ export function AdminShell() {
     return () => document.removeEventListener('keydown', closeOnEscape)
   }, [drawerOpen])
 
-  function logout() {
-    endSession()
-    navigate('/', { replace: true })
+  async function logout() {
+    setLoggingOut(true)
+    try { await authRepository.logout(); navigate('/', { replace: true }) }
+    catch { void notify({ type: 'error', title: 'No se pudo cerrar la sesión', message: 'Intentá de nuevo.' }) }
+    finally { setLoggingOut(false) }
   }
 
   return <div className={`app-shell admin-shell${drawerOpen ? ' drawer-open' : ''}`}>
@@ -60,7 +66,7 @@ export function AdminShell() {
         <span className="avatar" aria-hidden="true"><ShieldCheck size={18} /></span>
         <span><strong>{session?.name || 'Administrador'}</strong><small>{session?.email || 'Cuenta local de demostración'}</small></span>
       </div>
-      <button className="sidebar-logout" onClick={logout} type="button"><LogOut size={18} aria-hidden="true" /><span>Cerrar sesión</span></button>
+      <button className="sidebar-logout" disabled={loggingOut} onClick={() => void logout()} type="button"><LogOut size={18} aria-hidden="true" /><span>{loggingOut ? 'Cerrando…' : 'Cerrar sesión'}</span></button>
     </aside>
     <main className="main-content admin-main-content">
       <header className="admin-topbar">

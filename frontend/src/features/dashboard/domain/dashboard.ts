@@ -2,7 +2,9 @@ import type { PreparationEvent } from '../../cooking/domain/cooking'
 import type { PantryItem } from '../../pantry/domain/pantry'
 import type { Meal } from '../../planner/domain/planner'
 import type { Recipe } from '../../recipes/domain/Recipe'
-import { getIngredientAvailability } from '../../recipes/domain/recipeRules'
+import { getIngredientAvailability, recipeMealShifts } from '../../recipes/domain/recipeRules'
+import type { AdminUnit } from '../../admin/domain/adminModels'
+import { normalizePantryName } from '../../pantry/domain/pantry'
 
 export interface CookingSuggestion {
   recipe: Recipe
@@ -18,6 +20,7 @@ export interface RecommendationContext {
   history?: PreparationEvent[]
   rotation?: number
   today?: Date
+  units?: AdminUnit[]
 }
 
 export interface TimeRecommendation { meal: Meal; recipe?: Recipe; reason?: string }
@@ -36,9 +39,9 @@ export function mealForHour(hour: number): Meal {
   return 'Cena'
 }
 
-export function buildCookingSuggestions(recipes: Recipe[], pantry: PantryItem[], today = new Date(), limit = 4): CookingSuggestion[] {
+export function buildCookingSuggestions(recipes: Recipe[], pantry: PantryItem[], today = new Date(), limit = 4, units?: AdminUnit[]): CookingSuggestion[] {
   return recipes.flatMap((recipe): CookingSuggestion[] => {
-    const availability = getIngredientAvailability(recipe, pantry, today)
+    const availability = getIngredientAvailability(recipe, pantry, today, units)
     const missingNames = availability.missing.map((ingredient) => ingredient.name)
     if (missingNames.length > 2) return []
     const canCook = missingNames.length === 0
@@ -57,14 +60,14 @@ function localRotation(date: Date): number {
 
 export function recommendRecipeForTime(recipes: Recipe[], hour: number, context: RecommendationContext = {}): TimeRecommendation {
   const meal = mealForHour(hour)
-  const matching = recipes.filter((recipe) => recipe.mealShift === meal || recipe.category === meal)
+  const matching = recipes.filter((recipe) => recipeMealShifts(recipe).some((shift) => normalizePantryName(shift) === normalizePantryName(meal)))
   const candidates = matching.length > 0 ? matching : recipes
   if (candidates.length === 0) return { meal }
   const pantry = context.pantry ?? []
   const favorites = new Set(context.favoriteIds ?? [])
   const historyIds = new Set((context.history ?? []).map((event) => event.recipeId))
   const ranked = candidates.map((recipe) => {
-    const availability = getIngredientAvailability(recipe, pantry, context.today)
+    const availability = getIngredientAvailability(recipe, pantry, context.today, context.units)
     const canCook = availability.missing.length === 0 && recipe.ingredients.length > 0
     const favorite = favorites.has(recipe.id)
     const known = historyIds.has(recipe.id)

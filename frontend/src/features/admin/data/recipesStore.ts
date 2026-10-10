@@ -7,6 +7,7 @@ import { normalizePantryName } from '../../pantry/domain/pantry'
 import { recipeSeed } from '../../recipes/data/recipeSeed'
 import { adminSeedId, seedUnitDefinitions } from './adminSeed'
 import { inferIngredientCategory } from '../domain/ingredientCategory'
+import type { DeleteResult } from './deleteResult'
 
 export function createSeedRecipeOverride(recipe: Recipe, now = new Date()): AdminRecipe {
   const data = getAdminData()
@@ -32,14 +33,17 @@ export function createSeedRecipeOverride(recipe: Recipe, now = new Date()): Admi
   }
   const ingredients = recipe.ingredients.map((ingredient) => {
     const unitId = ensureUnit(ingredient.unit)
+    const definition = seedUnitDefinitions[ingredient.unit as keyof typeof seedUnitDefinitions] ?? { dimension: 'conteo' as const }
+    const baseAbbreviation = definition.dimension === 'masa' ? 'g' : definition.dimension === 'volumen' ? 'ml' : 'u'
+    const baseUnitId = ensureUnit(baseAbbreviation)
     const ingredientId = adminSeedId('ingredient', ingredient.name)
     const categoryId = ensureCategory(inferIngredientCategory(ingredient.name) ?? 'Otros')
-    if (!data.ingredients.some((entry) => entry.id === ingredientId)) data.ingredients.push({ id: ingredientId, name: ingredient.name, categoryId, baseUnitId: unitId, active: true, isDeleted: false })
+    if (!data.ingredients.some((entry) => entry.id === ingredientId)) data.ingredients.push({ id: ingredientId, name: ingredient.name, categoryId, baseUnitId, active: true, isDeleted: false })
     return { ingredientId, quantity: ingredient.quantity, unitId }
   })
   const override: AdminRecipe = {
     id: recipe.id, title: recipe.name, author: 'CocinAPP', description: recipe.description,
-    category: recipe.category, mealShift: recipe.mealShift ?? recipe.category, minutes: recipe.minutes,
+    category: recipe.mealShifts?.[0] ?? recipe.mealShift ?? recipe.category, mealShift: recipe.mealShifts?.[0] ?? recipe.mealShift ?? recipe.category, mealShifts: recipe.mealShifts?.length ? [...recipe.mealShifts] : [recipe.mealShift ?? recipe.category], minutes: recipe.minutes,
     portions: recipe.portions, difficulty: recipe.difficulty, calories: recipe.calories ?? 0,
     dietaryTags: recipe.dietaryTags ?? [], featured: recipe.featured ?? false, ingredients,
     steps: [...recipe.steps], stepMeta: recipe.stepMeta?.map((entry) => ({
@@ -59,7 +63,7 @@ export function createSeedRecipeOverride(recipe: Recipe, now = new Date()): Admi
   return override
 }
 
-type AdminRecipeInput = Omit<AdminRecipe, 'id' | 'active' | 'isDeleted' | 'createdAt' | 'updatedAt'> & { active?: boolean }
+export type AdminRecipeInput = Omit<AdminRecipe, 'id' | 'active' | 'isDeleted' | 'createdAt' | 'updatedAt'> & { active?: boolean }
 
 export function createRecipe(recipe: AdminRecipeInput, now = new Date()): string {
   const data = getAdminData()
@@ -80,17 +84,20 @@ export function updateRecipe(id: string, recipe: AdminRecipeInput, now = new Dat
   }
 }
 
-export function deleteRecipe(id: string): void {
+export function deleteRecipe(id: string): DeleteResult {
   const data = getAdminData()
   const index = data.recipes.findIndex(r => r.id === id)
-  if (index !== -1) {
-    if (hasAdminReferences('recipe', id) || recipeSeed.some((recipe) => recipe.id === id)) {
-      data.recipes[index].isDeleted = true
-    } else {
-      data.recipes.splice(index, 1)
-    }
-    saveAdminData(data)
-  }
+  if (index === -1) return 'not-found'
+  const recipe = data.recipes[index]
+  if (recipe.isDeleted) return 'deactivated'
+  const deactivated = hasAdminReferences('recipe', id) || recipeSeed.some((seed) => seed.id === id)
+  if (deactivated) {
+    recipe.isDeleted = true
+    recipe.active = false
+    recipe.updatedAt = new Date().toISOString()
+  } else data.recipes.splice(index, 1)
+  saveAdminData(data)
+  return deactivated ? 'deactivated' : 'deleted'
 }
 
 function ensureManagedRecipe(id: string, now = new Date()): AdminRecipe {

@@ -1,5 +1,8 @@
 import { daysUntilExpiry, normalizePantryName, type PantryItem } from '../../pantry/domain/pantry'
 import type { Recipe, RecipeStepMeta } from '../../recipes/domain/Recipe'
+import { getIngredientDeficits } from '../../recipes/domain/recipeRules'
+import { convertQuantity, quantityDeficit, roundQuantity } from '../../../shared/domain/units'
+import type { AdminUnit } from '../../admin/domain/adminModels'
 
 export const cookingCompletionPath = '/recipes'
 
@@ -68,7 +71,7 @@ export function getStepGuidance(recipe: Recipe, stepIndex: number, portions: num
   return {
     durationMinutes: stepDuration(meta),
     stepIngredients: (meta?.stepIngredients ?? []).map((ingredient) => ({
-      ...ingredient, quantity: Math.round(ingredient.quantity * scale * 100) / 100,
+      ...ingredient, quantity: roundQuantity(ingredient.quantity * scale),
     })),
     utensils: meta?.utensils ?? [],
     tip: meta?.tip,
@@ -93,23 +96,30 @@ export function recordPreparation(history: PreparationEvent[], session: CookingS
 }
 
 export function scaleIngredients(recipe: Recipe, portions: number): Recipe['ingredients'] {
-  return recipe.ingredients.map((item) => ({ ...item, quantity: Math.round(item.quantity * portions / recipe.portions * 100) / 100 }))
+  return recipe.ingredients.map((item) => ({ ...item, quantity: roundQuantity(item.quantity * portions / recipe.portions) }))
 }
 
-export function deductIngredients(pantry: PantryItem[], recipe: Recipe, portions: number, today = new Date()): PantryItem[] {
+export function deductIngredients(pantry: PantryItem[], recipe: Recipe, portions: number, today = new Date(), units?: AdminUnit[]): PantryItem[] {
   const updated = pantry.map((item) => ({ ...item }))
   for (const ingredient of scaleIngredients(recipe, portions)) {
     let needed = ingredient.quantity
-    const matches = updated.filter((item) => item.unit === ingredient.unit
-      && normalizePantryName(item.name) === normalizePantryName(ingredient.name)
+    const matches = updated.filter((item) => normalizePantryName(item.name) === normalizePantryName(ingredient.name)
       && (!item.expiry || (daysUntilExpiry(item.expiry, today) ?? -1) >= 0))
       .sort((a, b) => (a.expiry || '9999-12-31').localeCompare(b.expiry || '9999-12-31'))
     for (const item of matches) {
-      const used = Math.min(needed, item.quantity)
-      item.quantity = Math.round((item.quantity - used) * 100) / 100
-      needed = Math.round((needed - used) * 100) / 100
+      const stockInRecipeUnit = convertQuantity(item.quantity, item.unit, ingredient.unit, units)
+      if (stockInRecipeUnit === null) continue
+      const usedInRecipeUnit = Math.min(needed, stockInRecipeUnit)
+      const usedInStockUnit = convertQuantity(usedInRecipeUnit, ingredient.unit, item.unit, units)
+      if (usedInStockUnit === null) continue
+      item.quantity = quantityDeficit(item.quantity, usedInStockUnit)
+      needed = quantityDeficit(needed, usedInRecipeUnit)
       if (needed <= 0) break
     }
   }
   return updated
+}
+
+export function getCookingStockCheck(pantry: PantryItem[], recipe: Recipe, portions: number, today = new Date(), units?: AdminUnit[]) {
+  return getIngredientDeficits(recipe, pantry, portions, today, units)
 }

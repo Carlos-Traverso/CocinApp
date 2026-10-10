@@ -1,6 +1,6 @@
 export const meals = ['Desayuno', 'Almuerzo', 'Merienda', 'Cena'] as const
 export type Meal = typeof meals[number]
-export interface PlannedMeal { date: string; meal: Meal; recipeId: string }
+export interface PlannedMeal { date: string; meal: Meal; recipeId: string; portions: number }
 
 export function localDateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -23,7 +23,17 @@ export function weekDates(today = new Date()): string[] {
   })
 }
 
-export function setPlannedMeal(plan: PlannedMeal[], date: string, meal: Meal, recipeId: string): PlannedMeal[] {
+export function setPlannedMeal(plan: PlannedMeal[], date: string, meal: Meal, recipeId: string, portions?: number): PlannedMeal[] {
   const remaining = plan.filter((item) => item.date !== date || item.meal !== meal)
-  return recipeId ? [...remaining, { date, meal, recipeId }] : remaining
+  if (!recipeId) return remaining
+  const previous = plan.find((item) => item.date === date && item.meal === meal && item.recipeId === recipeId)
+  return [...remaining, { date, meal, recipeId, portions: Math.max(1, Math.min(20, Math.round(portions ?? previous?.portions ?? 2))) }]
+}
+
+export function movePlannedMeal(plan: PlannedMeal[], from: Pick<PlannedMeal, 'date' | 'meal'>, to: Pick<PlannedMeal, 'date' | 'meal'>): PlannedMeal[] {
+  const moving = plan.find((item) => item.date === from.date && item.meal === from.meal)
+  if (!moving) return plan
+  const displaced = plan.find((item) => item.date === to.date && item.meal === to.meal)
+  const cleared = plan.filter((item) => !(item.date === from.date && item.meal === from.meal) && !(item.date === to.date && item.meal === to.meal))
+  return [...cleared, { ...moving, date: to.date, meal: to.meal }, ...(displaced ? [{ ...displaced, date: from.date, meal: from.meal }] : [])]
 }

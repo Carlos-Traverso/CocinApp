@@ -3,11 +3,12 @@ import { personalStorage } from '../../auth/data/personalStorage'
 import type { CookingSession, PreparationEvent } from '../domain/cooking'
 import type { Recipe } from '../../recipes/domain/Recipe'
 import { readPantryItems, writePantryItems } from '../../pantry/data/localPantryStore'
-import { deductIngredients, recordPreparation } from '../domain/cooking'
+import { deductIngredients, getCookingStockCheck, recordPreparation } from '../domain/cooking'
+import { getAdminData } from '../../admin/data/localAdminStore'
 
 const progressKey = 'cocinapp.cooking-progress.v1'
 const historyKey = 'cocinapp.cooking-history.v1'
-interface StorageLike { getItem(key: string): string | null; setItem(key: string, value: string): void }
+interface StorageLike { getItem(key: string): string | null; setItem(key: string, value: string): void; removeItem?(key: string): void }
 
 function isDate(value: unknown): value is string {
   return typeof value === 'string' && !Number.isNaN(Date.parse(value))
@@ -78,9 +79,60 @@ export function writeHistory(history: PreparationEvent[], storage: StorageLike =
 }
 
 export function finalizeCookingSession(recipe: Recipe, session: CookingSession, discount: boolean, storage: StorageLike = personalStorage, now = new Date()): PreparationEvent[] {
+  const savedHistory = readHistory(storage)
+  if (savedHistory.some((event) => event.recipeId === session.recipeId && event.sessionStartedAt === session.startedAt)) {
+    clearCookingSession(recipe.id, storage)
+    return savedHistory
+  }
+  const pantry = discount ? readPantryItems(storage) : []
+  const units = getAdminData().units
+  const catalog = units.length ? units : undefined
+  const deficits = discount ? getCookingStockCheck(pantry, recipe, session.portions, now, catalog).filter((item) => item.missing > 0) : []
+  if (deficits.length > 0) {
+    throw new Error(`Stock insuficiente: ${deficits.map((item) => `${item.ingredient.name} (${item.missing} ${item.ingredient.unit})`).join(', ')}`)
+  }
+  const previousHistory = storage.getItem(historyKey)
+  const previousPantry = storage.getItem('cocinapp.pantry.v1')
+  const previousProgress = storage.getItem(progressKey)
   const history = recordPreparation(readHistory(storage), session, now)
-  writeHistory(history, storage)
-  if (discount) writePantryItems(deductIngredients(readPantryItems(storage), recipe, session.portions, now), storage)
-  clearCookingSession(recipe.id, storage)
-  return history
+  try {
+    writeHistory(history, storage)
+    if (discount) writePantryItems(deductIngredients(pantry, recipe, session.portions, now, catalog), storage)
+    clearCookingSession(recipe.id, storage)
+    return history
+  } catch (error) {
+    try {
+      if (previousHistory === null) storage.removeItem?.(historyKey)
+      else storage.setItem(historyKey, previousHistory)
+      if (previousPantry === null) storage.removeItem?.('cocinapp.pantry.v1')
+      else storage.setItem('cocinapp.pantry.v1', previousPantry)
+      if (previousProgress === null) storage.removeItem?.(progressKey)
+      else storage.setItem(progressKey, previousProgress)
+    } catch { /* Best-effort rollback for storage implementations that reject writes. */ }
+    throw error
+  }
+}
+
+// Promise based mock repository boundary for screens.
+export async function getCookingSession(recipeId: string): Promise<CookingSession | null> { return readCookingSession(recipeId) }
+export async function persistCookingSession(session: CookingSession): Promise<void> { saveCookingSession(session) }
+export async function getCookingHistory(): Promise<PreparationEvent[]> { return readHistory() }
+export async function finishCookingSession(recipe: Recipe, session: CookingSession, discount: boolean, now = new Date()): Promise<{ history: PreparationEvent[]; exhaustedIngredients: string[] }> {
+  const savedHistory = readHistory()
+  if (savedHistory.some((event) => event.recipeId === session.recipeId && event.sessionStartedAt === session.startedAt)) {
+    clearCookingSession(session.recipeId)
+    return { history: savedHistory, exhaustedIngredients: [] }
+  }
+  const stockCheck = discount ? await checkCookingStock(recipe, session.portions, now) : []
+  const history = finalizeCookingSession(recipe, session, discount, personalStorage, now)
+  const exhaustedIngredients = stockCheck.filter((item) => item.missing === 0 && item.available <= item.required).map((item) => item.ingredient.name)
+  return { history, exhaustedIngredients }
+}
+export async function persistCookingHistory(history: PreparationEvent[]): Promise<void> { writeHistory(history) }
+export async function removeCookingHistoryEntry(eventId: string): Promise<void> { writeHistory(readHistory().filter((event) => event.id !== eventId)) }
+export async function clearCookingHistory(): Promise<void> { writeHistory([]) }
+export async function checkCookingStock(recipe: Recipe, portions: number, now = new Date()) {
+  const stock = readPantryItems()
+  const units = getAdminData().units
+  return getCookingStockCheck(stock, recipe, portions, now, units.length ? units : undefined)
 }

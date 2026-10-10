@@ -1,1 +1,3 @@
-El modo cocina guarda progreso e historial en `localStorage`. El descuento opcional de despensa se confirma antes de aplicarse y nunca deja cantidades negativas.
+# Cooking
+
+Cooking mode saves progress and history through async mock operations. Stock sufficiency is checked before a discount, and the local use case reports the resulting pantry state. Browser storage cannot provide the transaction guarantees of a future backend.

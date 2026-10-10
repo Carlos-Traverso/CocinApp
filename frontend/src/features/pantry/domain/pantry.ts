@@ -11,6 +11,7 @@ export type PantryStatus = 'ok' | 'low' | 'empty' | 'soon' | 'expired'
 
 export interface PantryItem {
   id: string
+  ingredientId?: string
   name: string
   category: PantryCategory
   quantity: number
@@ -90,7 +91,7 @@ export function filterPantryItems(items: PantryItem[], filters: PantryFilters, t
 }
 
 export function formatPantryAmount(quantity: number, unit: PantryUnit): string {
-  const formatter = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 })
+  const formatter = new Intl.NumberFormat('es-AR', { maximumSignificantDigits: 12 })
   if (unit === 'g' && quantity >= 1000) return `${formatter.format(quantity / 1000)} kg`
   if (unit === 'ml' && quantity >= 1000) return `${formatter.format(quantity / 1000)} l`
   return `${formatter.format(quantity)} ${unit}`

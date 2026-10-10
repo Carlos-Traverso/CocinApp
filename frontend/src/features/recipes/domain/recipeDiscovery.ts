@@ -1,6 +1,7 @@
 import type { PreparationEvent } from '../../cooking/domain/cooking'
 import { normalizePantryName } from '../../pantry/domain/pantry'
 import type { Recipe } from './Recipe'
+import { recipeMealShifts } from './recipeRules'
 
 export interface RecipeDiscovery {
   featured: Recipe[]
@@ -28,7 +29,7 @@ export function discoverRecipes(active: Recipe[], known: Recipe[], favoriteIds: 
     .map((recipe) => {
       const ingredients = new Set(recipe.ingredients.map((item) => normalizePantryName(item.name)))
       const score = Math.max(0, ...cookedRecipes.map((cooked) =>
-        (recipe.category === cooked.category ? 3 : 0)
+        (recipeMealShifts(recipe).some((meal) => recipeMealShifts(cooked).some((cookedMeal) => normalizePantryName(meal) === normalizePantryName(cookedMeal))) ? 3 : 0)
         + cooked.ingredients.filter((item) => ingredients.has(normalizePantryName(item.name))).length))
       return { recipe, score }
     })

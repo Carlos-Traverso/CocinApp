@@ -1,56 +1,109 @@
 import { useState } from 'react'
 import { Plus, Pencil, RotateCcw, Trash2, X } from 'lucide-react'
-import { getAdminData } from '../data/localAdminStore'
-import { hasAdminReferences } from '../data/adminReferences'
 import { normalizePantryName } from '../../pantry/domain/pantry'
 import { SearchFeedback } from '../../../shared/search/SearchFeedback'
 import { useDebouncedSearch } from '../../../shared/search/useDebouncedSearch'
-import { createCategory, updateCategory, deleteCategory, restoreCategory } from '../data/categoriesStore'
+import { adminRepository } from '../data/AdminRepository'
+import type { DeleteResult } from '../data/AdminRepository'
 import { countAdminUsage } from '../domain/adminUsage'
-import { getKnownRecipes } from '../../recipes/data/availableRecipes'
+import { useAdminCatalog } from './useAdminCatalog'
+import { useNotifications } from '../../../shared/notifications/NotificationProvider'
 
 export function CategoriesTab() {
-  const data = getAdminData()
-  const [categories, setCategories] = useState(data.categories)
+  const { notify } = useNotifications()
+  const { data: snapshot, knownRecipes, loading, error, setError, reload } = useAdminCatalog()
+  const data = snapshot ?? { categories: [], units: [], ingredients: [], recipes: [] }
+  const categories = data.categories
   const [editor, setEditor] = useState<{ id?: string; name: string; active: boolean } | null>(null)
-  const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const debouncedSearch = useDebouncedSearch(search)
-  const [success, setSuccess] = useState('')
 
-  const reload = () => setCategories(getAdminData().categories)
+  const [pending, setPending] = useState(false)
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editor) return
+    const invalidField = e.currentTarget.querySelector<HTMLElement>(':invalid')
+    if (invalidField || !editor.name.trim()) {
+      setError('Ingresá un nombre válido para la categoría.')
+      ;(invalidField ?? e.currentTarget.querySelector<HTMLElement>('input'))?.focus()
+      return
+    }
     try {
+      setPending(true)
+      setError('')
       if (editor.id) {
-        updateCategory(editor.id, editor.name.trim(), editor.active)
+        await adminRepository.updateCategory(editor.id, editor.name.trim(), editor.active)
       } else {
-        createCategory(editor.name.trim(), editor.active)
+        await adminRepository.createCategory(editor.name.trim(), editor.active)
       }
       setEditor(null)
       setError('')
-      setSuccess(editor.id ? 'Categoría actualizada.' : 'Categoría creada.')
-      reload()
+      void notify({ type: 'success', title: editor.id ? 'Categoría actualizada' : 'Categoría creada', message: editor.id ? 'Categoría actualizada.' : 'Categoría creada.' })
+      await reload()
     } catch (err: any) {
-      setError(err.message)
+      void notify({ type: 'error', title: 'No se pudo guardar la categoría', message: err.message })
+    } finally {
+      setPending(false)
     }
   }
 
-  const usage = countAdminUsage(data, getKnownRecipes())
+  const usage = countAdminUsage(data, knownRecipes)
   const visibleCategories = categories.filter((category) => debouncedSearch.status !== 'waiting' && normalizePantryName(category.name).includes(normalizePantryName(debouncedSearch.query))
     && (statusFilter === 'all' || (statusFilter === 'active') === (category.active && !category.isDeleted)))
 
-  const handleDelete = (id: string, name: string) => {
-    const isReferenced = hasAdminReferences('category', id, name)
-    const msg = isReferenced
-      ? `La categoría "${name}" está en uso. Se realizará una baja lógica y no estará disponible para nuevos registros.`
-      : `¿Eliminar la categoría "${name}" permanentemente?`
-    if (window.confirm(msg)) {
-      deleteCategory(id)
-      reload()
+  const handleDelete = async (id: string, name: string) => {
+    if (!await notify({ type: 'warning', title: 'Eliminar categoría', message: `¿Eliminar la categoría "${name}"? Si tiene referencias, se conservará como baja lógica.`, confirmLabel: 'Eliminar', cancelLabel: 'Cancelar' })) return
+    await runDelete(() => adminRepository.deleteCategory(id), 'No se pudo eliminar la categoría.')
+  }
+
+  const runMutation = async (action: () => Promise<unknown>, fallback: string) => {
+    setPending(true)
+    setError('')
+    try {
+      await action()
+    } catch (cause) {
+      void notify({ type: 'error', title: 'No se pudieron guardar los cambios', message: cause instanceof Error ? cause.message : fallback })
+      setPending(false)
+      return
+    }
+
+    try {
+      await reload()
+      void notify({ type: 'success', title: 'Cambios guardados', message: 'Cambios guardados.' })
+    } catch {
+      void notify({ type: 'error', title: 'Cambios guardados, lista desactualizada', message: 'La acción se completó, pero no se pudo actualizar el catálogo. Volvé a cargar la pantalla.' })
+    } finally {
+      setPending(false)
+    }
+  }
+
+  const runDelete = async (action: () => Promise<DeleteResult>, fallback: string) => {
+    setPending(true)
+    setError('')
+    let result: DeleteResult
+    try {
+      result = await action()
+    } catch (cause) {
+      void notify({ type: 'error', title: 'No se pudo eliminar la categoría', message: cause instanceof Error ? cause.message : fallback })
+      setPending(false)
+      return
+    }
+
+    let reloadFailed = false
+    try {
+      await reload()
+    } catch {
+      reloadFailed = true
+    } finally {
+      setPending(false)
+    }
+
+    if (result === 'not-found') {
+      void notify({ type: 'error', title: 'No se encontró la categoría', message: reloadFailed ? 'La categoría ya no existe y tampoco se pudo actualizar el catálogo.' : 'La categoría ya no existe. El catálogo se actualizó.' })
+    } else if (reloadFailed) {
+      void notify({ type: 'error', title: 'No se pudo actualizar el catálogo', message: 'La acción de eliminación se completó, pero no se pudo actualizar la lista. Volvé a cargar la pantalla.' })
     }
   }
 
@@ -58,15 +111,14 @@ export function CategoriesTab() {
     <div className="panel">
       <div className="section-header">
         <div><h2>Categorías de ingredientes</h2><p className="panel-intro"><SearchFeedback resultCount={visibleCategories.length} status={debouncedSearch.status} /> · {categories.length} categorías totales</p></div>
-        <button className="button button-primary" onClick={() => { setEditor({ name: '', active: true }); setError('') }} type="button">
+        <button className="button button-primary" disabled={loading || pending} onClick={() => { setEditor({ name: '', active: true }); setError('') }} type="button">
           <Plus size={16} /> Nueva categoría
         </button>
       </div>
 
-      {success && <p className="form-message success" role="status">{success}</p>}
       <div className="admin-catalog-filters"><label className="field admin-filter-search"><span>Buscar categoría</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label><label className="field"><span>Estado</span><select onChange={(event) => setStatusFilter(event.currentTarget.value as typeof statusFilter)} value={statusFilter}><option value="all">Todas</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select></label></div>
 
-      <div className="records">
+      {loading ? <p role="status">Cargando catálogo…</p> : <div className="records">
         {visibleCategories.map((c) => (
           <article className="record" key={c.id}>
             <div className="record-main">
@@ -78,19 +130,19 @@ export function CategoriesTab() {
             <div className="record-actions">
               {!c.isDeleted ? (
                 <>
-                  <button aria-label={`Editar categoría ${c.name}`} className="pantry-icon-button" onClick={() => setEditor({ id: c.id, name: c.name, active: c.active })} type="button">
+                  <button aria-label={`Editar categoría ${c.name}`} className="pantry-icon-button" disabled={pending} onClick={() => setEditor({ id: c.id, name: c.name, active: c.active })} type="button">
                     <Pencil size={17} />
                   </button>
-                  <button aria-label={`Eliminar categoría ${c.name}`} className="pantry-icon-button" onClick={() => handleDelete(c.id, c.name)} type="button">
+                  <button aria-label={`Eliminar categoría ${c.name}`} className="pantry-icon-button" disabled={pending} onClick={() => void handleDelete(c.id, c.name)} type="button">
                     <Trash2 size={17} />
                   </button>
                 </>
-              ) : <button className="button button-quiet" onClick={() => { restoreCategory(c.id); reload(); setSuccess('Categoría reactivada.') }} type="button"><RotateCcw size={15} /> Reactivar</button>}
+              ) : <button className="button button-quiet" disabled={pending} onClick={() => void runMutation(() => adminRepository.restoreCategory(c.id), 'No se pudo reactivar la categoría.')} type="button"><RotateCcw size={15} /> Reactivar</button>}
             </div>
           </article>
         ))}
         {debouncedSearch.status !== 'waiting' && visibleCategories.length === 0 && <p className="empty">No hay categorías que coincidan con los filtros.</p>}
-      </div>
+      </div>}
 
       {editor && (
         <dialog aria-labelledby="category-editor-title" className="shopping-editor surface" onCancel={(event) => { event.preventDefault(); setEditor(null) }} ref={(node) => { if (node && !node.open) node.showModal() }}>
@@ -98,7 +150,7 @@ export function CategoriesTab() {
             <h2 id="category-editor-title">{editor.id ? 'Editar categoría' : 'Nueva categoría'}</h2>
             <button aria-label="Cerrar editor de categoría" className="pantry-icon-button" onClick={() => setEditor(null)} type="button"><X size={19} /></button>
           </div>
-          <form onSubmit={handleSave}>
+          <form noValidate onSubmit={handleSave}>
             <label className="field">
               <span>Nombre</span>
               <input
@@ -112,7 +164,7 @@ export function CategoriesTab() {
             {error && <p className="form-message error" role="alert">{error}</p>}
             <div className="pantry-dialog-actions">
               <button className="button button-quiet" type="button" onClick={() => setEditor(null)}>Cancelar</button>
-              <button className="button button-primary" type="submit">Guardar</button>
+              <button className="button button-primary" disabled={pending} type="submit">{pending ? 'Guardando…' : 'Guardar'}</button>
             </div>
           </form>
         </dialog>

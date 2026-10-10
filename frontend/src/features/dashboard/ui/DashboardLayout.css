@@ -1,0 +1,114 @@
+.dashboard-highlight-layout {
+  min-width: 0;
+  container-type: inline-size;
+  margin-bottom: 32px;
+}
+
+.dashboard-highlight-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 24px;
+}
+
+.dashboard-highlight-grid > .dashboard-panel-section {
+  min-width: 0;
+  margin-top: 0;
+  align-content: start;
+}
+
+.dashboard-highlight-grid .dashboard-today-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.dashboard-highlight-grid .dashboard-today-card {
+  grid-template-columns: clamp(88px, 17%, 112px) minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.dashboard-highlight-grid .dashboard-today-image {
+  height: 100%;
+  min-height: 112px;
+  max-height: 136px;
+}
+
+.dashboard-highlight-grid .dashboard-today-copy {
+  min-height: 0;
+  padding: 12px 14px;
+}
+
+.dashboard-highlight-grid .dashboard-today-copy h3 {
+  margin: 6px 0 4px;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.dashboard-highlight-grid .dashboard-today-copy > p {
+  font-size: 11px;
+}
+
+.dashboard-highlight-grid .dashboard-today-inactive {
+  margin-top: 6px;
+  padding: 4px 7px;
+}
+
+.dashboard-highlight-grid .dashboard-today-actions .button {
+  max-width: 100%;
+  min-height: 38px;
+  flex: 0 1 auto;
+  padding: 8px 10px;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-highlight-grid .dashboard-today-actions {
+  gap: 6px;
+  padding-top: 9px;
+}
+
+.dashboard-highlight-grid .dashboard-recommendation-featured {
+  min-height: 0;
+  grid-column: auto;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+}
+
+.dashboard-highlight-grid .dashboard-recommendation-copy {
+  min-width: 0;
+  padding: clamp(20px, 3vw, 32px);
+}
+
+.dashboard-highlight-grid .dashboard-suggestion-art {
+  min-width: 0;
+}
+
+@container (max-width: 760px) {
+  .dashboard-highlight-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .dashboard-highlight-grid {
+    gap: 18px;
+  }
+
+  .dashboard-highlight-grid .dashboard-recommendation-featured {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 430px) {
+  .dashboard-highlight-grid .dashboard-today-card {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .dashboard-highlight-grid .dashboard-today-image {
+    height: 100%;
+    min-height: 0;
+    max-height: 124px;
+  }
+
+  .dashboard-highlight-grid .dashboard-today-copy {
+    padding: 10px;
+  }
+}

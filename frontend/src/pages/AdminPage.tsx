@@ -1,13 +1,15 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { AlertTriangle, ArrowRight, BookOpen, Boxes, CircleCheck, FolderTree, Ruler, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { getAdminData } from '../features/admin/data/localAdminStore'
+import { adminRepository } from '../features/admin/data/AdminRepository'
 import { createAdminDashboard } from '../features/admin/domain/adminDashboard'
 import { CategoriesTab } from '../features/admin/ui/CategoriesTab'
 import { UnitsTab } from '../features/admin/ui/UnitsTab'
 import { IngredientsTab } from '../features/admin/ui/IngredientsTab'
 import { RecipesTab } from '../features/admin/ui/RecipesTab'
-import { getAvailableRecipes, getKnownRecipes } from '../features/recipes/data/availableRecipes'
+import { UsersTab } from '../features/admin/ui/UsersTab'
+import { mockRecipeRepository } from '../features/recipes/data/MockRecipeRepository'
+import { useNotifications } from '../shared/notifications/NotificationProvider'
 
 export function AdminPage() {
   return (
@@ -47,9 +49,23 @@ export function AdminUnitsPage() {
   return <AdminSection eyebrow="CATÁLOGO MAESTRO" title="Unidades" description="Definí las unidades compatibles con cantidades e ingredientes."><UnitsTab /></AdminSection>
 }
 
+export function AdminUsersPage() {
+  return <AdminSection eyebrow="ADMINISTRACIÓN" title="Usuarios" description="Administrá las cuentas de usuario de la aplicación."><UsersTab /></AdminSection>
+}
+
 function OverviewTab() {
-  const data = getAdminData()
-  const dashboard = createAdminDashboard(data, getKnownRecipes(), getAvailableRecipes())
+  const { notify } = useNotifications()
+  const [dashboard, setDashboard] = useState<ReturnType<typeof createAdminDashboard> | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [retry, setRetry] = useState(0)
+  useEffect(() => {
+    let current = true
+    void Promise.all([adminRepository.getCatalog(), mockRecipeRepository.listKnown(), mockRecipeRepository.list()])
+      .then(([catalog, known, available]) => { if (current) setDashboard(createAdminDashboard(catalog, known, available)) })
+      .catch(() => { if (current) { setLoadFailed(true); void notify({ type: 'error', title: 'No se pudo cargar el resumen', message: 'No se pudo cargar el resumen del catálogo.' }) } })
+    return () => { current = false }
+  }, [notify, retry])
+  if (!dashboard) return loadFailed ? <button className="button button-quiet" onClick={() => { setLoadFailed(false); setRetry((value) => value + 1) }} type="button">Reintentar carga del resumen</button> : <p role="status">Cargando resumen…</p>
   const stats = [
     { label: 'Recetas totales', value: dashboard.metrics.total, icon: BookOpen },
     { label: 'Publicadas y activas', value: dashboard.metrics.active, icon: CircleCheck },

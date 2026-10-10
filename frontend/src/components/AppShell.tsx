@@ -1,18 +1,21 @@
+import { useState } from 'react'
 import {
   CalendarDays,
   CookingPot,
   Heart,
   History,
   LayoutDashboard,
+  LogOut,
   Refrigerator,
   ShoppingCart,
   UserRound,
 } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { useAuth } from '../features/auth/data/localAuthStore'
 import { BrandLogo } from './BrandLogo'
 import { appNavigation } from './navigation'
 import { ScrollToTopButton } from './ScrollToTopButton'
+import { authRepository } from '../features/auth/data/AuthRepository'
+import { useNotifications } from '../shared/notifications/NotificationProvider'
 
 const navigationIcons = {
   recipes: CookingPot,
@@ -26,7 +29,15 @@ const navigationIcons = {
 }
 
 export function AppShell() {
-  const session = useAuth()
+  const [loggingOut, setLoggingOut] = useState(false)
+  const { notify } = useNotifications()
+
+  async function logout() {
+    setLoggingOut(true)
+    try { await authRepository.logout() }
+    catch { await notify({ type: 'error', title: 'No se pudo cerrar la sesión', message: 'Intentá de nuevo.' }) }
+    finally { setLoggingOut(false) }
+  }
 
   return (
     <div className="app-shell">
@@ -51,10 +62,10 @@ export function AppShell() {
             )
           })}
         </nav>
-      <NavLink className="sidebar-foot" to="/profile">
-          <span className="avatar" aria-hidden="true">{session?.name?.charAt(0) || 'C'}</span>
-          <span><strong>{session?.name || 'Mi cocina'}</strong><small>Espacio personal</small></span>
-        </NavLink>
+        <button className="app-sidebar-logout" disabled={loggingOut} onClick={() => void logout()} type="button">
+          <LogOut size={18} strokeWidth={1.8} aria-hidden="true" />
+          <span>{loggingOut ? 'Cerrando…' : 'Cerrar sesión'}</span>
+        </button>
       </aside>
       <main className="main-content"><NavLink aria-label="CocinAPP, inicio" className="mobile-brand" to="/panel"><BrandLogo /></NavLink><Outlet /></main>
       <ScrollToTopButton />

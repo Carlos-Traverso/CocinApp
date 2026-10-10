@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { countPantryAlerts, filterPantryItems, getPantryStatus, hasDuplicateItem, type PantryItem } from '../src/features/pantry/domain/pantry'
 import { readPantryItems, writePantryItems } from '../src/features/pantry/data/localPantryStore'
+import { isValidReceiptImage, mockReceiptScanner, receiptImageLimitBytes } from '../src/features/pantry/data/mockReceiptScanner'
 
 const today = new Date(2026, 8, 23)
 const rice: PantryItem = {
@@ -68,4 +69,27 @@ test('migrates existing prototype data without replacing an intentionally empty 
   assert.deepEqual(JSON.parse(entries.get('cocinapp.pantry.v1') ?? ''), [rice])
   entries.set('cocinapp.pantry.v1', '[]')
   assert.deepEqual(readPantryItems(storage), [])
+})
+
+test('receipt scanner accepts only supported image formats up to 5 MB', () => {
+  assert.equal(isValidReceiptImage({ type: 'image/jpeg', size: receiptImageLimitBytes }), true)
+  assert.equal(isValidReceiptImage({ type: 'image/png', size: receiptImageLimitBytes + 1 }), false)
+  assert.equal(isValidReceiptImage({ type: 'application/pdf', size: 100 }), false)
+})
+
+test('receipt scan is cancellable and does not mutate pantry before confirmation', async () => {
+  const entries = new Map<string, string>()
+  const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
+  writePantryItems([rice], storage)
+  const before = entries.get('cocinapp.pantry.v1')
+  const image = new File(['receipt bytes'], 'ticket.png', { type: 'image/png' })
+  const abort = new AbortController()
+  const pending = mockReceiptScanner.scan(image, abort.signal)
+  abort.abort()
+  await assert.rejects(pending, { name: 'AbortError' })
+  assert.equal(entries.get('cocinapp.pantry.v1'), before)
+
+  const proposal = await mockReceiptScanner.scan(image)
+  assert.ok(proposal.some((line) => line.name === 'Producto del ticket'))
+  assert.equal(entries.get('cocinapp.pantry.v1'), before)
 })

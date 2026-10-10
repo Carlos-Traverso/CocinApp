@@ -1,6 +1,7 @@
 import { getAdminData, saveAdminData } from './localAdminStore'
 import { hasAdminReferences } from './adminReferences'
 import { validateUnit } from '../domain/adminValidation'
+import type { DeleteResult } from './deleteResult'
 
 export function createUnit(name: string, abbreviation: string, dimension: string, baseUnitId?: string, equivalenceMultiplier?: number, active = true): string {
   const data = getAdminData()
@@ -21,17 +22,19 @@ export function updateUnit(id: string, name: string, abbreviation: string, dimen
   }
 }
 
-export function deleteUnit(id: string): void {
+export function deleteUnit(id: string): DeleteResult {
   const data = getAdminData()
   const index = data.units.findIndex(u => u.id === id)
-  if (index !== -1) {
-    if (hasAdminReferences('unit', id, data.units[index].abbreviation)) {
-      data.units[index].isDeleted = true
-    } else {
-      data.units.splice(index, 1)
-    }
-    saveAdminData(data)
-  }
+  if (index === -1) return 'not-found'
+  const unit = data.units[index]
+  if (unit.isDeleted) return 'deactivated'
+  const deactivated = hasAdminReferences('unit', id, unit.abbreviation)
+  if (deactivated) {
+    unit.isDeleted = true
+    unit.active = false
+  } else data.units.splice(index, 1)
+  saveAdminData(data)
+  return deactivated ? 'deactivated' : 'deleted'
 }
 
 export function restoreUnit(id: string): void {

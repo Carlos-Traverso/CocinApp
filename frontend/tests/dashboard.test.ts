@@ -42,6 +42,8 @@ test('time recommendation prioritizes meal, pantry, favorites, history and admin
   assert.equal(recommendation.meal, 'Desayuno')
   assert.equal(recommendation.recipe?.id, favorite.id)
   assert.match(recommendation.reason ?? '', /desayuno.*despensa.*favoritas/i)
+  const multiShift = { ...favorite, id: 'multi-shift', category: 'Cena', mealShift: 'Cena', mealShifts: ['Desayuno', 'Merienda'] }
+  assert.equal(recommendRecipeForTime([multiShift], 8).recipe?.id, 'multi-shift')
   assert.equal(recommendRecipeForTime([], 13).recipe, undefined)
 })
 

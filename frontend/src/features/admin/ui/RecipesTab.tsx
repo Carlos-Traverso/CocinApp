@@ -1,14 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { ArrowDown, ArrowUp, Copy, Eye, Pencil, Plus, Power, Star, Trash2, X } from 'lucide-react'
-import { getAdminData } from '../data/localAdminStore'
-import { hasAdminReferences } from '../data/adminReferences'
-import { createRecipe, createSeedRecipeOverride, deleteRecipe, duplicateRecipe, setRecipeActive, setRecipeFeatured, updateRecipe } from '../data/recipesStore'
+import { adminRepository } from '../data/AdminRepository'
 import type { AdminRecipe } from '../domain/adminModels'
-import { getKnownRecipes } from '../../recipes/data/availableRecipes'
 import { RecipeImage } from '../../recipes/ui/RecipeImage'
 import { filterAdminRecipes, getManagedRecipes, type AdminRecipeFilters, type ManagedAdminRecipe } from '../domain/adminRecipeList'
 import { SearchFeedback } from '../../../shared/search/SearchFeedback'
 import { useDebouncedSearch } from '../../../shared/search/useDebouncedSearch'
+import { useAdminCatalog } from './useAdminCatalog'
+import { useNotifications } from '../../../shared/notifications/NotificationProvider'
 
 const pageSize = 8
 
@@ -22,16 +21,17 @@ const recipeColors = [
 
 const emptyRecipe = (): Partial<AdminRecipe> => ({
   title: '', author: 'CocinAPP', description: '', category: 'Almuerzo', minutes: 30,
-  portions: 2, difficulty: 'Fácil', calories: 0, mealShift: 'Almuerzo', dietaryTags: [],
+  portions: 2, difficulty: 'Fácil', calories: 0, mealShift: 'Almuerzo', mealShifts: ['Almuerzo'], dietaryTags: [],
   ingredients: [], steps: [''], stepMeta: [{}], featured: false, status: 'draft', active: true, symbol: '🍲', color: 'green',
   image: '', imageAlt: '',
 })
 
 export function RecipesTab() {
-  const [, setRecipes] = useState(() => getAdminData().recipes)
+  const { notify } = useNotifications()
+  const { data: snapshot, knownRecipes, loading, error, setError, reload } = useAdminCatalog()
+  const data = snapshot ?? { categories: [], units: [], ingredients: [], recipes: [] }
+  const [pending, setPending] = useState(false)
   const [editor, setEditor] = useState<Partial<AdminRecipe> | null>(null)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
   const [status, setStatus] = useState<AdminRecipeFilters['status']>('all')
@@ -43,62 +43,89 @@ export function RecipesTab() {
   const [preview, setPreview] = useState<ManagedAdminRecipe | null>(null)
   const [editorBaseline, setEditorBaseline] = useState('')
   const debouncedSearch = useDebouncedSearch(search)
-  const data = getAdminData()
   const referencedIngredientIds = new Set(editor?.ingredients?.map((ingredient) => ingredient.ingredientId) ?? [])
   const availableIngredients = data.ingredients.filter((ingredient) => ingredient.active && !ingredient.isDeleted || referencedIngredientIds.has(ingredient.id))
-  const reload = () => setRecipes(getAdminData().recipes)
 
   function cloneRecipe(recipe: AdminRecipe): Partial<AdminRecipe> {
-    return { ...recipe, dietaryTags: [...recipe.dietaryTags], ingredients: recipe.ingredients.map((item) => ({ ...item })), steps: [...recipe.steps], stepMeta: recipe.stepMeta?.map((item) => ({ ...item, ingredientIds: item.ingredientIds ? [...item.ingredientIds] : undefined, utensils: item.utensils ? [...item.utensils] : undefined })) ?? [] }
+    return { ...recipe, mealShifts: recipe.mealShifts ? [...recipe.mealShifts] : [recipe.mealShift], dietaryTags: [...recipe.dietaryTags], ingredients: recipe.ingredients.map((item) => ({ ...item })), steps: [...recipe.steps], stepMeta: recipe.stepMeta?.map((item) => ({ ...item, ingredientIds: item.ingredientIds ? [...item.ingredientIds] : undefined, utensils: item.utensils ? [...item.utensils] : undefined })) ?? [] }
   }
 
-  function openEditor(recipe?: ManagedAdminRecipe) {
-    const next = recipe ? cloneRecipe(recipe.record ?? createSeedRecipeOverride(recipe.recipe)) : emptyRecipe()
-    setEditor(next)
-    setEditorBaseline(JSON.stringify(next))
+  async function openEditor(recipe?: ManagedAdminRecipe) {
+    setPending(true)
     setError('')
+    try {
+      const record = recipe?.record ?? (recipe ? await adminRepository.createSeedRecipeOverride(recipe.recipe) : undefined)
+      const next = recipe ? cloneRecipe(record!) : emptyRecipe()
+      setEditor(next)
+      setEditorBaseline(JSON.stringify(next))
+    } catch (cause) {
+      void notify({ type: 'error', title: 'No se pudo abrir la receta', message: cause instanceof Error ? cause.message : 'No se pudo abrir la receta.' })
+    } finally {
+      setPending(false)
+    }
   }
 
-  function requestCloseEditor() {
-    if (editor && JSON.stringify(editor) !== editorBaseline && !window.confirm('Hay cambios sin guardar. ¿Querés descartarlos?')) return
+  async function requestCloseEditor() {
+    if (editor && JSON.stringify(editor) !== editorBaseline && !await notify({ type: 'warning', title: 'Descartar cambios', message: 'Hay cambios sin guardar. ¿Querés descartarlos?', confirmLabel: 'Descartar cambios', cancelLabel: 'Seguir editando' })) return
     setEditor(null)
     setError('')
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!editor) return
+    const invalidField = event.currentTarget.querySelector<HTMLElement>(':invalid')
+    if (invalidField) {
+      setError('Revisá los campos obligatorios y sus valores antes de guardar la receta.')
+      invalidField.focus()
+      return
+    }
     try {
+      setPending(true)
+      setError('')
       const payload: Omit<AdminRecipe, 'id' | 'isDeleted'> = {
         title: editor.title ?? '', author: editor.author?.trim() || 'CocinAPP',
-        description: editor.description?.trim() ?? '', category: editor.mealShift ?? 'Almuerzo',
+        description: editor.description?.trim() ?? '', category: editor.mealShifts?.[0] ?? 'Almuerzo',
         minutes: editor.minutes ?? 0, portions: editor.portions ?? 0,
         difficulty: editor.difficulty ?? 'Fácil', calories: editor.calories ?? 0,
-        mealShift: editor.mealShift ?? '', dietaryTags: editor.dietaryTags ?? [], featured: editor.featured ?? false,
+        mealShift: editor.mealShifts?.[0] ?? '', mealShifts: editor.mealShifts ?? [], dietaryTags: editor.dietaryTags ?? [], featured: editor.featured ?? false,
         ingredients: editor.ingredients ?? [], steps: editor.steps ?? [], stepMeta: editor.stepMeta ?? [],
         status: editor.status ?? 'draft', active: editor.active ?? true, symbol: editor.symbol?.trim() || editor.title?.trim().slice(0, 1).toLocaleUpperCase('es') || 'R',
         color: editor.color ?? 'green', image: editor.image?.trim() || undefined, imageAlt: editor.imageAlt?.trim() || undefined,
         preparationMinutes: editor.preparationMinutes, cookingMinutes: editor.cookingMinutes,
       }
-      if (editor.id) updateRecipe(editor.id, payload)
-      else createRecipe(payload)
+      if (editor.id) await adminRepository.updateRecipe(editor.id, payload)
+      else await adminRepository.createRecipe(payload)
       setEditor(null)
       setError('')
-      setSuccess(editor.id ? 'La receta se actualizó correctamente.' : 'La receta se creó como parte del catálogo oficial.')
-      reload()
+      void notify({ type: 'success', title: editor.id ? 'Receta actualizada' : 'Receta creada', message: editor.id ? 'La receta se actualizó correctamente.' : 'La receta se creó como parte del catálogo oficial.' })
+      await reload()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'No se pudo guardar la receta.')
+    } finally {
+      setPending(false)
     }
   }
 
-  function remove(recipe: AdminRecipe) {
-    const referenced = hasAdminReferences('recipe', recipe.id)
-    const message = referenced
-      ? `La receta “${recipe.title}” tiene favoritos, planes o historial. Se marcará como inactiva y esos datos se conservarán.`
-      : `¿Eliminar “${recipe.title}” permanentemente?`
-    if (window.confirm(message)) {
-      deleteRecipe(recipe.id)
-      reload()
+  async function remove(recipe: AdminRecipe) {
+    if (!await notify({ type: 'warning', title: 'Eliminar receta', message: `¿Eliminar “${recipe.title}”? Si tiene referencias o forma parte del catálogo precargado, se conservará inactiva.`, confirmLabel: 'Eliminar', cancelLabel: 'Cancelar' })) return
+    setPending(true)
+    setError('')
+    try {
+      const result = await adminRepository.deleteRecipe(recipe.id)
+      if (result === 'not-found') {
+        void notify({ type: 'error', title: 'Receta no encontrada', message: 'No se aplicaron cambios. Actualizá el catálogo e intentá nuevamente.' })
+        return
+      }
+      try {
+        await reload()
+      } catch {
+        void notify({ type: 'error', title: 'No se pudo actualizar el catálogo', message: 'La acción sobre la receta se completó, pero la lista no pudo actualizarse. Recargá el catálogo para ver el estado actual.' })
+      }
+    } catch (cause) {
+      void notify({ type: 'error', title: 'No se pudo eliminar la receta', message: cause instanceof Error ? cause.message : 'Ocurrió un error al eliminar la receta.' })
+    } finally {
+      setPending(false)
     }
   }
 
@@ -135,23 +162,22 @@ export function RecipesTab() {
     setEditor({ ...editor, steps: (editor.steps ?? []).filter((_, stepIndex) => stepIndex !== index), stepMeta: (editor.steps ?? []).map((_, stepIndex) => editor.stepMeta?.[stepIndex] ?? {}).filter((_, stepIndex) => stepIndex !== index) })
   }
 
-  const knownRecipes = getKnownRecipes()
   const managedRecipes = getManagedRecipes(data, knownRecipes)
   const filteredRecipes = debouncedSearch.status === 'waiting' ? [] : filterAdminRecipes(managedRecipes, { search: debouncedSearch.query, category, status, difficulty, maxMinutes, featured, sort })
-  const recipeCategories = [...new Set(managedRecipes.map((recipe) => recipe.category))].sort((first, second) => first.localeCompare(second, 'es'))
+  const recipeCategories = [...new Set(managedRecipes.flatMap((recipe) => recipe.mealShifts ?? [recipe.category]))].sort((first, second) => first.localeCompare(second, 'es'))
   const pageCount = Math.max(1, Math.ceil(filteredRecipes.length / pageSize))
   const currentPage = Math.min(page, pageCount)
   const visibleRecipes = filteredRecipes.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
-  function quickAction(action: () => void, message: string) {
-    action()
-    reload()
-    setSuccess(message)
+  async function quickAction(action: () => Promise<unknown>, message: string) {
+    setPending(true); setError('')
+    try { await action(); await reload(); void notify({ type: 'success', title: 'Cambios guardados', message }) }
+    catch (cause) { void notify({ type: 'error', title: 'No se pudo guardar el cambio', message: cause instanceof Error ? cause.message : 'No se pudo guardar el cambio.' }) }
+    finally { setPending(false) }
   }
 
   return <div className="panel">
-    <div className="section-header"><div><h2>Recetas oficiales</h2><p className="panel-intro"><SearchFeedback resultCount={filteredRecipes.length} status={debouncedSearch.status} /> · {managedRecipes.length} recetas totales</p></div><button className="button button-primary" onClick={() => openEditor()} type="button"><Plus size={16} /> Nueva receta</button></div>
-    {success && <p className="form-message success" role="status">{success}</p>}
+    <div className="section-header"><div><h2>Recetas oficiales</h2><p className="panel-intro"><SearchFeedback resultCount={filteredRecipes.length} status={debouncedSearch.status} /> · {managedRecipes.length} recetas totales</p></div><button className="button button-primary" disabled={loading || pending} onClick={() => void openEditor()} type="button"><Plus size={16} /> Nueva receta</button></div>
     <div className="admin-filter-bar">
       <label className="field admin-filter-search"><span>Buscar</span><input onChange={(event) => { setSearch(event.currentTarget.value); setPage(1) }} placeholder="Título o categoría" type="search" value={search} /></label>
       <label className="field"><span>Categoría</span><select onChange={(event) => { setCategory(event.currentTarget.value); setPage(1) }} value={category}><option value="">Todas</option>{recipeCategories.map((item) => <option key={item}>{item}</option>)}</select></label>
@@ -161,14 +187,14 @@ export function RecipesTab() {
       <label className="field"><span>Visibilidad</span><select onChange={(event) => { setFeatured(event.currentTarget.value as AdminRecipeFilters['featured']); setPage(1) }} value={featured}><option value="all">Todas</option><option value="featured">Solo destacadas</option></select></label>
       <label className="field"><span>Ordenar</span><select onChange={(event) => setSort(event.currentTarget.value as AdminRecipeFilters['sort'])} value={sort}><option value="title-asc">Título A–Z</option><option value="title-desc">Título Z–A</option><option value="newest">Más recientes</option><option value="oldest">Más antiguas</option></select></label>
     </div>
-    <div className="records">
+    {loading ? <p role="status">Cargando catálogo…</p> : <div className="records">
       {visibleRecipes.map((recipe) => <article className="record admin-recipe-record" key={recipe.id}>
         <RecipeImage className="admin-recipe-record-art" recipe={recipe.recipe} />
-        <div className="record-main"><span className="admin-record-title"><strong>{recipe.title}</strong>{recipe.featured && <Star aria-label="Destacada" fill="currentColor" size={14} />}</span><small>{recipe.category} · {recipe.minutes} min · {recipe.difficulty}</small><span className={`admin-recipe-status ${recipe.status}`}>{recipe.status === 'published' ? recipe.source === 'initial' ? 'Inicial · Publicada' : 'Publicada' : recipe.status === 'draft' ? 'Borrador' : 'Inactiva'}</span><small>{recipe.modifiedAt ? `Modificada ${new Date(recipe.modifiedAt).toLocaleDateString('es-AR')}` : 'Receta inicial versionada'}</small></div>
-        <div className="record-actions admin-record-actions"><button aria-label={`Ver receta ${recipe.title}`} className="pantry-icon-button" onClick={() => setPreview(recipe)} title="Ver" type="button"><Eye size={17} /></button><button aria-label={`Editar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => openEditor(recipe)} title="Editar" type="button"><Pencil size={17} /></button><button aria-label={`Duplicar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => quickAction(() => { duplicateRecipe(recipe.id) }, 'Se creó una copia en borrador.')} title="Duplicar" type="button"><Copy size={17} /></button><button aria-label={recipe.active ? `Desactivar receta ${recipe.title}` : `Activar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => quickAction(() => setRecipeActive(recipe.id, !recipe.active), recipe.active ? 'La receta quedó inactiva.' : 'La receta volvió a estar disponible.')} title={recipe.active ? 'Desactivar' : 'Activar'} type="button"><Power size={17} /></button><button aria-label={recipe.featured ? `Quitar ${recipe.title} de destacadas` : `Destacar receta ${recipe.title}`} className={`pantry-icon-button${recipe.featured ? ' active' : ''}`} onClick={() => quickAction(() => setRecipeFeatured(recipe.id, !recipe.featured), recipe.featured ? 'La receta dejó de estar destacada.' : 'La receta ahora está destacada.')} title="Destacar" type="button"><Star size={17} /></button>{recipe.record && !recipe.record.isDeleted && <button aria-label={`Eliminar receta ${recipe.title}`} className="pantry-icon-button" onClick={() => remove(recipe.record!)} title="Eliminar" type="button"><Trash2 size={17} /></button>}</div>
+        <div className="record-main"><span className="admin-record-title"><strong>{recipe.title}</strong>{recipe.featured && <Star aria-label="Destacada" fill="currentColor" size={14} />}</span><small>{(recipe.mealShifts ?? [recipe.category]).join(', ')} · {recipe.minutes} min · {recipe.difficulty}</small><span className={`admin-recipe-status ${recipe.status}`}>{recipe.status === 'published' ? recipe.source === 'initial' ? 'Inicial · Publicada' : 'Publicada' : recipe.status === 'draft' ? 'Borrador' : 'Inactiva'}</span><small>{recipe.modifiedAt ? `Modificada ${new Date(recipe.modifiedAt).toLocaleDateString('es-AR')}` : 'Receta inicial versionada'}</small></div>
+        <div className="record-actions admin-record-actions"><button aria-label={`Ver receta ${recipe.title}`} className="pantry-icon-button" disabled={pending} onClick={() => setPreview(recipe)} title="Ver" type="button"><Eye size={17} /></button><button aria-label={`Editar receta ${recipe.title}`} className="pantry-icon-button" disabled={pending} onClick={() => void openEditor(recipe)} title="Editar" type="button"><Pencil size={17} /></button><button aria-label={`Duplicar receta ${recipe.title}`} className="pantry-icon-button" disabled={pending} onClick={() => quickAction(() => adminRepository.duplicateRecipe(recipe.id), 'Se creó una copia en borrador.')} title="Duplicar" type="button"><Copy size={17} /></button><button aria-label={recipe.active ? `Desactivar receta ${recipe.title}` : `Activar receta ${recipe.title}`} className="pantry-icon-button" disabled={pending} onClick={() => quickAction(() => adminRepository.setRecipeActive(recipe.id, !recipe.active), recipe.active ? 'La receta quedó inactiva.' : 'La receta volvió a estar disponible.')} title={recipe.active ? 'Desactivar' : 'Activar'} type="button"><Power size={17} /></button><button aria-label={recipe.featured ? `Quitar ${recipe.title} de destacadas` : `Destacar receta ${recipe.title}`} className={`pantry-icon-button${recipe.featured ? ' active' : ''}`} disabled={pending} onClick={() => quickAction(() => adminRepository.setRecipeFeatured(recipe.id, !recipe.featured), recipe.featured ? 'La receta dejó de estar destacada.' : 'La receta ahora está destacada.')} title="Destacar" type="button"><Star size={17} /></button>{recipe.record && !recipe.record.isDeleted && <button aria-label={`Eliminar receta ${recipe.title}`} className="pantry-icon-button" disabled={pending} onClick={() => void remove(recipe.record!)} title="Eliminar" type="button"><Trash2 size={17} /></button>}</div>
       </article>)}
       {debouncedSearch.status !== 'waiting' && visibleRecipes.length === 0 && <p className="empty">No hay recetas que coincidan con los filtros elegidos.</p>}
-    </div>
+    </div>}
 
     {pageCount > 1 && <nav aria-label="Paginación de recetas" className="admin-pagination"><button className="button button-quiet" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} type="button">Anterior</button><span>Página {currentPage} de {pageCount}</span><button className="button button-quiet" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)} type="button">Siguiente</button></nav>}
 
@@ -176,7 +202,7 @@ export function RecipesTab() {
 
     {editor && <dialog aria-labelledby="admin-recipe-title" className="shopping-editor surface admin-recipe-dialog" onCancel={(event) => { event.preventDefault(); requestCloseEditor() }} ref={(node) => { if (node && !node.open) node.showModal() }}>
       <div className="shopping-editor-heading"><h2 id="admin-recipe-title">{editor.id ? 'Editar receta' : 'Nueva receta oficial'}</h2><button aria-label="Cerrar formulario" className="pantry-icon-button" onClick={requestCloseEditor} type="button"><X size={19} /></button></div>
-      <form onSubmit={submit}>
+      <form noValidate onSubmit={submit}>
         <div className="shopping-form-grid">
           <label className="field"><span>Título</span><input autoFocus maxLength={90} onChange={(event) => setEditor({ ...editor, title: event.currentTarget.value })} required value={editor.title ?? ''} /></label>
           <label className="field"><span>Porciones</span><input min="1" onChange={(event) => setEditor({ ...editor, portions: event.currentTarget.valueAsNumber })} required type="number" value={editor.portions ?? ''} /></label>
@@ -185,12 +211,12 @@ export function RecipesTab() {
           <label className="field"><span>Cocción (minutos)</span><input min="0" onChange={(event) => setEditor({ ...editor, cookingMinutes: event.currentTarget.value ? event.currentTarget.valueAsNumber : undefined })} type="number" value={editor.cookingMinutes ?? ''} /></label>
           <label className="field"><span>Dificultad</span><select onChange={(event) => setEditor({ ...editor, difficulty: event.currentTarget.value as AdminRecipe['difficulty'] })} value={editor.difficulty ?? 'Fácil'}><option>Fácil</option><option>Intermedia</option><option>Avanzada</option></select></label>
           <label className="field"><span>Calorías de referencia por porción</span><input min="0" step="any" onChange={(event) => setEditor({ ...editor, calories: event.currentTarget.valueAsNumber })} required type="number" value={editor.calories ?? ''} /></label>
-          <label className="field"><span>Turno de comida</span><select onChange={(event) => setEditor({ ...editor, mealShift: event.currentTarget.value, category: event.currentTarget.value })} value={editor.mealShift ?? 'Almuerzo'}><option>Desayuno</option><option>Almuerzo</option><option>Merienda</option><option>Cena</option></select></label>
+          <fieldset className="admin-meal-shifts"><legend>Turnos de comida</legend><p className="field-help">Elegí uno o más turnos donde se puede encontrar esta receta.</p><div>{(['Desayuno', 'Almuerzo', 'Merienda', 'Cena'] as const).map((shift) => <label key={shift}><input checked={(editor.mealShifts ?? [editor.mealShift ?? 'Almuerzo']).includes(shift)} onChange={(event) => { const current = editor.mealShifts ?? [editor.mealShift ?? 'Almuerzo']; const next = event.currentTarget.checked ? [...current, shift] : current.filter((item) => item !== shift); setEditor({ ...editor, mealShifts: next, mealShift: next[0], category: next[0] }) }} type="checkbox" />{shift}</label>)}</div></fieldset>
         </div>
         <label className="field"><span>Descripción</span><textarea maxLength={280} onChange={(event) => setEditor({ ...editor, description: event.currentTarget.value })} value={editor.description ?? ''} /></label>
         <div className="shopping-form-grid"><label className="field"><span>Ruta local de la imagen</span><input onChange={(event) => setEditor({ ...editor, image: event.currentTarget.value })} placeholder="/assets/recipes/mi-receta.webp" value={editor.image ?? ''} /><small className="field-help">Guardá el archivo en public/assets/recipes. Se aceptan AVIF, WebP, PNG y JPEG.</small></label><label className="field"><span>Texto alternativo</span><input maxLength={180} onChange={(event) => setEditor({ ...editor, imageAlt: event.currentTarget.value })} placeholder="Plato terminado de…" value={editor.imageAlt ?? ''} /></label></div>
         <section aria-labelledby="admin-recipe-visual-title" className="admin-recipe-visual-section">
-          <div className={`admin-recipe-preview ${editor.color ?? 'green'}`}><RecipeImage className="admin-recipe-preview-art" recipe={{ name: editor.title?.trim() || 'Nombre de la receta', image: editor.image, imageAlt: editor.imageAlt, symbol: editor.symbol?.trim() || editor.title?.trim().slice(0, 1).toLocaleUpperCase('es') || 'R', color: editor.color ?? 'green' }} /><div><small>Vista previa en el catálogo</small><strong>{editor.title?.trim() || 'Nombre de la receta'}</strong><em>{editor.mealShift ?? 'Almuerzo'} · {editor.minutes ?? 0} min</em></div></div>
+          <div className={`admin-recipe-preview ${editor.color ?? 'green'}`}><RecipeImage className="admin-recipe-preview-art" recipe={{ name: editor.title?.trim() || 'Nombre de la receta', image: editor.image, imageAlt: editor.imageAlt, symbol: editor.symbol?.trim() || editor.title?.trim().slice(0, 1).toLocaleUpperCase('es') || 'R', color: editor.color ?? 'green' }} /><div><small>Vista previa en el catálogo</small><strong>{editor.title?.trim() || 'Nombre de la receta'}</strong><em>{(editor.mealShifts ?? [editor.mealShift ?? 'Almuerzo']).join(', ')} · {editor.minutes ?? 0} min</em></div></div>
           <div className="admin-recipe-visual-controls"><h3 id="admin-recipe-visual-title">Identidad visual</h3><p className="field-help">La fotografía se usa en el catálogo. El símbolo y el color quedan como respaldo si el archivo no está disponible.</p>
             <div aria-label="Símbolos sugeridos" className="admin-symbol-picker">{recipeSymbols.map((symbol) => <button aria-label={`Usar ${symbol} como símbolo`} aria-pressed={editor.symbol === symbol} key={symbol} onClick={() => setEditor({ ...editor, symbol })} type="button">{symbol}</button>)}</div>
             <label className="field"><span>Símbolo o emoji personalizado</span><input maxLength={4} onChange={(event) => setEditor({ ...editor, symbol: event.currentTarget.value })} value={editor.symbol ?? ''} /></label>
@@ -233,7 +259,7 @@ export function RecipesTab() {
         </section>
 
         {error && <p className="form-message error" role="alert">{error}</p>}
-        <div className="pantry-dialog-actions"><button className="button button-quiet" onClick={requestCloseEditor} type="button">Cancelar</button><button className="button button-primary" type="submit">Guardar receta</button></div>
+        <div className="pantry-dialog-actions"><button className="button button-quiet" onClick={requestCloseEditor} type="button">Cancelar</button><button className="button button-primary" disabled={pending} type="submit">{pending ? 'Guardando…' : 'Guardar receta'}</button></div>
       </form>
     </dialog>}
   </div>

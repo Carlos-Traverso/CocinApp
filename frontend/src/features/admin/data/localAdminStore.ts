@@ -1,9 +1,10 @@
 import type { AdminCategory, AdminUnit, AdminIngredient, AdminRecipe } from '../domain/adminModels'
 import { defaultPantryCategories, defaultPantryUnits } from '../../pantry/domain/pantry'
 import { normalizePantryName } from '../../pantry/domain/pantry'
-import { adminCatalogVersion, createInitialAdminData } from './adminSeed'
+import { adminCatalogVersion, createInitialAdminData, migrateUneditedSeedDietaryTags } from './adminSeed'
 import { adminSeedId } from './adminSeed'
 import { inferIngredientCategory } from '../domain/ingredientCategory'
+import { compatibleUnitAbbreviations } from '../../../shared/domain/units'
 
 const ADMIN_KEY = 'cocinapp.admin.v1'
 
@@ -22,9 +23,17 @@ function isNamedRecord(value: unknown): value is Record<string, unknown> & { id:
   return isRecord(value) && typeof value.id === 'string' && value.id.length > 0 && typeof value.name === 'string'
 }
 
+function isValidMealShifts(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length > 0 && value.every((shift) => typeof shift === 'string' && ['Desayuno', 'Almuerzo', 'Merienda', 'Cena'].includes(shift))
+}
+
 function readRecipe(value: unknown): AdminRecipe | undefined {
   if (!isRecord(value) || typeof value.id !== 'string' || !value.id || typeof value.title !== 'string' || !value.title) return undefined
-  const shift = typeof value.mealShift === 'string' ? value.mealShift : typeof value.category === 'string' ? value.category : 'Almuerzo'
+  const allowedMealShifts = ['Desayuno', 'Almuerzo', 'Merienda', 'Cena']
+  const legacyShift = typeof value.mealShift === 'string' ? value.mealShift : typeof value.category === 'string' ? value.category : 'Almuerzo'
+  const mealShifts = isValidMealShifts(value.mealShifts) ? [...new Set(value.mealShifts)] : []
+  const shifts = mealShifts.length ? mealShifts : [allowedMealShifts.includes(legacyShift) ? legacyShift : 'Almuerzo']
+  const shift = shifts[0]
   const ingredients = Array.isArray(value.ingredients) ? value.ingredients.filter((entry) => isRecord(entry)
     && typeof entry.ingredientId === 'string' && typeof entry.unitId === 'string'
     && typeof entry.quantity === 'number' && Number.isFinite(entry.quantity) && entry.quantity > 0) : []
@@ -45,7 +54,7 @@ function readRecipe(value: unknown): AdminRecipe | undefined {
   })
   return {
     id: value.id, title: value.title, author: typeof value.author === 'string' ? value.author : 'CocinAPP',
-    description: typeof value.description === 'string' ? value.description : '', category: shift, mealShift: shift,
+    description: typeof value.description === 'string' ? value.description : '', category: shift, mealShift: shift, mealShifts: shifts,
     minutes: typeof value.minutes === 'number' && Number.isFinite(value.minutes) && value.minutes > 0 ? value.minutes : 30,
     portions: typeof value.portions === 'number' && Number.isFinite(value.portions) && value.portions > 0 ? value.portions : 1,
     difficulty: value.difficulty === 'Intermedia' || value.difficulty === 'Avanzada' ? value.difficulty : 'Fácil',
@@ -91,6 +100,7 @@ function getAdminData(): AdminStorageData {
         }) : [],
       }
       const version = typeof record.version === 'number' ? record.version : 1
+      if (version < adminCatalogVersion) migrateUneditedSeedDietaryTags(parsed)
       if (version < 3) {
         for (const ingredient of parsed.ingredients) {
           if (!ingredient.id.startsWith('seed-ingredient-')) continue
@@ -165,10 +175,7 @@ export function getUnitsForIngredient(name: string): string[] {
   const ingredient = findActiveIngredient(name)
   const base = data.units.find((unit) => unit.id === ingredient?.baseUnitId && unit.active && !unit.isDeleted)
   if (!base) return getActiveUnits()
-  const defaultsByDimension: Record<AdminUnit['dimension'], string[]> = {
-    masa: ['g', 'kg'], volumen: ['ml', 'l'], conteo: ['u'],
-  }
-  return [...new Set([...defaultsByDimension[base.dimension], ...data.units.filter((unit) => unit.active && !unit.isDeleted && unit.dimension === base.dimension).map((unit) => unit.abbreviation)])]
+  return compatibleUnitAbbreviations(base.id, data.units)
 }
 
 export { getAdminData }

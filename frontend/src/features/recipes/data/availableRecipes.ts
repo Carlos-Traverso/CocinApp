@@ -15,7 +15,7 @@ function fromAdminRecipe(recipe: AdminRecipe): Recipe {
     id: recipe.id,
     name: recipe.title,
     description: recipe.description,
-    category: recipe.mealShift || recipe.category,
+    category: recipe.mealShifts?.[0] || recipe.mealShift || recipe.category,
     minutes: recipe.minutes,
     portions: recipe.portions,
     difficulty: recipe.difficulty,
@@ -41,6 +41,7 @@ function fromAdminRecipe(recipe: AdminRecipe): Recipe {
     imageAlt: recipe.imageAlt ?? seededRecipe?.imageAlt,
     calories: recipe.calories,
     mealShift: recipe.mealShift,
+    ...(recipe.mealShifts !== undefined ? { mealShifts: [...recipe.mealShifts] } : {}),
     dietaryTags: recipe.dietaryTags,
     featured: recipe.featured,
     ingredients,
@@ -54,9 +55,9 @@ export function getAvailableRecipes(): Recipe[] {
     if (!record) return true
     if (!record.active || record.isDeleted || record.status !== 'published') return false
     return record.steps.length > 0 && record.ingredients.length > 0 && record.ingredients.every((entry) => {
-      const ingredient = data.ingredients.find((item) => item.id === entry.ingredientId && !item.isDeleted)
-      const unit = data.units.find((item) => item.id === entry.unitId && !item.isDeleted)
-      const base = ingredient && data.units.find((item) => item.id === ingredient.baseUnitId && !item.isDeleted)
+      const ingredient = data.ingredients.find((item) => item.id === entry.ingredientId && item.active && !item.isDeleted)
+      const unit = data.units.find((item) => item.id === entry.unitId && item.active && !item.isDeleted)
+      const base = ingredient && data.units.find((item) => item.id === ingredient.baseUnitId && item.active && !item.isDeleted)
       return Boolean(ingredient && unit && base && unit.dimension === base.dimension)
     })
   })

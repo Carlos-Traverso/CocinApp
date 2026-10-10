@@ -1,5 +1,5 @@
 import { personalStorage } from '../../auth/data/personalStorage'
-import { daysUntilExpiry, type PantryItem } from '../domain/pantry'
+import { daysUntilExpiry, defaultPantryCategories, defaultPantryUnits, type PantryItem } from '../domain/pantry'
 import { getKnownCategories, getKnownUnits } from '../../admin/data/localAdminStore'
 
 const pantryKey = 'cocinapp.pantry.v1'
@@ -13,8 +13,9 @@ interface PantryStorage {
 function readPantryItem(value: unknown): PantryItem | undefined {
   if (!value || typeof value !== 'object') return undefined
   const item = value as Record<string, unknown>
-  const knownCategories = getKnownCategories()
-  const knownUnits = getKnownUnits()
+  let knownCategories = defaultPantryCategories
+  let knownUnits = defaultPantryUnits
+  try { knownCategories = getKnownCategories(); knownUnits = getKnownUnits() } catch { /* Keep built-in catalog available before browser storage initializes. */ }
 
   const valid = typeof item.id === 'string'
     && item.id.length > 0
@@ -63,4 +64,17 @@ export function writePantryItems(items: PantryItem[], storage: PantryStorage = p
   storage.setItem(pantryKey, JSON.stringify(items))
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('cocinapp:pantry-updated'))
 }
+
+export interface PantryRepository {
+  list(): Promise<PantryItem[]>
+  save(items: PantryItem[]): Promise<void>
+}
+
+export const pantryRepository: PantryRepository = {
+  async list() { await Promise.resolve(); personalStorage.getItem(pantryKey); return readPantryItems() },
+  async save(items) { await Promise.resolve(); writePantryItems(items) },
+}
+
+export async function getPantryItems(): Promise<PantryItem[]> { return pantryRepository.list() }
+export async function savePantryItems(items: PantryItem[]): Promise<void> { return pantryRepository.save(items) }
 

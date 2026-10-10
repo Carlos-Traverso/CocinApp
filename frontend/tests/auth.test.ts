@@ -14,13 +14,14 @@ import test, { beforeEach, describe } from 'node:test'
 import { authenticateUser, demoAdminEmail, endSession, getSession, registerAccount, startDemoAdminSession, startSession, startUserSession } from '../src/features/auth/data/localAuthStore'
 import { canAccessPath, roleHome } from '../src/features/auth/domain/routeAccess'
 import { personalStorage } from '../src/features/auth/data/personalStorage'
+import { adminUsersRepository } from '../src/features/admin/data/AdminUsersRepository'
 
 describe('local access flows', () => {
   beforeEach(() => localStorage.clear())
 
   test('registration validates identity, duplicate email and password', () => {
     const account = registerAccount(' Ana ', 'ANA@example.com', 'clave-segura')
-    assert.deepEqual(account, { name: 'Ana', email: 'ana@example.com', password: 'clave-segura', role: 'USER' })
+    assert.deepEqual(account, { name: 'Ana', email: 'ana@example.com', password: 'clave-segura', role: 'USER', active: true })
     assert.throws(() => registerAccount('Ana', 'ana@example.com', 'clave-segura'), /Ya existe/)
     assert.throws(() => registerAccount('Ana', 'correo-inválido', 'clave-segura'), /correo electrónico válido/)
     assert.throws(() => registerAccount('Ana', 'otra@example.com', 'corta'), /8 caracteres/)
@@ -80,6 +81,69 @@ describe('local access flows', () => {
     assert.equal(getSession(), null)
     localStorage.setItem('cocinapp.auth.v1', JSON.stringify({ token: 'old', role: 'USER', email: 'gone@example.com', name: 'Gone' }))
     assert.equal(getSession(), null)
+  })
+
+  test('legacy accounts default to active and inactive accounts cannot sign in or retain sessions', () => {
+    localStorage.setItem('cocinapp.accounts.v1', JSON.stringify([{ name: 'Ana', email: 'ana@example.com', password: 'clave-segura', role: 'USER' }]))
+    assert.equal(authenticateUser('ana@example.com', 'clave-segura').active, true)
+    startSession('USER', 'ana@example.com', 'Ana')
+    localStorage.setItem('cocinapp.accounts.v1', JSON.stringify([{ name: 'Ana', email: 'ana@example.com', password: 'clave-segura', role: 'USER', active: false }]))
+    assert.equal(getSession(), null)
+    assert.throws(() => authenticateUser('ana@example.com', 'clave-segura'), /no son correctos/)
+    assert.throws(() => startSession('USER', 'ana@example.com', 'Ana'), /no está disponible/)
+    assert.throws(() => startUserSession({ name: 'Ana', email: 'ana@example.com', password: 'clave-segura', role: 'USER' }), /no está disponible/)
+  })
+
+  test('admin user repository is guarded, hides passwords and keeps admin session on create', async () => {
+    const user = registerAccount('Ana', 'ana@example.com', 'clave-segura')
+    await assert.rejects(adminUsersRepository.list(), /administrador/)
+    startUserSession(user)
+    await assert.rejects(adminUsersRepository.setActive(user.email, false), /administrador/)
+    startDemoAdminSession()
+    localStorage.setItem('cocinapp.profile.v1', JSON.stringify({ name: 'Legacy' }))
+    await adminUsersRepository.create('Luis', 'luis@example.com', 'clave-segura')
+    assert.equal(getSession()?.role, 'ADMIN')
+    assert.equal(personalStorage.getItem('cocinapp.profile.v1'), JSON.stringify({ name: 'Legacy' }))
+    const listed = await adminUsersRepository.list()
+    assert.deepEqual(listed[0], { email: demoAdminEmail, name: 'Administrador de demostración', role: 'ADMIN', active: true, isDemoAdmin: true })
+    assert.equal(JSON.stringify(listed).includes('clave-segura'), false)
+    await assert.rejects(adminUsersRepository.updateName(demoAdminEmail, 'Otro'), /demostración/)
+    await assert.rejects(adminUsersRepository.setActive(demoAdminEmail, false), /demostración/)
+    await adminUsersRepository.setActive(user.email, false)
+    assert.equal((await adminUsersRepository.list()).find((entry) => entry.email === user.email)?.active, false)
+    await assert.rejects(adminUsersRepository.updateName('missing@example.com', 'Nuevo'), /No existe/)
+    await assert.rejects(adminUsersRepository.create('Ana', 'luis@example.com', 'clave-segura'), /Ya existe/)
+  })
+
+  test('admin can rename and toggle a user without changing credentials or personal data', async () => {
+    const user = registerAccount('Ana', 'ana@example.com', 'clave-segura')
+    startUserSession(user)
+    personalStorage.setItem('cocinapp.profile.v1', JSON.stringify({ name: 'Ana', favorite: 'sopa' }))
+    personalStorage.setItem('cocinapp.pantry.v1', JSON.stringify([{ name: 'Lentejas' }]))
+    const profileKey = 'cocinapp.user.ana%40example.com.cocinapp.profile.v1'
+    const pantryKey = 'cocinapp.user.ana%40example.com.cocinapp.pantry.v1'
+    const originalProfile = localStorage.getItem(profileKey)
+    const originalPantry = localStorage.getItem(pantryKey)
+
+    endSession()
+    startDemoAdminSession()
+    await adminUsersRepository.updateName(user.email, 'Ana Pérez')
+    assert.equal(getSession()?.role, 'ADMIN')
+    const updatedAccount = JSON.parse(localStorage.getItem('cocinapp.accounts.v1') ?? '[]').find((entry: { email: string }) => entry.email === user.email)
+    assert.deepEqual(updatedAccount, { ...user, name: 'Ana Pérez' })
+    assert.equal(localStorage.getItem(profileKey), originalProfile)
+    assert.equal(localStorage.getItem(pantryKey), originalPantry)
+
+    await adminUsersRepository.setActive(user.email, false)
+    assert.throws(() => authenticateUser(user.email, 'clave-segura'), /no son correctos/)
+    assert.equal(localStorage.getItem(profileKey), originalProfile)
+    assert.equal(localStorage.getItem(pantryKey), originalPantry)
+    await adminUsersRepository.setActive(user.email, true)
+    const signedIn = authenticateUser(user.email, 'clave-segura')
+    assert.equal(signedIn.name, 'Ana Pérez')
+    startUserSession(signedIn)
+    assert.equal(personalStorage.getItem('cocinapp.profile.v1'), originalProfile)
+    assert.equal(personalStorage.getItem('cocinapp.pantry.v1'), originalPantry)
   })
 
   test('route access is isolated by role and redirects to the role home', () => {

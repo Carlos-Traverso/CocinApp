@@ -36,6 +36,7 @@ export interface AdminRecipe {
   difficulty: 'Fácil' | 'Intermedia' | 'Avanzada'
   calories: number
   mealShift: string // Desayuno, Almuerzo, etc.
+  mealShifts?: string[]
   dietaryTags: string[]
   featured?: boolean
   ingredients: { ingredientId: string; quantity: number; unitId: string; note?: string }[]

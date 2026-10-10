@@ -29,7 +29,10 @@ export interface Recipe {
   imageAlt?: string
   calories?: number
   mealShift?: string
+  mealShifts?: string[]
   dietaryTags?: string[]
+  /** Advisory: shared kitchens can still introduce allergens. */
+  crossContaminationNote?: string
   featured?: boolean
   /** @deprecated Recommendations use only local user data. */
   popularity?: number

@@ -1,38 +1,47 @@
 import { useState } from 'react'
 import { ArrowRight, Refrigerator, ShieldCheck, Sparkles, UtensilsCrossed } from 'lucide-react'
-import { authenticateUser, registerAccount, startDemoAdminSession, startUserSession } from '../features/auth/data/localAuthStore'
+import { authRepository } from '../features/auth/data/AuthRepository'
 import { handleTabListKeyDown } from '../components/tabKeyboard'
 import { BrandLogo } from '../components/BrandLogo'
+import { useNotifications } from '../shared/notifications/NotificationProvider'
 
 type AccessMode = 'login' | 'register'
+
+function validationMessage(field: HTMLInputElement): string {
+  if (field.validity.valueMissing) return 'Completá este campo.'
+  if (field.validity.typeMismatch) return 'Ingresá un correo electrónico válido.'
+  if (field.validity.tooShort) return `La contraseña debe tener al menos ${field.minLength} caracteres.`
+  if (field.validity.tooLong) return `El nombre no puede superar ${field.maxLength} caracteres.`
+  return 'Revisá el dato ingresado.'
+}
 
 export function WelcomePage() {
   const [mode, setMode] = useState<AccessMode>('login')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const errorField = error.includes('nombre')
-    ? 'name'
-    : error.includes('correo') || error.includes('cuenta')
-      ? 'email'
-      : error.includes('contraseña')
-        ? 'password'
-        : null
+  const [busy, setBusy] = useState(false)
+  const { notify } = useNotifications()
 
-  function submit(event: React.FormEvent<HTMLFormElement>) {
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setError('')
+    const form = event.currentTarget
+    if (!form.checkValidity()) {
+      const invalidField = form.querySelector<HTMLInputElement>(':invalid')
+      invalidField?.focus()
+      await notify({ type: 'warning', title: 'Revisá tus datos', message: invalidField ? validationMessage(invalidField) : 'Revisá los datos ingresados.' })
+      return
+    }
+    setBusy(true)
     try {
       if (mode === 'register') {
-        const account = registerAccount(name, email, password)
-        startUserSession(account)
+        await authRepository.register(name, email, password)
       } else {
-        startUserSession(authenticateUser(email, password))
+        await authRepository.login(email, password)
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No se pudo completar el acceso.')
-    }
+      await notify({ type: 'error', title: 'No se pudo iniciar sesión', message: cause instanceof Error ? cause.message : 'No se pudo completar el acceso.' })
+    } finally { setBusy(false) }
   }
 
   return (
@@ -74,21 +83,20 @@ export function WelcomePage() {
           <h2 id="access-form-title">{mode === 'login' ? 'Ingresá a tu cocina' : 'Creá tu cuenta'}</h2>
           <p className="field-help">{mode === 'register' ? 'Completá tus datos para empezar a planificar tus comidas.' : 'Las cuentas y los permisos se simulan en este navegador. No es autenticación segura.'}</p>
           <div className="tabs access-tabs" role="tablist" aria-label="Tipo de acceso" onKeyDown={handleTabListKeyDown}>
-            <button id="access-tab-login" aria-controls="access-panel" type="button" role="tab" aria-selected={mode === 'login'} tabIndex={mode === 'login' ? 0 : -1} onClick={() => { setMode('login'); setError('') }}>Iniciar sesión</button>
-            <button id="access-tab-register" aria-controls="access-panel" type="button" role="tab" aria-selected={mode === 'register'} tabIndex={mode === 'register' ? 0 : -1} onClick={() => { setMode('register'); setError('') }}>Registrarme</button>
+            <button id="access-tab-login" aria-controls="access-panel" type="button" role="tab" aria-selected={mode === 'login'} tabIndex={mode === 'login' ? 0 : -1} onClick={() => setMode('login')}>Iniciar sesión</button>
+            <button id="access-tab-register" aria-controls="access-panel" type="button" role="tab" aria-selected={mode === 'register'} tabIndex={mode === 'register' ? 0 : -1} onClick={() => setMode('register')}>Registrarme</button>
           </div>
           <div id="access-panel" aria-labelledby={`access-tab-${mode}`} role="tabpanel" tabIndex={0}>
-            <form className="access-form" onSubmit={submit}>
-            {mode === 'register' && <label className="field"><span>Nombre</span><input aria-describedby={errorField === 'name' ? 'access-error' : undefined} aria-invalid={errorField === 'name'} autoComplete="name" maxLength={80} onChange={(event) => setName(event.currentTarget.value)} required value={name} /></label>}
-            <label className="field"><span>Correo electrónico</span><input aria-describedby={errorField === 'email' ? 'access-error' : undefined} aria-invalid={errorField === 'email'} autoComplete="email" onChange={(event) => setEmail(event.currentTarget.value)} required type="email" value={email} /></label>
-            <label className="field"><span>Contraseña</span><input aria-describedby={errorField === 'password' ? 'access-error' : undefined} aria-invalid={errorField === 'password'} autoComplete={mode === 'register' ? 'new-password' : 'current-password'} minLength={8} onChange={(event) => setPassword(event.currentTarget.value)} required type="password" value={password} /></label>
-            {error && <p className="form-message error" id="access-error" role="alert">{error}</p>}
-            <button className="button button-primary button-wide" type="submit">{mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'} <ArrowRight size={15} /></button>
+            <form className="access-form" noValidate onSubmit={submit}>
+            {mode === 'register' && <label className="field"><span>Nombre</span><input autoComplete="name" maxLength={80} name="name" onChange={(event) => setName(event.currentTarget.value)} required value={name} /></label>}
+            <label className="field"><span>Correo electrónico</span><input autoComplete="email" name="email" onChange={(event) => setEmail(event.currentTarget.value)} required type="email" value={email} /></label>
+            <label className="field"><span>Contraseña</span><input autoComplete={mode === 'register' ? 'new-password' : 'current-password'} minLength={8} name="password" onChange={(event) => setPassword(event.currentTarget.value)} required type="password" value={password} /></label>
+            <button className="button button-primary button-wide" disabled={busy} type="submit">{busy ? 'Procesando…' : mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'} <ArrowRight size={15} /></button>
             </form>
           </div>
           <div className="access-demo">
             <span>Prueba administrativa</span>
-            <button className="button button-quiet button-wide" onClick={startDemoAdminSession} type="button"><ShieldCheck size={18} /> Entrar como ADMIN de demostración</button>
+            <button className="button button-quiet button-wide" disabled={busy} onClick={async () => { setBusy(true); try { await authRepository.loginAsDemoAdmin() } catch { await notify({ type: 'error', title: 'No se pudo iniciar la sesión', message: 'No se pudo iniciar la sesión de demostración.' }) } finally { setBusy(false) } }} type="button"><ShieldCheck size={18} /> Entrar como ADMIN de demostración</button>
             <small>Los registros creados desde el formulario siempre reciben el rol USER.</small>
           </div>
           <p className="access-disclaimer">Los datos de la cuenta se guardan localmente en el navegador.</p>

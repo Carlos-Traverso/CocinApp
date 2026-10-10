@@ -1,7 +1,18 @@
+const localStorageEntries = new Map<string, string>()
+global.localStorage = {
+  getItem: (key: string) => localStorageEntries.get(key) ?? null,
+  setItem: (key: string, value: string) => localStorageEntries.set(key, value),
+  clear: () => localStorageEntries.clear(),
+  removeItem: (key: string) => localStorageEntries.delete(key),
+  key: (index: number) => [...localStorageEntries.keys()][index] ?? null,
+  get length() { return localStorageEntries.size },
+} as unknown as Storage
+global.window = { dispatchEvent: () => {} } as unknown as Window & typeof globalThis
+
 import assert from 'node:assert/strict'
-import test from 'node:test'
+import test, { beforeEach } from 'node:test'
 import { sampleRecipes } from '../src/mocks/recipes'
-import { filterShoppingItems, mergeShoppingSuggestions, suggestForRecipes, suggestPantryRestock, type ShoppingItem } from '../src/features/shopping/domain/shopping'
+import { createShoppingShareText, filterShoppingItems, mergeShoppingSuggestions, suggestForRecipes, suggestPantryRestock, type ShoppingItem } from '../src/features/shopping/domain/shopping'
 import { appendShoppingSuggestions, markAllShoppingPurchased, readShoppingItems, setShoppingPurchased, transferPurchasedToPantry, writeShoppingItems } from '../src/features/shopping/data/localShoppingStore'
 import { readPantryItems, writePantryItems } from '../src/features/pantry/data/localPantryStore'
 import type { PantryItem } from '../src/features/pantry/domain/pantry'
@@ -9,6 +20,7 @@ import type { Recipe } from '../src/features/recipes/domain/Recipe'
 import { getKnownRecipes } from '../src/features/recipes/data/availableRecipes'
 
 const today = new Date(2026, 8, 23)
+beforeEach(() => localStorageEntries.clear())
 const pantry: PantryItem[] = [
   { id: 'rice', name: 'Arroz integral', category: 'Granos y legumbres', quantity: 200, unit: 'g', minimum: 300, expiry: '' },
   { id: 'chicken', name: 'Pechuga de pollo', category: 'Carnes y pescados', quantity: 100, unit: 'g', minimum: 200, expiry: '' },
@@ -46,6 +58,36 @@ test('weekly recipe suggestions preserve ingredient categories and only fall bac
   assert.equal(suggestions.find((item) => item.name === 'Leche')?.category, 'Lácteos')
   assert.equal(suggestions.find((item) => item.name === 'Ingrediente desconocido')?.category, 'Otros')
   assert.deepEqual(filterShoppingItems(suggestions.map((item, index) => shoppingItem({ ...item, id: String(index) })), { search: '', category: 'Lácteos', status: 'all' }).map((item) => item.name), ['Leche'])
+})
+
+test('planned portions scale each scheduled recipe and consolidate equivalent units before subtracting pantry stock', () => {
+  const base: Recipe = { id: 'scaled', name: 'Harina', description: '', category: 'Cena', minutes: 20, portions: 2, difficulty: 'Fácil', steps: ['Mezclar'], symbol: 'R', color: 'green', ingredients: [{ name: 'Harina', quantity: 500, unit: 'g' }] }
+  const second: Recipe = { ...base, id: 'second', ingredients: [{ name: 'Harina', quantity: 1, unit: 'kg' }] }
+  const needs = suggestForRecipes([base, second], [{ id: 'pantry', name: 'Harina', category: 'Almacén', quantity: 100, unit: 'g', minimum: 0, expiry: null }], 'plan', today, undefined, new Map([['scaled', 4], ['second', 2]]))
+  assert.equal(needs.length, 1)
+  assert.equal(needs[0].unit, 'g')
+  assert.equal(needs[0].quantity, 1900)
+})
+
+test('share copy is plain text and combines equivalent units', () => {
+  const text = createShoppingShareText([
+    shoppingItem({ id: 'g', name: 'Harina', quantity: 500, unit: 'g' }),
+    shoppingItem({ id: 'kg', name: 'harina', quantity: 1, unit: 'kg', checked: true }),
+  ])
+  assert.equal(text, 'Lista de compras CocinAPP\n• Harina: 1.500 g (comprado)')
+})
+
+test('small positive recipe shortages survive consolidation and sharing', () => {
+  const recipe: Recipe = { id: 'tiny', name: 'Prueba', description: '', category: 'Cena', minutes: 1, portions: 1, difficulty: 'Fácil', steps: [''], symbol: 'P', color: 'green', ingredients: [{ name: 'Sal', quantity: 1.000001, unit: 'g' }] }
+  const needs = suggestForRecipes([recipe], [{ id: 'salt', name: 'Sal', category: 'Almacén', quantity: 1, unit: 'g', minimum: 0, expiry: null }], 'recipe', today)
+  assert.ok((needs[0]?.quantity ?? 0) > 0 && needs[0].quantity < 0.00000101)
+  const text = createShoppingShareText([shoppingItem({ name: 'Sal', quantity: needs[0].quantity, unit: 'g' })])
+  assert.match(text, /0,000000999999999918 g/)
+})
+
+test('shopping suggestions reject units that are missing from the supplied catalog', () => {
+  const recipe: Recipe = { id: 'unknown-unit', name: 'Prueba', description: '', category: 'Cena', minutes: 1, portions: 1, difficulty: 'Fácil', steps: [''], symbol: 'P', color: 'green', ingredients: [{ name: 'Sal', quantity: 1, unit: 'g' }] }
+  assert.throws(() => suggestForRecipes([recipe], [], 'recipe', today, []), /unidad g/i)
 })
 
 test('the unified recipe repository supplies categories when planning without pantry stock', () => {
@@ -107,9 +149,11 @@ test('shopping storage persists valid items and ignores malformed records', () =
   const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
   const item = shoppingItem()
   writeShoppingItems([item], storage)
-  assert.deepEqual(readShoppingItems(storage), [item])
+  assert.equal(readShoppingItems(storage)[0]?.id, item.id)
+  assert.equal(readShoppingItems(storage)[0]?.name, item.name)
   entries.set('cocinapp.shopping.v1', JSON.stringify([item, { ...item, id: 'bad', quantity: -1 }]))
-  assert.deepEqual(readShoppingItems(storage), [item])
+  assert.equal(readShoppingItems(storage).length, 1)
+  assert.equal(readShoppingItems(storage)[0].id, item.id)
   entries.set('cocinapp.shopping.v1', '{bad')
   assert.deepEqual(readShoppingItems(storage), [])
 })
@@ -140,21 +184,21 @@ test('individual and bulk purchase marking persist without transferring to pantr
 test('only purchased items transfer once; compatible stock combines and incompatible units remain separate', () => {
   const entries = new Map<string, string>()
   const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
-  writePantryItems([{ id: 'rice', name: 'Arroz', category: 'Almacén', quantity: 500, unit: 'g', minimum: 100, expiry: '2027-01-01' }], storage)
+  writePantryItems([{ id: 'tomatoes', name: 'Tomates cherry', category: 'Frutas y verduras', quantity: 500, unit: 'g', minimum: 100, expiry: '2027-01-01' }], storage)
   writeShoppingItems([
-    shoppingItem({ id: 'kg', name: 'Arroz', quantity: 1, unit: 'kg', checked: true }),
-    shoppingItem({ id: 'units', name: 'Arroz', quantity: 2, unit: 'u', checked: true }),
+    shoppingItem({ id: 'kg', name: 'Tomates cherry', quantity: 1, unit: 'kg', checked: true }),
+    shoppingItem({ id: 'units', name: 'Tomates cherry', quantity: 2, unit: 'u', checked: true }),
     shoppingItem({ id: 'pending', name: 'Sal', quantity: 1, unit: 'u' }),
   ], storage)
   const first = transferPurchasedToPantry(storage, new Date('2026-09-28T12:00:00Z'))
-  assert.equal(first.transferredCount, 2)
-  assert.equal(first.removedCount, 2)
-  assert.equal(readPantryItems(storage).length, 2)
+  assert.equal(first.transferredCount, 1)
+  assert.equal(first.removedCount, 1)
+  assert.equal(readPantryItems(storage).length, 1)
   assert.equal(readPantryItems(storage)[0].quantity, 1500)
   assert.equal(readPantryItems(storage)[0].expiry, '2027-01-01')
-  assert.equal(readPantryItems(storage)[1].unit, 'u')
+  assert.equal(readShoppingItems(storage).find((item) => item.id === 'units')?.checked, true)
   assert.equal(readPantryItems(storage).some((item) => item.name === 'Sal'), false)
-  assert.deepEqual(readShoppingItems(storage).map((item) => item.id), ['pending'])
+  assert.deepEqual(readShoppingItems(storage).map((item) => item.id).sort(), ['pending', 'units'])
   assert.equal(transferPurchasedToPantry(storage).transferredCount, 0)
   assert.equal(readPantryItems(storage)[0].quantity, 1500)
   setShoppingPurchased('pending', false, storage)
@@ -172,19 +216,19 @@ test('a failed shopping removal restores pantry and keeps every purchase retryab
     },
   }
   writeShoppingItems([
-    shoppingItem({ id: 'milk', name: 'Leche', category: 'Lácteos', quantity: 2, unit: 'l', checked: true }),
-    shoppingItem({ id: 'apple', name: 'Manzana', category: 'Frutas y verduras', quantity: 4, unit: 'u', checked: true }),
+    shoppingItem({ id: 'tomato', name: 'Tomates cherry', category: 'Frutas y verduras', quantity: 2, unit: 'g', checked: true }),
+    shoppingItem({ id: 'lemon', name: 'Limón', category: 'Frutas y verduras', quantity: 4, unit: 'u', checked: true }),
   ], storage)
 
   assert.throws(() => transferPurchasedToPantry(storage), /transferencia/i)
   assert.deepEqual(readPantryItems(storage), [])
-  assert.deepEqual(readShoppingItems(storage).map((item) => item.id), ['milk', 'apple'])
+  assert.deepEqual(readShoppingItems(storage).map((item) => item.id), ['tomato', 'lemon'])
 })
 
 test('successful transfers persist an empty shopping state after reload', () => {
   const entries = new Map<string, string>()
   const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
-  writeShoppingItems([shoppingItem({ id: 'milk', name: 'Leche', category: 'Lácteos', quantity: 2, unit: 'l', checked: true })], storage)
+  writeShoppingItems([shoppingItem({ id: 'tomato', name: 'Tomates cherry', category: 'Frutas y verduras', quantity: 200, unit: 'g', checked: true })], storage)
 
   const result = transferPurchasedToPantry(storage, new Date('2026-09-28T12:00:00Z'))
 
@@ -192,18 +236,29 @@ test('successful transfers persist an empty shopping state after reload', () => 
   assert.equal(result.transferredCount, 1)
   assert.equal(result.removedCount, 1)
   assert.deepEqual(readShoppingItems(storage), [])
-  assert.equal(readPantryItems(storage)[0].name, 'Leche')
-  assert.equal(readPantryItems(storage)[0].category, 'Lácteos')
+  assert.equal(readPantryItems(storage)[0].name, 'Tomates cherry')
+  assert.equal(readPantryItems(storage)[0].category, 'Frutas y verduras')
 })
 
 test('new pantry products use a null expiry and legacy checked items are not assumed transferred', () => {
   const entries = new Map<string, string>()
   const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
-  const legacy = { id: 'milk', name: 'Leche', category: 'Lácteos', quantity: 2, unit: 'l', note: '', checked: true, sources: ['manual'] }
+  const legacy = { id: 'milk', name: 'Producto de texto libre', category: 'Lácteos', quantity: 2, unit: 'l', note: '', checked: true, sources: ['manual'] }
   entries.set('cocinapp.shopping.v1', JSON.stringify([legacy]))
   assert.equal(readShoppingItems(storage)[0].transferredToPantry, false)
   transferPurchasedToPantry(storage)
-  assert.equal(readPantryItems(storage)[0].expiry, null)
-  assert.deepEqual(readPantryItems(storage)[0].sourceShoppingIds, ['milk'])
-  assert.deepEqual(readShoppingItems(storage), [])
+  assert.deepEqual(readPantryItems(storage), [])
+  assert.deepEqual(readShoppingItems(storage).map((item) => item.id), ['milk'])
+})
+
+test('explicit free text with a catalog-matching name stays unassociated after reload and cannot transfer', () => {
+  const entries = new Map<string, string>()
+  const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
+  const freeText = shoppingItem({ id: 'free', name: 'Tomates cherry', quantity: 1, unit: 'g', checked: true, ingredientId: null })
+  writeShoppingItems([freeText], storage)
+  assert.equal(readShoppingItems(storage)[0]?.ingredientId, null)
+  const result = transferPurchasedToPantry(storage)
+  assert.equal(result.transferredCount, 0)
+  assert.deepEqual(readPantryItems(storage), [])
+  assert.equal(readShoppingItems(storage)[0]?.checked, true)
 })

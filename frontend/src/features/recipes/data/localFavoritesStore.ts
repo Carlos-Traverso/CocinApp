@@ -1,5 +1,6 @@
 import { getKnownRecipes } from './availableRecipes'
 import { personalStorage } from '../../auth/data/personalStorage'
+import type { FavoriteRepository } from './FavoriteRepository'
 
 const key = 'cocinapp.favorites.v1'
 interface StorageLike { getItem(key: string): string | null; setItem(key: string, value: string): void }
@@ -16,3 +17,12 @@ export function readFavoriteIds(storage: StorageLike = personalStorage): string[
 export function writeFavoriteIds(ids: string[], storage: StorageLike = personalStorage): void {
   storage.setItem(key, JSON.stringify(ids))
 }
+
+export const mockFavoriteRepository: FavoriteRepository = {
+  async listIds() { await Promise.resolve(); return readFavoriteIds() },
+  async saveIds(ids) { await Promise.resolve(); writeFavoriteIds(ids) },
+}
+
+// Backward-compatible async methods delegate to the repository contract.
+export async function getFavoriteIds(): Promise<string[]> { return mockFavoriteRepository.listIds() }
+export async function saveFavoriteIds(ids: string[]): Promise<void> { return mockFavoriteRepository.saveIds(ids) }

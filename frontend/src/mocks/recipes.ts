@@ -243,8 +243,38 @@ const recipeImageAlts: Record<(typeof recipeDrafts)[number]['id'], string> = {
   'roasted-vegetable-soup': 'Sopa de calabaza, zanahoria y tomate asados en un cuenco',
 }
 
-export const sampleRecipes = recipeDrafts.map((recipe) => ({
+const seedDietaryTags = {
+  'quinoa-bowl': ['Sin TACC', 'Vegana', 'Vegetariana', 'Sin lactosa', 'Sin frutos secos'],
+  'chickpea-salad': ['Sin TACC', 'Vegetariana', 'Sin frutos secos'],
+  'chicken-rice': ['Sin TACC', 'Sin lactosa', 'Sin frutos secos'],
+  'vegetable-omelette': ['Sin TACC', 'Vegetariana', 'Sin lactosa', 'Sin frutos secos'],
+  'lentil-stew': ['Sin TACC', 'Vegana', 'Vegetariana', 'Sin lactosa', 'Sin frutos secos'],
+  'tuna-rice-salad': ['Sin TACC', 'Sin lactosa', 'Sin frutos secos'],
+  'baked-fish-potatoes': ['Sin TACC', 'Sin lactosa', 'Sin frutos secos'],
+  'roasted-vegetable-soup': ['Sin TACC', 'Vegana', 'Vegetariana', 'Sin lactosa', 'Sin frutos secos'],
+  'yogurt-fruit': ['Vegetariana', 'Sin frutos secos'],
+  'pear-yogurt-cup': ['Sin TACC', 'Vegetariana', 'Sin frutos secos'],
+  'pumpkin-pasta': ['Vegetariana', 'Sin frutos secos'],
+  'apple-toast': ['Vegetariana', 'Sin frutos secos'],
+  'avocado-toast': ['Vegetariana', 'Sin frutos secos'],
+  'banana-pancakes': ['Vegetariana', 'Sin frutos secos'],
+  'scrambled-eggs-toast': ['Vegetariana', 'Sin frutos secos'],
+  'overnight-oats': ['Vegetariana', 'Sin frutos secos'],
+  'caprese-sandwich': ['Vegetariana', 'Sin frutos secos'],
+  'vegetable-wrap': ['Vegana', 'Vegetariana', 'Sin lactosa', 'Sin frutos secos'],
+  'tomato-risotto': ['Sin TACC', 'Vegetariana', 'Sin frutos secos'],
+  'spinach-pie': ['Vegetariana', 'Sin frutos secos'],
+  'cheese-scones': ['Vegetariana', 'Sin frutos secos'],
+  'banana-smoothie': ['Vegetariana', 'Sin frutos secos'],
+} satisfies Record<(typeof recipeDrafts)[number]['id'], string[]>
+
+export const sampleRecipes = recipeDrafts.map((recipe) => {
+  const dietaryTags = Object.entries(seedDietaryTags).find(([id]) => id === recipe.id)?.[1] ?? []
+  return {
   ...recipe,
+  dietaryTags,
+  crossContaminationNote: dietaryTags.includes('Sin TACC') ? 'Aunque los ingredientes no contienen gluten, verificá rótulos y evitá la contaminación cruzada en superficies y utensilios compartidos.' : undefined,
   image: `/assets/recipes/${recipe.id}.webp`,
   imageAlt: recipeImageAlts[recipe.id],
-})) satisfies Recipe[]
+  }
+}) satisfies Recipe[]

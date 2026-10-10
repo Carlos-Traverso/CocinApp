@@ -23,6 +23,7 @@ import { createAdminDashboard } from '../src/features/admin/domain/adminDashboar
 import { filterAdminRecipes, getManagedRecipes } from '../src/features/admin/domain/adminRecipeList'
 import { countAdminUsage } from '../src/features/admin/domain/adminUsage'
 import { readPantryItems } from '../src/features/pantry/data/localPantryStore'
+import { compatibleUnitAbbreviations, convertQuantity, normalizeQuantity } from '../src/shared/domain/units'
 
 describe('local admin catalog', () => {
   beforeEach(() => {
@@ -34,7 +35,8 @@ describe('local admin catalog', () => {
     const id = createCategory('Lácteos')
     assert.throws(() => createCategory('lácteos'), /ya existe/i)
     assert.throws(() => createCategory('   '), /nombre/i)
-    deleteCategory(id)
+    assert.equal(deleteCategory(id), 'deleted')
+    assert.equal(deleteCategory(id), 'not-found')
     assert.equal(getAdminData().categories.length, 0)
   })
 
@@ -53,10 +55,12 @@ describe('local admin catalog', () => {
     localStorage.setItem('cocinapp.user.ana%40example.com.cocinapp.pantry.v1', JSON.stringify([
       { id: 'stock-1', name: 'Lentejas', category: 'Legumbres', unit: 'g', quantity: 200, minimum: 0, expiry: '' },
     ]))
-    deleteCategory(categoryId)
-    deleteUnit(grams)
+    assert.equal(deleteCategory(categoryId), 'deactivated')
+    assert.equal(deleteUnit(grams), 'deactivated')
     assert.equal(getAdminData().categories[0]?.isDeleted, true)
+    assert.equal(getAdminData().categories[0]?.active, false)
     assert.equal(getAdminData().units[0]?.isDeleted, true)
+    assert.equal(getAdminData().units[0]?.active, false)
   })
 
   test('ingredient dimensions are required and referenced catalog rows are logically deleted', () => {
@@ -66,11 +70,14 @@ describe('local admin catalog', () => {
     assert.throws(() => createIngredient('Harina', categoryId, 'missing'), /unidad base/i)
     const ingredientId = createIngredient('Harina', categoryId, gramId)
     assert.throws(() => createIngredient(' harina ', categoryId, gramId), /ya existe/i)
-    deleteCategory(categoryId)
-    deleteUnit(gramId)
+    assert.equal(deleteCategory(categoryId), 'deactivated')
+    assert.equal(deleteUnit(gramId), 'deactivated')
     assert.equal(getAdminData().categories[0]?.isDeleted, true)
+    assert.equal(getAdminData().categories[0]?.active, false)
     assert.equal(getAdminData().units[0]?.isDeleted, true)
-    deleteIngredient(ingredientId)
+    assert.equal(getAdminData().units[0]?.active, false)
+    assert.equal(deleteIngredient(ingredientId), 'deleted')
+    assert.equal(deleteIngredient(ingredientId), 'not-found')
     assert.equal(getAdminData().ingredients.length, 0)
   })
 
@@ -82,7 +89,7 @@ describe('local admin catalog', () => {
     const recipe = {
       title: 'Pan simple', author: 'CocinAPP', description: 'Pan casero', category: 'Desayuno',
       minutes: 30, portions: 2, difficulty: 'Fácil' as const, calories: 200,
-      mealShift: 'Desayuno', dietaryTags: ['Vegetariana'], ingredients: [{ ingredientId, quantity: 200, unitId: grams }],
+      mealShift: 'Desayuno', mealShifts: ['Desayuno', 'Merienda'], dietaryTags: ['Vegetariana'], ingredients: [{ ingredientId, quantity: 200, unitId: grams }],
       steps: ['Mezclar.', 'Hornear.'], stepMeta: [{ durationMinutes: 8, ingredientIds: [ingredientId], utensils: ['Bol'], tip: 'Usá agua tibia.', warning: 'No amases de más.', temperature: 'Ambiente' }, {}], featured: true, status: 'published' as const, symbol: 'P', color: 'green' as const,
       image: '/assets/recipes/pan-simple.webp', imageAlt: 'Pan simple recién horneado sobre una tabla',
     }
@@ -92,10 +99,13 @@ describe('local admin catalog', () => {
     assert.throws(() => createRecipe({ ...recipe, stepMeta: [{ minutes: 0 }] }), /tiempo de cada paso/i)
     assert.throws(() => createRecipe({ ...recipe, image: 'https://example.com/pan.webp' }), /archivo local/i)
     assert.throws(() => createRecipe({ ...recipe, imageAlt: '' }), /texto alternativo/i)
+    assert.throws(() => createRecipe({ ...recipe, mealShifts: [] }), /al menos un turno/i)
+    assert.throws(() => createRecipe({ ...recipe, mealShifts: ['Noche'] }), /turno de comida/i)
     const draftId = createRecipe({ ...recipe, title: 'Pan en borrador', status: 'draft' })
     assert.equal(getAvailableRecipes().some((entry) => entry.id === draftId), false)
     const id = createRecipe(recipe)
     assert.equal(getAvailableRecipes().find((entry) => entry.id === id)?.name, 'Pan simple')
+    assert.deepEqual(getAvailableRecipes().find((entry) => entry.id === id)?.mealShifts, ['Desayuno', 'Merienda'])
     assert.equal(getAvailableRecipes().find((entry) => entry.id === id)?.ingredients[0]?.unit, 'g')
     assert.deepEqual(getAvailableRecipes().find((entry) => entry.id === id)?.stepMeta?.[0], {
       durationMinutes: 8,
@@ -109,14 +119,26 @@ describe('local admin catalog', () => {
     assert.equal(getAvailableRecipes().find((entry) => entry.id === id)?.image, '/assets/recipes/pan-simple.webp')
   })
 
+  test('legacy recipe shifts migrate to arrays and valid arrays take precedence', () => {
+    localStorage.setItem('cocinapp.admin.v1', JSON.stringify({ version: 5, categories: [], units: [], ingredients: [], recipes: [
+      { id: 'legacy', title: 'Receta antigua', mealShift: 'Cena', category: 'Cena' },
+      { id: 'multi', title: 'Receta múltiple', mealShift: 'Cena', category: 'Cena', mealShifts: ['Desayuno', 'Cena', 'Inválido'] },
+    ] }))
+    const records = getAdminData().recipes
+    assert.deepEqual(records.find((recipe) => recipe.id === 'legacy')?.mealShifts, ['Cena'])
+    assert.deepEqual(records.find((recipe) => recipe.id === 'multi')?.mealShifts, ['Cena'])
+    assert.equal(records.find((recipe) => recipe.id === 'multi')?.mealShift, 'Cena')
+  })
+
   test('referenced published recipes are retained inactive and hidden from new actions', () => {
     const categoryId = createCategory('Granos')
     const grams = createUnit('Gramo', 'g', 'masa')
     const ingredientId = createIngredient('Harina', categoryId, grams)
     const id = createRecipe({ title: 'Tortillas', author: 'CocinAPP', description: '', category: 'Cena', minutes: 10, portions: 1, difficulty: 'Fácil', calories: 50, mealShift: 'Cena', dietaryTags: [], ingredients: [{ ingredientId, quantity: 50, unitId: grams }], steps: ['Cocinar.'], status: 'published', symbol: 'T', color: 'green' })
     localStorage.setItem('cocinapp.user.ana%40example.com.cocinapp.favorites.v1', JSON.stringify([id]))
-    deleteRecipe(id)
+    assert.equal(deleteRecipe(id), 'deactivated')
     assert.equal(getAdminData().recipes[0]?.isDeleted, true)
+    assert.equal(getAdminData().recipes[0]?.active, false)
     assert.equal(getAvailableRecipes().some((recipe) => recipe.id === id), false)
     assert.equal(getAvailableRecipes().some((recipe) => recipe.name === 'Tortillas'), false)
     assert.equal(getRecipeById(id, true)?.name, 'Tortillas')
@@ -147,7 +169,8 @@ describe('local admin catalog', () => {
     const grams = createUnit('Gramo', 'g', 'masa')
     const ingredientId = createIngredient('Harina', categoryId, grams)
     const id = createRecipe({ title: 'Pan', author: 'CocinAPP', description: '', category: 'Almuerzo', minutes: 30, portions: 1, difficulty: 'Fácil', calories: 200, mealShift: 'Almuerzo', dietaryTags: [], ingredients: [{ ingredientId, quantity: 100, unitId: grams }], steps: ['Hornear.'], status: 'published', symbol: 'P', color: 'green' })
-    deleteIngredient(ingredientId)
+    assert.equal(deleteIngredient(ingredientId), 'deactivated')
+    assert.equal(getAdminData().ingredients[0]?.active, false)
     assert.equal(getRecipeById(id), undefined)
     assert.equal(getRecipeById(id, true)?.name, 'Pan')
   })
@@ -159,11 +182,25 @@ describe('local admin catalog', () => {
     assert.equal(createSeedRecipeOverride(seeded).id, seeded.id)
     updateRecipe(override.id, { ...override, title: 'Bowl administrado', status: 'published' })
     assert.equal(getRecipeById(seeded.id)?.name, 'Bowl administrado')
-    deleteRecipe(seeded.id)
+    assert.equal(deleteRecipe(seeded.id), 'deactivated')
     assert.equal(getRecipeById(seeded.id), undefined)
     assert.equal(getRecipeById(seeded.id, true)?.name, 'Bowl administrado')
     assert.equal(getAdminData().recipes.find((recipe) => recipe.id === seeded.id)?.isDeleted, true)
+    assert.equal(getAdminData().recipes.find((recipe) => recipe.id === seeded.id)?.active, false)
   })
+})
+
+test('shared unit conversion normalizes built-ins and custom compatible chains', () => {
+  assert.deepEqual(normalizeQuantity(2, 'kg'), { dimension: 'masa', baseUnit: 'g', quantity: 2000 })
+  assert.equal(convertQuantity(1.5, 'l', 'ml'), 1500)
+  assert.equal(convertQuantity(1, 'kg', 'ml'), null)
+  const units = [
+    { id: 'g', name: 'Gramo', abbreviation: 'g', dimension: 'masa' as const, active: true, isDeleted: false },
+    { id: 'kg', name: 'Kilogramo', abbreviation: 'kg', dimension: 'masa' as const, baseUnitId: 'g', equivalenceMultiplier: 1000, active: true, isDeleted: false },
+    { id: 'mg', name: 'Miligramo', abbreviation: 'mg', dimension: 'masa' as const, baseUnitId: 'kg', equivalenceMultiplier: 0.000001, active: true, isDeleted: false },
+  ]
+  assert.equal(convertQuantity(1, 'mg', 'g', units), 0.001)
+  assert.deepEqual(compatibleUnitAbbreviations('g', units), ['g', 'kg', 'mg'])
 })
 
 describe('admin navigation', () => {
@@ -174,6 +211,7 @@ describe('admin navigation', () => {
       '/admin/ingredients',
       '/admin/categories',
       '/admin/units',
+      '/admin/users',
     ])
   })
 
@@ -184,6 +222,8 @@ describe('admin navigation', () => {
 })
 
 describe('admin persistence', () => {
+  beforeEach(() => localStorage.clear())
+
   test('notifies admin changes without impersonating a browser storage event during render', () => {
     const events: string[] = []
     const previousWindow = global.window
@@ -205,10 +245,32 @@ describe('admin persistence', () => {
 
     saveAdminData({ categories: [], units: [], ingredients: [], recipes: [] })
     assert.deepEqual(getAdminData(), { categories: [], units: [], ingredients: [], recipes: [] })
-    assert.equal(JSON.parse(localStorage.getItem('cocinapp.admin.v1')!).version, 4)
+    assert.equal(JSON.parse(localStorage.getItem('cocinapp.admin.v1')!).version, 6)
+  })
+
+  test('migrates only unchanged seed recipe tags', () => {
+    const seeds = getKnownRecipes().filter((recipe) => (recipe.dietaryTags?.length ?? 0) > 0)
+    const unchangedSeed = seeds[0]!
+    const editedSeed = seeds[1]!
+    createSeedRecipeOverride(unchangedSeed)
+    createSeedRecipeOverride(editedSeed)
+    const data = getAdminData()
+    const unchanged = data.recipes.find((recipe) => recipe.id === unchangedSeed.id)!
+    unchanged.dietaryTags = []
+    const edited = data.recipes.find((recipe) => recipe.id === editedSeed.id)!
+    edited.title = 'Receta modificada'
+    edited.dietaryTags = []
+    saveAdminData(data)
+    localStorage.setItem('cocinapp.admin.v1', JSON.stringify({ version: 4, ...data }))
+
+    const migrated = getAdminData()
+    assert.deepEqual(migrated.recipes.find((recipe) => recipe.id === unchangedSeed.id)?.dietaryTags, unchangedSeed.dietaryTags)
+    assert.deepEqual(migrated.recipes.find((recipe) => recipe.id === editedSeed.id)?.dietaryTags, [])
+    assert.equal(JSON.parse(localStorage.getItem('cocinapp.admin.v1')!).version, 6)
   })
 
   test('records creation and modification dates without changing the original creation date', () => {
+    saveAdminData({ categories: [], units: [], ingredients: [], recipes: [] })
     const categoryId = createCategory('Panadería')
     const unitId = createUnit('Gramo', 'g', 'masa')
     const ingredientId = createIngredient('Harina', categoryId, unitId)
@@ -334,6 +396,6 @@ describe('admin active state', () => {
     const data = getAdminData()
     assert.equal(data.categories.find((item) => item.id === 'active')?.active, true)
     assert.equal(data.categories.find((item) => item.id === 'inactive')?.active, false)
-    assert.equal(JSON.parse(localStorage.getItem('cocinapp.admin.v1')!).version, 4)
+    assert.equal(JSON.parse(localStorage.getItem('cocinapp.admin.v1')!).version, 6)
   })
 })

@@ -1,6 +1,7 @@
 import { getAdminData, saveAdminData } from './localAdminStore'
 import { hasAdminReferences } from './adminReferences'
 import { validateCategoryName } from '../domain/adminValidation'
+import type { DeleteResult } from './deleteResult'
 
 export function createCategory(name: string, active = true): string {
   const data = getAdminData()
@@ -22,17 +23,19 @@ export function updateCategory(id: string, name: string, active?: boolean): void
   }
 }
 
-export function deleteCategory(id: string): void {
+export function deleteCategory(id: string): DeleteResult {
   const data = getAdminData()
   const index = data.categories.findIndex(c => c.id === id)
-  if (index !== -1) {
-    if (hasAdminReferences('category', id, data.categories[index].name)) {
-      data.categories[index].isDeleted = true
-    } else {
-      data.categories.splice(index, 1)
-    }
-    saveAdminData(data)
-  }
+  if (index === -1) return 'not-found'
+  const category = data.categories[index]
+  if (category.isDeleted) return 'deactivated'
+  const deactivated = hasAdminReferences('category', id, category.name)
+  if (deactivated) {
+    category.isDeleted = true
+    category.active = false
+  } else data.categories.splice(index, 1)
+  saveAdminData(data)
+  return deactivated ? 'deactivated' : 'deleted'
 }
 
 export function restoreCategory(id: string): void {

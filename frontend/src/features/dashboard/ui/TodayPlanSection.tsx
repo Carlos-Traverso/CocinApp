@@ -2,15 +2,16 @@ import { CalendarDays, Clock3 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { PlannedMeal } from '../../planner/domain/planner'
 import { MealBadge } from '../../planner/ui/MealBadge'
-import { getRecipeById } from '../../recipes/data/availableRecipes'
 import { RecipeImage } from '../../recipes/ui/RecipeImage'
+import type { Recipe } from '../../recipes/domain/Recipe'
 
 interface TodayPlanSectionProps {
   activeRecipeIds: Set<string>
+  knownRecipes: Recipe[]
   plannedMeals: PlannedMeal[]
 }
 
-export function TodayPlanSection({ activeRecipeIds, plannedMeals }: TodayPlanSectionProps) {
+export function TodayPlanSection({ activeRecipeIds, knownRecipes, plannedMeals }: TodayPlanSectionProps) {
   return <section aria-labelledby="today-plan-title" className="dashboard-panel-section dashboard-today-section">
     <div className="section-header">
       <div>
@@ -28,7 +29,7 @@ export function TodayPlanSection({ activeRecipeIds, plannedMeals }: TodayPlanSec
         </div>
       : <div className="dashboard-today-grid">
           {plannedMeals.map((entry) => {
-            const recipe = getRecipeById(entry.recipeId, true)
+            const recipe = knownRecipes.find((item) => item.id === entry.recipeId)
             if (!recipe) return null
             const isActive = activeRecipeIds.has(recipe.id)
             return <article className="dashboard-today-card" key={`${entry.date}:${entry.meal}`}>
@@ -39,8 +40,8 @@ export function TodayPlanSection({ activeRecipeIds, plannedMeals }: TodayPlanSec
                 <p><Clock3 aria-hidden="true" size={15} /> {recipe.minutes} min · {recipe.difficulty}</p>
                 {!isActive && <span className="dashboard-today-inactive">Receta inactiva</span>}
                 <div className="dashboard-today-actions">
-                  <Link className="button button-quiet" to={`/recipes/${recipe.id}`}>Ver detalle</Link>
-                  {isActive && <Link className="button button-primary" to={`/recipes/${recipe.id}/cook`}>Cocinar</Link>}
+                  <Link className="button button-quiet" to={`/recipes/${recipe.id}?portions=${entry.portions}`}>Ver detalle</Link>
+                  {isActive && <Link className="button button-primary" to={`/recipes/${recipe.id}/cook?portions=${entry.portions}`}>Cocinar</Link>}
                 </div>
               </div>
             </article>

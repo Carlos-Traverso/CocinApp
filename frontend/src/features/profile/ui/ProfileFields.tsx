@@ -14,7 +14,7 @@ interface ProfileFieldsProps {
 }
 
 const preferences = [
-  { value: 'gluten-free', label: 'Sin gluten' },
+  { value: 'gluten-free', label: 'Sin TACC' },
   { value: 'vegetarian', label: 'Vegetariano' },
   { value: 'vegan', label: 'Vegano' },
   { value: 'lactose-free', label: 'Sin lactosa' },

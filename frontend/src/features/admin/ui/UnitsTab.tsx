@@ -1,17 +1,19 @@
 import { useState } from 'react'
 import { Plus, Pencil, RotateCcw, Trash2, X } from 'lucide-react'
-import { getAdminData } from '../data/localAdminStore'
-import { hasAdminReferences } from '../data/adminReferences'
 import { normalizePantryName } from '../../pantry/domain/pantry'
 import { SearchFeedback } from '../../../shared/search/SearchFeedback'
 import { useDebouncedSearch } from '../../../shared/search/useDebouncedSearch'
-import { createUnit, updateUnit, deleteUnit, restoreUnit } from '../data/unitsStore'
+import { adminRepository } from '../data/AdminRepository'
+import type { DeleteResult } from '../data/AdminRepository'
 import { countAdminUsage } from '../domain/adminUsage'
-import { getKnownRecipes } from '../../recipes/data/availableRecipes'
+import { useAdminCatalog } from './useAdminCatalog'
+import { useNotifications } from '../../../shared/notifications/NotificationProvider'
 
 export function UnitsTab() {
-  const data = getAdminData()
-  const [units, setUnits] = useState(data.units)
+  const { notify } = useNotifications()
+  const { data: snapshot, knownRecipes, loading, error, setError, reload } = useAdminCatalog()
+  const data = snapshot ?? { categories: [], units: [], ingredients: [], recipes: [] }
+  const units = data.units
   const [editor, setEditor] = useState<{
     id?: string
     name: string
@@ -21,51 +23,102 @@ export function UnitsTab() {
     equivalenceMultiplier: string
     active: boolean
   } | null>(null)
-  const [error, setError] = useState('')
+  const [pending, setPending] = useState(false)
   const [search, setSearch] = useState('')
   const [dimensionFilter, setDimensionFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const debouncedSearch = useDebouncedSearch(search)
-  const [success, setSuccess] = useState('')
 
-  const reload = () => setUnits(getAdminData().units)
-
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editor) return
+    const invalidField = e.currentTarget.querySelector<HTMLElement>(':invalid')
+    if (invalidField || !editor.name.trim() || !editor.abbreviation.trim()) {
+      const invalidText = !editor.name.trim() ? 'Ingresá un nombre válido para la unidad.' : !editor.abbreviation.trim() ? 'Ingresá una abreviatura válida para la unidad.' : 'Revisá los campos obligatorios y sus valores.'
+      setError(invalidText)
+      ;(invalidField ?? e.currentTarget.querySelector<HTMLElement>('input'))?.focus()
+      return
+    }
     try {
+      setPending(true)
+      setError('')
       const multiplier = editor.baseUnitId ? parseFloat(editor.equivalenceMultiplier) : undefined
       if (editor.baseUnitId && (!multiplier || multiplier <= 0)) {
-        throw new Error('Debe especificar un multiplicador válido mayor a 0.')
+        setError('Debe especificar un multiplicador válido mayor a 0.')
+        e.currentTarget.querySelector<HTMLElement>('input[type="number"]')?.focus()
+        return
       }
 
       if (editor.id) {
-        updateUnit(editor.id, editor.name.trim(), editor.abbreviation.trim(), editor.dimension, editor.baseUnitId || undefined, multiplier, editor.active)
+        await adminRepository.updateUnit(editor.id, editor.name.trim(), editor.abbreviation.trim(), editor.dimension, editor.baseUnitId || undefined, multiplier, editor.active)
       } else {
-        createUnit(editor.name.trim(), editor.abbreviation.trim(), editor.dimension, editor.baseUnitId || undefined, multiplier, editor.active)
+        await adminRepository.createUnit(editor.name.trim(), editor.abbreviation.trim(), editor.dimension, editor.baseUnitId || undefined, multiplier, editor.active)
       }
       setEditor(null)
       setError('')
-      setSuccess(editor.id ? 'Unidad actualizada.' : 'Unidad creada.')
-      reload()
+      void notify({ type: 'success', title: editor.id ? 'Unidad actualizada' : 'Unidad creada', message: editor.id ? 'Unidad actualizada.' : 'Unidad creada.' })
+      await reload()
     } catch (err: any) {
-      setError(err.message)
+      void notify({ type: 'error', title: 'No se pudo guardar la unidad', message: err.message })
+    } finally {
+      setPending(false)
     }
   }
 
-  const usage = countAdminUsage(data, getKnownRecipes())
+  const usage = countAdminUsage(data, knownRecipes)
   const visibleUnits = units.filter((unit) => debouncedSearch.status !== 'waiting' && normalizePantryName(`${unit.name} ${unit.abbreviation}`).includes(normalizePantryName(debouncedSearch.query))
     && (!dimensionFilter || unit.dimension === dimensionFilter)
     && (statusFilter === 'all' || (statusFilter === 'active') === (unit.active && !unit.isDeleted)))
 
-  const handleDelete = (id: string, name: string, abbreviation: string) => {
-    const hasRefs = hasAdminReferences('unit', id, abbreviation)
-    const msg = hasRefs 
-      ? `La unidad "${name}" está en uso. Se realizará una baja lógica.`
-      : `¿Eliminar la unidad "${name}" permanentemente?`
-    if (window.confirm(msg)) {
-      deleteUnit(id)
-      reload()
+  const handleDelete = async (id: string, name: string) => {
+    if (!await notify({ type: 'warning', title: 'Eliminar unidad', message: `¿Eliminar la unidad "${name}"? Si tiene referencias, se conservará como baja lógica.`, confirmLabel: 'Eliminar', cancelLabel: 'Cancelar' })) return
+    await runDelete(() => adminRepository.deleteUnit(id), 'No se pudo eliminar la unidad.')
+  }
+
+  const runMutation = async (action: () => Promise<unknown>, fallback: string) => {
+    setPending(true); setError('')
+    try {
+      await action()
+    } catch (cause) {
+      void notify({ type: 'error', title: 'No se pudieron guardar los cambios', message: cause instanceof Error ? cause.message : fallback })
+      setPending(false)
+      return
+    }
+
+    try {
+      await reload()
+      void notify({ type: 'success', title: 'Cambios guardados', message: 'Cambios guardados.' })
+    } catch {
+      void notify({ type: 'error', title: 'Cambios guardados, lista desactualizada', message: 'La acción se completó, pero no se pudo actualizar el catálogo. Volvé a cargar la pantalla.' })
+    } finally {
+      setPending(false)
+    }
+  }
+
+  const runDelete = async (action: () => Promise<DeleteResult>, fallback: string) => {
+    setPending(true); setError('')
+    let result: DeleteResult
+    try {
+      result = await action()
+    } catch (cause) {
+      void notify({ type: 'error', title: 'No se pudo eliminar la unidad', message: cause instanceof Error ? cause.message : fallback })
+      setPending(false)
+      return
+    }
+
+    let reloadFailed = false
+    try {
+      await reload()
+    } catch {
+      reloadFailed = true
+    } finally {
+      setPending(false)
+    }
+
+    if (result === 'not-found') {
+      void notify({ type: 'error', title: 'No se encontró la unidad', message: reloadFailed ? 'La unidad ya no existe y tampoco se pudo actualizar el catálogo.' : 'La unidad ya no existe. El catálogo se actualizó.' })
+    } else if (reloadFailed) {
+      void notify({ type: 'error', title: 'No se pudo actualizar el catálogo', message: 'La acción de eliminación se completó, pero no se pudo actualizar la lista. Volvé a cargar la pantalla.' })
     }
   }
 
@@ -73,15 +126,14 @@ export function UnitsTab() {
     <div className="panel">
       <div className="section-header">
         <div><h2>Unidades de medida</h2><p className="panel-intro"><SearchFeedback resultCount={visibleUnits.length} status={debouncedSearch.status} /> · {units.length} unidades totales</p></div>
-        <button className="button button-primary" onClick={() => { setEditor({ name: '', abbreviation: '', dimension: 'masa', baseUnitId: '', equivalenceMultiplier: '', active: true }); setError('') }} type="button">
+        <button className="button button-primary" disabled={loading || pending} onClick={() => { setEditor({ name: '', abbreviation: '', dimension: 'masa', baseUnitId: '', equivalenceMultiplier: '', active: true }); setError('') }} type="button">
           <Plus size={16} /> Nueva unidad
         </button>
       </div>
 
-      {success && <p className="form-message success" role="status">{success}</p>}
       <div className="admin-catalog-filters"><label className="field admin-filter-search"><span>Buscar unidad</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label><label className="field"><span>Dimensión</span><select onChange={(event) => setDimensionFilter(event.currentTarget.value)} value={dimensionFilter}><option value="">Todas</option><option value="masa">Masa</option><option value="volumen">Volumen</option><option value="conteo">Conteo</option></select></label><label className="field"><span>Estado</span><select onChange={(event) => setStatusFilter(event.currentTarget.value as typeof statusFilter)} value={statusFilter}><option value="all">Todas</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select></label></div>
 
-      <div className="records">
+      {loading ? <p role="status">Cargando catálogo…</p> : <div className="records">
         {visibleUnits.map((u) => {
           const base = units.find(x => x.id === u.baseUnitId)
           return (
@@ -95,20 +147,20 @@ export function UnitsTab() {
               <div className="record-actions">
                 {!u.isDeleted ? (
                   <>
-                    <button aria-label={`Editar unidad ${u.name}`} className="pantry-icon-button" onClick={() => setEditor({ id: u.id, name: u.name, abbreviation: u.abbreviation, dimension: u.dimension, baseUnitId: u.baseUnitId || '', equivalenceMultiplier: String(u.equivalenceMultiplier || ''), active: u.active })} type="button">
+                    <button aria-label={`Editar unidad ${u.name}`} className="pantry-icon-button" disabled={pending} onClick={() => setEditor({ id: u.id, name: u.name, abbreviation: u.abbreviation, dimension: u.dimension, baseUnitId: u.baseUnitId || '', equivalenceMultiplier: String(u.equivalenceMultiplier || ''), active: u.active })} type="button">
                       <Pencil size={17} />
                     </button>
-                    <button aria-label={`Eliminar unidad ${u.name}`} className="pantry-icon-button" onClick={() => handleDelete(u.id, u.name, u.abbreviation)} type="button">
+                    <button aria-label={`Eliminar unidad ${u.name}`} className="pantry-icon-button" disabled={pending} onClick={() => void handleDelete(u.id, u.name)} type="button">
                       <Trash2 size={17} />
                     </button>
                   </>
-                ) : <button className="button button-quiet" onClick={() => { restoreUnit(u.id); reload(); setSuccess('Unidad reactivada.') }} type="button"><RotateCcw size={15} /> Reactivar</button>}
+                ) : <button className="button button-quiet" disabled={pending} onClick={() => void runMutation(() => adminRepository.restoreUnit(u.id), 'No se pudo reactivar la unidad.')} type="button"><RotateCcw size={15} /> Reactivar</button>}
               </div>
             </article>
           )
         })}
         {debouncedSearch.status !== 'waiting' && visibleUnits.length === 0 && <p className="empty">No hay unidades que coincidan con los filtros.</p>}
-      </div>
+      </div>}
 
       {editor && (
         <dialog aria-labelledby="unit-editor-title" className="shopping-editor surface" onCancel={(event) => { event.preventDefault(); setEditor(null) }} ref={(node) => { if (node && !node.open) node.showModal() }}>
@@ -116,7 +168,7 @@ export function UnitsTab() {
             <h2 id="unit-editor-title">{editor.id ? 'Editar unidad' : 'Nueva unidad'}</h2>
             <button aria-label="Cerrar editor de unidad" className="pantry-icon-button" onClick={() => setEditor(null)} type="button"><X size={19} /></button>
           </div>
-          <form onSubmit={handleSave}>
+          <form noValidate onSubmit={handleSave}>
             <div className="shopping-form-grid">
               <label className="field">
                 <span>Nombre</span>
@@ -154,7 +206,7 @@ export function UnitsTab() {
             {error && <p className="form-message error" role="alert">{error}</p>}
             <div className="pantry-dialog-actions">
               <button className="button button-quiet" type="button" onClick={() => setEditor(null)}>Cancelar</button>
-              <button className="button button-primary" type="submit">Guardar</button>
+              <button className="button button-primary" disabled={pending} type="submit">{pending ? 'Guardando…' : 'Guardar'}</button>
             </div>
           </form>
         </dialog>

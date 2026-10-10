@@ -7,6 +7,7 @@ export type ManagedAdminRecipe = {
   id: string
   title: string
   category: string
+  mealShifts?: string[]
   minutes: number
   difficulty: Recipe['difficulty']
   featured: boolean
@@ -35,7 +36,8 @@ export function getManagedRecipes(data: AdminStorageData, knownRecipes: Recipe[]
     return {
       id: recipe.id,
       title: recipe.name,
-      category: recipe.mealShift ?? recipe.category,
+      category: record?.mealShifts?.[0] ?? recipe.mealShifts?.[0] ?? recipe.mealShift ?? recipe.category,
+      mealShifts: record?.mealShifts?.length ? record.mealShifts : recipe.mealShifts?.length ? recipe.mealShifts : [recipe.mealShift ?? recipe.category],
       minutes: recipe.minutes,
       difficulty: recipe.difficulty,
       featured: recipe.featured ?? false,
@@ -52,8 +54,8 @@ export function getManagedRecipes(data: AdminStorageData, knownRecipes: Recipe[]
 export function filterAdminRecipes(recipes: ManagedAdminRecipe[], filters: AdminRecipeFilters): ManagedAdminRecipe[] {
   const search = normalizePantryName(filters.search)
   return recipes.filter((recipe) => {
-    if (search && !normalizePantryName(`${recipe.title} ${recipe.category}`).includes(search)) return false
-    if (filters.category && recipe.category !== filters.category) return false
+    if (search && !normalizePantryName(`${recipe.title} ${(recipe.mealShifts ?? [recipe.category]).join(' ')}`).includes(search)) return false
+    if (filters.category && !(recipe.mealShifts ?? [recipe.category]).includes(filters.category)) return false
     if (filters.status === 'active' && !recipe.active) return false
     if (filters.status === 'draft' && recipe.status !== 'draft') return false
     if (filters.status === 'inactive' && recipe.status !== 'inactive') return false

@@ -1,3 +1,3 @@
-# Estilos
+# Styles
 
-`tokens.css` contiene los tokens semánticos y de Tailwind. `index.css` importa Tailwind y establece estilos globales; los estilos propios de una funcionalidad permanecen junto a esa funcionalidad cuando crezca.
+The interface uses standard CSS. `tokens.css` contains shared colors and spacing; `src/index.css` and `src/App.css` hold global and shell rules. Feature specific rules stay near the feature where practical. Tailwind is not configured or installed.

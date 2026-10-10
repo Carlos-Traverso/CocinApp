@@ -1,0 +1,42 @@
+.shopping-page .shopping-share-actions {
+  align-items: center;
+  gap: 8px;
+}
+
+.shopping-page .shopping-share-button {
+  min-width: 0;
+  min-height: 38px;
+  flex: 0 1 auto;
+  gap: 7px;
+  padding-inline: 11px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.shopping-page .shopping-share-button svg {
+  flex: 0 0 auto;
+}
+
+.shopping-page .shopping-share-button:focus-visible {
+  outline: 2px solid var(--green-dark);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .shopping-page .shopping-share-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .shopping-page .shopping-share-button {
+    width: 100%;
+    min-height: 42px;
+    padding-inline: 8px;
+  }
+}
+
+@media (max-width: 400px) {
+  .shopping-page .shopping-share-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

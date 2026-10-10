@@ -9,12 +9,4 @@ export default defineConfig({
   root: frontendRoot,
   plugins: [react()],
   publicDir: resolve(frontendRoot, 'public'),
-  build: {
-    rollupOptions: {
-      input: [
-        resolve(frontendRoot, 'index.html'),
-        resolve(frontendRoot, 'prototypes/cocinapp.html'),
-      ],
-    },
-  },
 })

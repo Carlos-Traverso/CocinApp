@@ -1,20 +1,34 @@
-import { getKnownCategories, getKnownUnits, resolveIngredientCategory } from '../../admin/data/localAdminStore'
+import { getAdminData, getKnownCategories, getKnownUnits, resolveIngredientCategory } from '../../admin/data/localAdminStore'
+import { createInitialAdminData } from '../../admin/data/adminSeed'
 import { personalStorage } from '../../auth/data/personalStorage'
 import { readPantryItems, writePantryItems } from '../../pantry/data/localPantryStore'
 import { addPurchaseToPantry } from '../domain/shopping'
 import { mergeShoppingSuggestions, type ShoppingItem, type ShoppingSource, type ShoppingSuggestion } from '../domain/shopping'
+import { normalizePantryName } from '../../pantry/domain/pantry'
+import { compatibleUnitAbbreviations } from '../../../shared/domain/units'
+import { inferIngredientCategory } from '../../admin/domain/ingredientCategory'
 
 const key = 'cocinapp.shopping.v1'
 const sources: ShoppingSource[] = ['manual', 'recipe', 'plan', 'favorites', 'pantry']
 interface StorageLike { getItem(key: string): string | null; setItem(key: string, value: string): void }
 
+function catalogData() {
+  try { return getAdminData() } catch { return createInitialAdminData() }
+}
+
 function readShoppingItem(value: unknown, transferredIds: Set<string>): ShoppingItem | undefined {
   if (!value || typeof value !== 'object') return undefined
   const item = value as Record<string, unknown>
-  const knownCategories = getKnownCategories()
-  const knownUnits = getKnownUnits()
+  let knownCategories: string[]
+  let knownUnits: string[]
+  try { knownCategories = getKnownCategories(); knownUnits = getKnownUnits() }
+  catch { knownCategories = getAdminDataFallback().categories.map((entry) => entry.name); knownUnits = getAdminDataFallback().units.map((entry) => entry.abbreviation) }
   const storedCategory = typeof item.category === 'string' && knownCategories.includes(item.category) ? item.category : undefined
-  const category = storedCategory && storedCategory !== 'Otros' ? storedCategory : resolveIngredientCategory(String(item.name ?? ''))
+  let category = storedCategory
+  let catalog = catalogData()
+  try { if (!category || category === 'Otros') category = resolveIngredientCategory(String(item.name ?? '')) }
+  catch { category ??= inferIngredientCategory(String(item.name ?? '')) ?? 'Otros' }
+  const catalogMatch = catalog.ingredients.find((ingredient) => ingredient.active && !ingredient.isDeleted && ingredient.name.trim().toLocaleLowerCase('es') === String(item.name ?? '').trim().toLocaleLowerCase('es'))
 
   const valid = typeof item.id === 'string' && item.id.length > 0
     && typeof item.name === 'string' && item.name.trim().length > 0 && item.name.length <= 70
@@ -28,9 +42,15 @@ function readShoppingItem(value: unknown, transferredIds: Set<string>): Shopping
     && item.sources.every((source: unknown) => sources.includes(source as ShoppingSource))
   if (!valid) return undefined
   const transferredToPantry = transferredIds.has(item.id as string) || item.transferredToPantry === true
-  return { ...(item as unknown as ShoppingItem), category, transferredToPantry,
+  const hasAssociation = Object.prototype.hasOwnProperty.call(item, 'ingredientId')
+  const associated = hasAssociation
+    ? typeof item.ingredientId === 'string' ? catalog.ingredients.find((ingredient) => ingredient.id === item.ingredientId && ingredient.active && !ingredient.isDeleted && normalizePantryName(ingredient.name) === normalizePantryName(String(item.name))) : undefined
+    : catalogMatch
+  return { ...(item as unknown as ShoppingItem), category, ...(hasAssociation ? { ingredientId: associated?.id ?? null } : associated ? { ingredientId: associated.id } : {}), transferredToPantry,
     transferredAt: transferredToPantry && typeof item.transferredAt === 'string' ? item.transferredAt : null }
 }
+
+function getAdminDataFallback() { return createInitialAdminData() }
 
 export function readShoppingItems(storage: StorageLike = personalStorage): ShoppingItem[] {
   try {
@@ -52,7 +72,12 @@ export function writeShoppingItems(items: ShoppingItem[], storage: StorageLike =
 }
 
 export function appendShoppingSuggestions(suggestions: ShoppingSuggestion[], storage: StorageLike = personalStorage): ShoppingItem[] {
-  const merged = mergeShoppingSuggestions(readShoppingItems(storage), suggestions)
+  const catalog = catalogData()
+  const merged = mergeShoppingSuggestions(readShoppingItems(storage), suggestions, catalog.units).map((item) => {
+    if (Object.prototype.hasOwnProperty.call(item, 'ingredientId')) return item
+    const ingredient = catalog.ingredients.find((entry) => entry.active && !entry.isDeleted && normalizePantryName(entry.name) === normalizePantryName(item.name))
+    return ingredient ? { ...item, ingredientId: ingredient.id } : item
+  })
   writeShoppingItems(merged, storage)
   return merged
 }
@@ -75,12 +100,18 @@ export interface PantryTransferResult { items: ShoppingItem[]; transferredCount:
 export function transferPurchasedToPantry(storage: StorageLike = personalStorage, now = new Date()): PantryTransferResult {
   const items = readShoppingItems(storage)
   const pantryBefore = readPantryItems(storage)
-  const purchases = items.filter((item) => item.checked && !item.transferredToPantry)
+  const catalog = catalogData()
+  const purchases = items.filter((item) => {
+    if (!item.checked || item.transferredToPantry || !item.ingredientId) return false
+    const ingredient = catalog.ingredients.find((candidate) => candidate.id === item.ingredientId && candidate.active && !candidate.isDeleted && normalizePantryName(candidate.name) === normalizePantryName(item.name))
+    const baseUnit = ingredient && catalog.units.find((unit) => unit.id === ingredient.baseUnitId && unit.active && !unit.isDeleted)
+    return Boolean(baseUnit && compatibleUnitAbbreviations(baseUnit.abbreviation, catalog.units).includes(item.unit))
+  })
   if (purchases.length === 0) return { items, transferredCount: 0, removedCount: 0 }
 
   const transferredAt = now.toISOString()
   const transferred = purchases.map((item) => ({ ...item, transferredToPantry: true, transferredAt }))
-  const pantryAfter = transferred.reduce(addPurchaseToPantry, pantryBefore)
+  const pantryAfter = transferred.reduce((pantry, item) => addPurchaseToPantry(pantry, item, catalog.units), pantryBefore)
   const transferredIds = new Set(transferred.map((item) => item.id))
   const shoppingAfter = items.filter((item) => !transferredIds.has(item.id))
 

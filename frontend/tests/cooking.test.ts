@@ -1,10 +1,19 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { sampleRecipes } from '../src/mocks/recipes'
-import { advanceStep, completeStep, cookingCompletionPath, createSession, moveStep, recordPreparation, remainingTimerMs, scaleIngredients, deductIngredients, getStepGuidance, remainingRecipeMinutes, startStepTimer, pauseStepTimer, resetStepTimer, type CookingSession } from '../src/features/cooking/domain/cooking'
-import { clearCookingSession, finalizeCookingSession, readCookingSession, readHistory, saveCookingSession, writeHistory } from '../src/features/cooking/data/localCookingStore'
+import { advanceStep, completeStep, cookingCompletionPath, createSession, moveStep, recordPreparation, remainingTimerMs, scaleIngredients, deductIngredients, getCookingStockCheck, getStepGuidance, remainingRecipeMinutes, startStepTimer, pauseStepTimer, resetStepTimer, type CookingSession } from '../src/features/cooking/domain/cooking'
+import { clearCookingSession, finalizeCookingSession, finishCookingSession, readCookingSession, readHistory, saveCookingSession, writeHistory } from '../src/features/cooking/data/localCookingStore'
 import { readPantryItems, writePantryItems } from '../src/features/pantry/data/localPantryStore'
 import type { PantryItem } from '../src/features/pantry/domain/pantry'
+
+const testLocalStorage = new Map<string, string>()
+Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
+  getItem: (key: string) => testLocalStorage.get(key) ?? null,
+  setItem: (key: string, value: string) => { testLocalStorage.set(key, value) },
+  removeItem: (key: string) => { testLocalStorage.delete(key) },
+  clear: () => testLocalStorage.clear(),
+} })
+Object.defineProperty(globalThis, 'window', { configurable: true, value: { dispatchEvent: () => {} } })
 
 const recipe = sampleRecipes[0]
 const now = new Date('2026-09-23T15:00:00.000Z')
@@ -90,6 +99,20 @@ test('ingredient scaling and pantry deduction skip expired stock and never go ne
   assert.equal(pantry[1].quantity, 100)
 })
 
+test('cooking stock check aggregates repeated ingredients and conversion is shared with deduction', () => {
+  const repeated = { ...recipe, portions: 1, ingredients: [
+    { name: 'Harina', quantity: 0.5, unit: 'kg' }, { name: 'Harina', quantity: 250, unit: 'g' },
+  ] }
+  const flour: PantryItem[] = [{ id: 'flour', name: 'Harina', category: 'Almacén', quantity: 600, unit: 'g', minimum: 0, expiry: null }]
+  const check = getCookingStockCheck(flour, repeated, 1)
+  assert.equal(check.length, 1)
+  assert.equal(check[0]?.missing, 0.15)
+  assert.equal(deductIngredients(flour, repeated, 1)[0]?.quantity, 0)
+  const kilogramRecipe = { ...recipe, portions: 1, ingredients: [{ name: 'Harina', quantity: 1, unit: 'kg' }] }
+  const converted = deductIngredients([{ ...flour[0]!, quantity: 1500 }], kilogramRecipe, 1)
+  assert.equal(converted[0]?.quantity, 500)
+})
+
 test('storage persists valid progress and history, and clears one session', () => {
   const values = new Map<string, string>()
   const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value) } }
@@ -122,7 +145,39 @@ test('finalization records history once, closes the session and optionally deduc
   assert.equal(readHistory(storage)[0].portions, recipe.portions)
   assert.equal(readCookingSession(recipe.id, storage), null)
   assert.equal(readPantryItems(storage)[0].quantity, recipe.ingredients[0].quantity)
-  finalizeCookingSession(recipe, session, false, storage, now)
+  finalizeCookingSession(recipe, session, true, storage, now)
   assert.equal(readHistory(storage).length, 1)
   assert.equal(readPantryItems(storage)[0].quantity, recipe.ingredients[0].quantity)
+})
+
+test('discount preflight blocks every write when one ingredient is short', () => {
+  const values = new Map<string, string>()
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value) },
+    removeItem: (key: string) => { values.delete(key) },
+  }
+  const session = createSession(recipe, now)
+  const insufficient: PantryItem[] = recipe.ingredients.map((ingredient, index) => ({ id: String(index), name: ingredient.name, category: 'Otros', quantity: index === 0 ? 0 : ingredient.quantity * 2, unit: ingredient.unit, minimum: 0, expiry: null }))
+  saveCookingSession(session, storage)
+  writePantryItems(insufficient, storage)
+  assert.throws(() => finalizeCookingSession(recipe, session, true, storage, now), /Stock insuficiente/)
+  assert.deepEqual(readHistory(storage), [])
+  assert.deepEqual(readPantryItems(storage), insufficient)
+  assert.deepEqual(readCookingSession(recipe.id, storage), session)
+})
+
+test('repeating a completed discounted session cannot deduct stock twice', async () => {
+  localStorage.clear()
+  const session = createSession(recipe, now)
+  const stock: PantryItem[] = recipe.ingredients.map((ingredient, index) => ({ id: String(index), name: ingredient.name, category: 'Otros', quantity: ingredient.quantity * 2, unit: ingredient.unit, minimum: 0, expiry: null }))
+  saveCookingSession(session)
+  writePantryItems(stock)
+  const first = await finishCookingSession(recipe, session, true, now)
+  const afterFirst = readPantryItems()
+  const second = await finishCookingSession(recipe, session, true, now)
+  assert.equal(first.history.length, 1)
+  assert.equal(second.history.length, 1)
+  assert.deepEqual(readPantryItems(), afterFirst)
+  assert.deepEqual(readHistory(), first.history)
 })

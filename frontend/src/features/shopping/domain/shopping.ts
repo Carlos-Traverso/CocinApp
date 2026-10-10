@@ -1,5 +1,7 @@
 import { daysUntilExpiry, normalizePantryName, type PantryCategory, type PantryItem, type PantryUnit } from '../../pantry/domain/pantry'
 import type { Recipe } from '../../recipes/domain/Recipe'
+import { convertQuantity, normalizeQuantity, quantityDeficit, roundQuantity } from '../../../shared/domain/units'
+import type { AdminUnit } from '../../admin/domain/adminModels'
 
 export type ShoppingSource = 'manual' | 'recipe' | 'plan' | 'favorites' | 'pantry'
 export interface ShoppingItem {
@@ -13,22 +15,15 @@ export interface ShoppingItem {
   transferredToPantry: boolean
   transferredAt: string | null
   sources: ShoppingSource[]
+  ingredientId?: string | null
 }
 
-const baseUnits: Record<string, { dimension: string; factor: number; base: string }> = {
-  g: { dimension: 'mass', factor: 1, base: 'g' }, kg: { dimension: 'mass', factor: 1000, base: 'g' },
-  ml: { dimension: 'volume', factor: 1, base: 'ml' }, l: { dimension: 'volume', factor: 1000, base: 'ml' },
-  u: { dimension: 'count', factor: 1, base: 'u' },
-}
-
-export function addPurchaseToPantry(pantry: PantryItem[], purchase: ShoppingItem): PantryItem[] {
+export function addPurchaseToPantry(pantry: PantryItem[], purchase: ShoppingItem, units?: AdminUnit[]): PantryItem[] {
   if (pantry.some((item) => item.sourceShoppingIds?.includes(purchase.id))) return pantry
-  const incoming = baseUnits[purchase.unit]
   const matchingIndex = pantry.findIndex((item) => {
-    if (normalizePantryName(item.name) !== normalizePantryName(purchase.name) || item.category !== purchase.category) return false
+    if (normalizePantryName(item.name) !== normalizePantryName(purchase.name)) return false
     if (item.expiry && (daysUntilExpiry(item.expiry) ?? -1) < 0) return false
-    const stored = baseUnits[item.unit]
-    return item.unit === purchase.unit || Boolean(incoming && stored && incoming.dimension === stored.dimension)
+    return convertQuantity(1, purchase.unit, item.unit, units) !== null
   })
   if (matchingIndex < 0) return [...pantry, {
     id: crypto.randomUUID(), name: purchase.name, category: purchase.category, quantity: purchase.quantity,
@@ -36,9 +31,9 @@ export function addPurchaseToPantry(pantry: PantryItem[], purchase: ShoppingItem
   }]
   return pantry.map((item, index) => {
     if (index !== matchingIndex) return item
-    const stored = baseUnits[item.unit]
-    const converted = incoming && stored ? purchase.quantity * incoming.factor / stored.factor : purchase.quantity
-    return { ...item, quantity: Math.round((item.quantity + converted) * 1000) / 1000,
+    const converted = convertQuantity(purchase.quantity, purchase.unit, item.unit, units)
+    if (converted === null) return item
+    return { ...item, quantity: roundQuantity(item.quantity + converted),
       sourceShoppingIds: [...(item.sourceShoppingIds ?? []), purchase.id] }
   })
 }
@@ -64,61 +59,90 @@ export function filterShoppingItems(items: ShoppingItem[], filters: ShoppingFilt
   })
 }
 
-export function shoppingKey(name: string, unit: PantryUnit): string {
-  return `${normalizePantryName(name)}:${unit}`
+export function createShoppingShareText(items: ShoppingItem[], units?: AdminUnit[]): string {
+  const consolidated = new Map<string, { name: string; unit: string; quantity: number; checked: boolean }>()
+  for (const item of items.filter((entry) => !entry.transferredToPantry)) {
+    const key = shoppingKey(item.name, item.unit, units)
+    const existing = consolidated.get(key)
+    if (!existing) consolidated.set(key, { name: item.name, unit: item.unit, quantity: item.quantity, checked: item.checked })
+    else {
+      const converted = convertQuantity(item.quantity, item.unit, existing.unit, units)
+      if (converted !== null) existing.quantity = roundQuantity(existing.quantity + converted)
+      existing.checked ||= item.checked
+    }
+  }
+  const lines = [...consolidated.values()].map((item) => `• ${item.name}: ${new Intl.NumberFormat('es-AR', { maximumSignificantDigits: 12 }).format(item.quantity)} ${item.unit}${item.checked ? ' (comprado)' : ''}`)
+  return ['Lista de compras CocinAPP', ...(lines.length ? lines : ['(sin artículos)'])].join('\n')
+}
+
+export function shoppingKey(name: string, unit: PantryUnit, units?: AdminUnit[]): string {
+  const normalized = normalizeQuantity(1, unit, units)
+  return `${normalizePantryName(name)}:${normalized ? `${normalized.dimension}:${normalized.baseUnit}` : unit}`
 }
 
 function usableQuantity(item: PantryItem, today: Date): number {
   return !item.expiry || (daysUntilExpiry(item.expiry, today) ?? -1) >= 0 ? item.quantity : 0
 }
 
-export function suggestForRecipes(recipes: Recipe[], pantry: PantryItem[], source: ShoppingSource, today = new Date()): ShoppingSuggestion[] {
+export function suggestForRecipes(recipes: Recipe[], pantry: PantryItem[], source: ShoppingSource, today = new Date(), units?: AdminUnit[], portionsByRecipe: ReadonlyMap<string, number> = new Map()): ShoppingSuggestion[] {
   const needs = new Map<string, ShoppingSuggestion>()
   for (const recipe of recipes) for (const ingredient of recipe.ingredients) {
-    const key = shoppingKey(ingredient.name, ingredient.unit)
+    if (!normalizeQuantity(ingredient.quantity, ingredient.unit, units)) throw new Error(`La unidad ${ingredient.unit} de ${ingredient.name} no está disponible o no es válida.`)
+    const portions = portionsByRecipe.get(recipe.id) ?? recipe.portions
+    const quantity = ingredient.quantity * portions / recipe.portions
+    const key = shoppingKey(ingredient.name, ingredient.unit, units)
     const existing = needs.get(key)
     if (existing) {
-      existing.quantity += ingredient.quantity
+      const converted = convertQuantity(quantity, ingredient.unit, existing.unit, units)
+      if (converted !== null) existing.quantity = roundQuantity(existing.quantity + converted)
       if (existing.category === 'Otros' && ingredient.category && ingredient.category !== 'Otros') existing.category = ingredient.category
     }
     else needs.set(key, {
-      name: ingredient.name, unit: ingredient.unit, quantity: ingredient.quantity,
+      name: ingredient.name, unit: ingredient.unit, quantity,
       category: ingredient.category
         ?? pantry.find((item) => normalizePantryName(item.name) === normalizePantryName(ingredient.name) && item.category !== 'Otros')?.category
         ?? 'Otros', source,
     })
   }
-  return [...needs.entries()].map(([key, need]) => ({
-    ...need,
-    quantity: Math.max(0, Math.round((need.quantity - pantry.filter((item) => shoppingKey(item.name, item.unit) === key)
-      .reduce((total, item) => total + usableQuantity(item, today), 0)) * 100) / 100),
-  })).filter((item) => item.quantity > 0)
+  return [...needs.values()].map((need) => {
+    const matchingStock = pantry.filter((item) => normalizePantryName(item.name) === normalizePantryName(need.name))
+    for (const item of matchingStock) if (!normalizeQuantity(item.quantity, item.unit, units)) throw new Error(`La unidad ${item.unit} de ${item.name} en la despensa no es válida.`)
+    const available = matchingStock.reduce((total, item) => {
+      const usable = usableQuantity(item, today)
+      const converted = convertQuantity(usable, item.unit, need.unit, units)
+      return total + (converted ?? (item.unit === need.unit ? usable : 0))
+    }, 0)
+    return { ...need, quantity: quantityDeficit(need.quantity, available) }
+  }).filter((item) => item.quantity > 0)
 }
 
-export function suggestPantryRestock(pantry: PantryItem[], today = new Date()): ShoppingSuggestion[] {
+export function suggestPantryRestock(pantry: PantryItem[], today = new Date(), units?: AdminUnit[]): ShoppingSuggestion[] {
   const grouped = new Map<string, PantryItem[]>()
   for (const item of pantry) {
-    const key = shoppingKey(item.name, item.unit)
+    if (!normalizeQuantity(item.quantity, item.unit, units)) throw new Error(`La unidad ${item.unit} de ${item.name} en la despensa no es válida.`)
+    const key = shoppingKey(item.name, item.unit, units)
     grouped.set(key, [...(grouped.get(key) ?? []), item])
   }
   const suggestions: ShoppingSuggestion[] = []
   for (const items of grouped.values()) {
-    const usable = items.reduce((total, item) => total + usableQuantity(item, today), 0)
-    const minimum = Math.max(...items.map((item) => item.minimum))
+    const unit = items[0].unit
+    const usable = items.reduce((total, item) => total + (convertQuantity(usableQuantity(item, today), item.unit, unit, units) ?? (item.unit === unit ? usableQuantity(item, today) : 0)), 0)
+    const minimum = Math.max(...items.map((item) => convertQuantity(item.minimum, item.unit, unit, units) ?? (item.unit === unit ? item.minimum : 0)))
     const expired = items.some((item) => item.expiry && (daysUntilExpiry(item.expiry, today) ?? 0) < 0)
-    const quantity = minimum > 0 ? Math.max(0, minimum - usable) : usable === 0 && (expired || items.some((item) => item.quantity === 0)) ? Math.max(1, ...items.map((item) => item.quantity)) : 0
-    if (quantity > 0) suggestions.push({ name: items[0].name, category: items[0].category, quantity, unit: items[0].unit, source: 'pantry' })
+    const quantity = minimum > 0 ? Math.max(0, minimum - usable) : usable === 0 && (expired || items.some((item) => item.quantity === 0)) ? Math.max(1, ...items.map((item) => convertQuantity(item.quantity, item.unit, unit, units) ?? 0)) : 0
+    if (quantity > 0) suggestions.push({ name: items[0].name, category: items[0].category, quantity, unit, source: 'pantry' })
   }
   return suggestions
 }
 
-export function mergeShoppingSuggestions(items: ShoppingItem[], suggestions: ShoppingSuggestion[]): ShoppingItem[] {
+export function mergeShoppingSuggestions(items: ShoppingItem[], suggestions: ShoppingSuggestion[], units?: AdminUnit[]): ShoppingItem[] {
   const merged = items.map((item) => ({ ...item, sources: [...item.sources] }))
   for (const suggestion of suggestions) {
-    const key = shoppingKey(suggestion.name, suggestion.unit)
-    const existing = merged.find((item) => shoppingKey(item.name, item.unit) === key)
+    const key = shoppingKey(suggestion.name, suggestion.unit, units)
+    const existing = merged.find((item) => shoppingKey(item.name, item.unit, units) === key)
     if (existing) {
-      existing.quantity = Math.max(existing.quantity, suggestion.quantity)
+      const converted = convertQuantity(suggestion.quantity, suggestion.unit, existing.unit, units)
+      if (converted !== null) existing.quantity = Math.max(existing.quantity, converted)
       if (existing.category === 'Otros' && suggestion.category !== 'Otros') existing.category = suggestion.category
       if (!existing.sources.includes(suggestion.source)) existing.sources.push(suggestion.source)
     } else {
