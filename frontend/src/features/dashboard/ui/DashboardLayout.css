@@ -81,6 +81,20 @@
   min-width: 0;
 }
 
+.dashboard-highlight-grid [aria-labelledby="cook-today-title"] .dashboard-recommendation-copy {
+  align-self: start;
+}
+
+.dashboard-highlight-grid [aria-labelledby="cook-today-title"] .dashboard-suggestion-art {
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 1;
+  align-self: start;
+  margin-top: clamp(20px, 3vw, 32px);
+  border-radius: 12px;
+}
+
 @container (max-width: 760px) {
   .dashboard-highlight-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -94,6 +108,12 @@
 
   .dashboard-highlight-grid .dashboard-recommendation-featured {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-highlight-grid [aria-labelledby="cook-today-title"] .dashboard-suggestion-art {
+    width: 100%;
+    aspect-ratio: 16 / 7;
+    margin-top: 0;
   }
 }
 
