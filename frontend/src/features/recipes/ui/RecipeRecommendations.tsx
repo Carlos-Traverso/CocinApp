@@ -23,7 +23,7 @@ function RecommendationArtwork({ recipe, size }: { recipe: Recipe; size: 'hero' 
 function DietaryInfo({ recipe }: { recipe: Recipe }) {
   return <div className="recipe-dietary-info">
     <span className="recipe-dietary-tags">{recipe.dietaryTags?.length ? recipe.dietaryTags.join(' · ') : 'Sin etiquetas dietéticas declaradas'}</span>
-    <span className="recipe-cross-contamination-note">Las etiquetas describen los ingredientes declarados; verificá rótulos y contaminación cruzada.</span>
+    <span className="recipe-recommendation-ingredients"><strong>Ingredientes:</strong> {recipe.ingredients.map((ingredient) => ingredient.name).join(' · ')}</span>
   </div>
 }
 

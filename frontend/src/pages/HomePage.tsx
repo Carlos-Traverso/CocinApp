@@ -21,6 +21,10 @@ function DietaryTags({ recipe }: { recipe: Recipe }) {
   return <p className="recipe-dietary-tags">{recipe.dietaryTags?.length ? recipe.dietaryTags.join(' · ') : 'Sin etiquetas dietéticas declaradas'}</p>
 }
 
+function RecommendationIngredients({ recipe }: { recipe: Recipe }) {
+  return <p className="dashboard-recommendation-ingredients"><strong>Ingredientes:</strong> {recipe.ingredients.map((ingredient) => ingredient.name).join(' · ')}</p>
+}
+
 export function HomePage() {
   const { notify } = useNotifications()
   const [data, setData] = useState<DashboardHomeData | null>(null)
@@ -48,7 +52,7 @@ export function HomePage() {
         <TodayPlanSection activeRecipeIds={new Set(data.recipes.map((recipe) => recipe.id))} knownRecipes={data.knownRecipes} plannedMeals={plannedMeals} />
         <section aria-labelledby="time-title" className="dashboard-panel-section dashboard-time-section">
           <div className="section-header"><div><p className="dashboard-recommendation-kicker"><SunMedium aria-hidden="true" size={17} /> {timeSuggestion.meal} detectado</p><h2 id="time-title">Recomendación según la hora</h2></div></div>
-          {timeSuggestion.recipe ? <article className="dashboard-recommendation dashboard-recommendation-featured"><div className="dashboard-recommendation-copy"><h3>{timeSuggestion.recipe.name}</h3><DietaryTags recipe={timeSuggestion.recipe} /><p>{timeSuggestion.reason}</p><div className="dashboard-recommendation-meta"><span><Clock3 aria-hidden="true" size={15} /> {timeSuggestion.recipe.minutes} min</span><span>{timeSuggestion.recipe.difficulty}</span></div><Link className="button button-dark" to={`/recipes/${timeSuggestion.recipe.id}`}>Ver receta</Link></div><Artwork recipe={timeSuggestion.recipe} /></article> : <div className="recipe-rail-empty"><span>No hay recetas activas para recomendar.</span></div>}
+          {timeSuggestion.recipe ? <article className="dashboard-recommendation dashboard-recommendation-featured"><div className="dashboard-recommendation-copy"><h3>{timeSuggestion.recipe.name}</h3><DietaryTags recipe={timeSuggestion.recipe} /><RecommendationIngredients recipe={timeSuggestion.recipe} /><p>{timeSuggestion.reason}</p><div className="dashboard-recommendation-meta"><span><Clock3 aria-hidden="true" size={15} /> {timeSuggestion.recipe.minutes} min</span><span>{timeSuggestion.recipe.difficulty}</span></div><Link className="button button-dark" to={`/recipes/${timeSuggestion.recipe.id}`}>Ver receta</Link></div><Artwork recipe={timeSuggestion.recipe} /></article> : <div className="recipe-rail-empty"><span>No hay recetas activas para recomendar.</span></div>}
         </section>
       </div>
     </div>
@@ -59,7 +63,7 @@ export function HomePage() {
 
     <section aria-labelledby="cook-today-title" className="dashboard-panel-section">
       <div className="section-header"><div><p className="dashboard-recommendation-kicker"><PackageCheck aria-hidden="true" size={17} /> Según tu despensa</p><h2 id="cook-today-title">Qué podés cocinar hoy</h2></div></div>
-      {suggestions.length === 0 ? <div className="recipe-rail-empty"><PackageCheck aria-hidden="true" size={20} /><span>No hay recetas completas o con hasta dos ingredientes faltantes.</span></div> : <div className="dashboard-suggestion-list">{suggestions.map((suggestion) => <article className="dashboard-recommendation" key={suggestion.recipe.id}><div className="dashboard-recommendation-copy"><h3>{suggestion.recipe.name}</h3><DietaryTags recipe={suggestion.recipe} /><p>{suggestion.reason}</p><div className="dashboard-recommendation-meta"><span>{suggestion.availableCount} disponibles</span><span>{suggestion.missingNames.length} faltantes</span><span><Clock3 aria-hidden="true" size={15} /> {suggestion.recipe.minutes} min</span></div><div className="dashboard-recommendation-actions"><Link className="button button-quiet" to={`/recipes/${suggestion.recipe.id}`}>Ver detalle</Link><Link className="button button-primary" to={`/recipes/${suggestion.recipe.id}/cook`}>Cocinar</Link></div></div><Artwork recipe={suggestion.recipe} /></article>)}</div>}
+      {suggestions.length === 0 ? <div className="recipe-rail-empty"><PackageCheck aria-hidden="true" size={20} /><span>No hay recetas completas o con hasta dos ingredientes faltantes.</span></div> : <div className="dashboard-suggestion-list">{suggestions.map((suggestion) => <article className="dashboard-recommendation" key={suggestion.recipe.id}><div className="dashboard-recommendation-copy"><h3>{suggestion.recipe.name}</h3><DietaryTags recipe={suggestion.recipe} /><RecommendationIngredients recipe={suggestion.recipe} /><p>{suggestion.reason}</p><div className="dashboard-recommendation-meta"><span>{suggestion.availableCount} disponibles</span><span>{suggestion.missingNames.length} faltantes</span><span><Clock3 aria-hidden="true" size={15} /> {suggestion.recipe.minutes} min</span></div><div className="dashboard-recommendation-actions"><Link className="button button-quiet" to={`/recipes/${suggestion.recipe.id}`}>Ver detalle</Link><Link className="button button-primary" to={`/recipes/${suggestion.recipe.id}/cook`}>Cocinar</Link></div></div><Artwork recipe={suggestion.recipe} /></article>)}</div>}
     </section>
 
     <section aria-labelledby="recent-title" className="dashboard-panel-section">

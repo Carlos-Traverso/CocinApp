@@ -469,7 +469,7 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
 .dashboard-suggestion-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .dashboard-recent-list { display: grid; gap: 10px; }
 .dashboard-panel-section .dashboard-recommendation { min-width: 0; }
-.dashboard-panel-section .dashboard-recommendation h3 { margin: 0; font-size: 22px; }
+.dashboard-panel-section .dashboard-recommendation h3 { margin: 0 0 9px; font-size: 22px; line-height: 1.25; overflow-wrap: anywhere; }
 @media (max-width: 1100px) { .dashboard-suggestion-list, .dashboard-today-grid { grid-template-columns: 1fr; } }
 @media (max-width: 620px) { .dashboard-today-card { grid-template-columns: 110px minmax(0, 1fr); } .dashboard-today-empty { grid-template-columns: auto minmax(0, 1fr); } .dashboard-today-empty .button { grid-column: 1 / -1; width: 100%; } }
 @media (max-width: 430px) { .dashboard-today-card { grid-template-columns: 1fr; } .dashboard-today-image { height: 155px; min-height: 0; } }
@@ -1025,9 +1025,11 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
 .recipe-dietary-tags { color: var(--green-dark); font-size: 11px; font-weight: 700; overflow-wrap: anywhere; }
 .recipe-cross-contamination-note { border: 1px solid #eadbbd; border-radius: 6px; background: #fff9eb; padding: 10px 12px; color: #705523; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .recipe-dietary-info .recipe-cross-contamination-note { margin: 0; border: 0; background: transparent; padding: 0; font-size: 10px; }
+.recipe-recommendation-ingredients, .dashboard-recommendation-ingredients { margin: 0 0 12px; color: #5e685f; font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+.recipe-recommendation-ingredients strong, .dashboard-recommendation-ingredients strong { color: var(--green-dark); }
 .recipe-card .recipe-dietary-tags { margin: 6px 0; }
 .recipe-detail-header, .recipe-card, .dashboard-panel { min-width: 0; }
-.dashboard-recommendation-copy > .recipe-dietary-tags { margin: -8px 0 12px; color: var(--green-dark); font-size: 11px; }
+.dashboard-recommendation-copy > .recipe-dietary-tags { margin: 0 0 7px; color: var(--green-dark); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
 .history-copy .recipe-dietary-tags { margin: 4px 0; font-size: 10px; }
 @media (max-width: 620px) {
   .recipe-detail-header { grid-template-columns: minmax(0, 1fr); }
