@@ -14,7 +14,7 @@ export function CategoriesTab() {
   const { data: snapshot, knownRecipes, loading, error, setError, reload } = useAdminCatalog()
   const data = snapshot ?? { categories: [], units: [], ingredients: [], recipes: [] }
   const categories = data.categories
-  const [editor, setEditor] = useState<{ id?: string; name: string; active: boolean } | null>(null)
+  const [editor, setEditor] = useState<{ id?: string; name: string; active: boolean | null } | null>(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const debouncedSearch = useDebouncedSearch(search)
@@ -25,18 +25,19 @@ export function CategoriesTab() {
     e.preventDefault()
     if (!editor) return
     const invalidField = e.currentTarget.querySelector<HTMLElement>(':invalid')
-    if (invalidField || !editor.name.trim()) {
-      setError('Ingresá un nombre válido para la categoría.')
+    if (invalidField || !editor.name.trim() || editor.active === null) {
+      setError(!editor.name.trim() ? 'Ingresá un nombre válido para la categoría.' : 'Seleccioná un estado para la categoría.')
       ;(invalidField ?? e.currentTarget.querySelector<HTMLElement>('input'))?.focus()
       return
     }
+    const active = editor.active
     try {
       setPending(true)
       setError('')
       if (editor.id) {
-        await adminRepository.updateCategory(editor.id, editor.name.trim(), editor.active)
+        await adminRepository.updateCategory(editor.id, editor.name.trim(), active)
       } else {
-        await adminRepository.createCategory(editor.name.trim(), editor.active)
+        await adminRepository.createCategory(editor.name.trim(), active)
       }
       setEditor(null)
       setError('')
@@ -111,7 +112,7 @@ export function CategoriesTab() {
     <div className="panel">
       <div className="section-header">
         <div><h2>Categorías de ingredientes</h2><p className="panel-intro"><SearchFeedback resultCount={visibleCategories.length} status={debouncedSearch.status} /> · {categories.length} categorías totales</p></div>
-        <button className="button button-primary" disabled={loading || pending} onClick={() => { setEditor({ name: '', active: true }); setError('') }} type="button">
+        <button className="button button-primary" disabled={loading || pending} onClick={() => { setEditor({ name: '', active: null }); setError('') }} type="button">
           <Plus size={16} /> Nueva categoría
         </button>
       </div>
@@ -160,7 +161,7 @@ export function CategoriesTab() {
                 onChange={(e) => setEditor({ ...editor, name: e.target.value })}
               />
             </label>
-            <label className="field"><span>Estado</span><select onChange={(event) => setEditor({ ...editor, active: event.currentTarget.value === 'active' })} value={editor.active ? 'active' : 'inactive'}><option value="active">Activo · disponible para usar</option><option value="inactive">Inactivo · no disponible para nuevos usos</option></select></label>
+            <label className="field"><span>Estado</span><select required onChange={(event) => setEditor({ ...editor, active: event.currentTarget.value ? event.currentTarget.value === 'active' : null })} value={editor.active === null ? '' : editor.active ? 'active' : 'inactive'}><option value="">Seleccionar…</option><option value="active">Activo · disponible para usar</option><option value="inactive">Inactivo · no disponible para nuevos usos</option></select></label>
             {error && <p className="form-message error" role="alert">{error}</p>}
             <div className="pantry-dialog-actions">
               <button className="button button-quiet" type="button" onClick={() => setEditor(null)}>Cancelar</button>

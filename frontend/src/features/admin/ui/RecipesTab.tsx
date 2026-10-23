@@ -20,9 +20,9 @@ const recipeColors = [
 ] as const satisfies readonly { value: AdminRecipe['color']; label: string }[]
 
 const emptyRecipe = (): Partial<AdminRecipe> => ({
-  title: '', author: 'CocinAPP', description: '', category: 'Almuerzo', minutes: 30,
-  portions: 2, difficulty: 'Fácil', calories: 0, mealShift: 'Almuerzo', mealShifts: ['Almuerzo'], dietaryTags: [],
-  ingredients: [], steps: [''], stepMeta: [{}], featured: false, status: 'draft', active: true, symbol: '🍲', color: 'green',
+  title: '', author: 'CocinAPP', description: '', minutes: 30,
+  portions: 2, calories: 0, dietaryTags: [],
+  ingredients: [], steps: [''], stepMeta: [{}], featured: false,
   image: '', imageAlt: '',
 })
 
@@ -80,18 +80,28 @@ export function RecipesTab() {
       invalidField.focus()
       return
     }
+    if (!editor.mealShifts?.length) {
+      setError('Elegí al menos un turno de comida para la receta.')
+      event.currentTarget.querySelector<HTMLElement>('.admin-meal-shifts')?.focus()
+      return
+    }
+    if (!editor.difficulty || !editor.status || editor.active === undefined || !editor.color) {
+      setError('Elegí una dificultad, disponibilidad, estado y color antes de guardar la receta.')
+      return
+    }
+    const mealShifts = editor.mealShifts
     try {
       setPending(true)
       setError('')
       const payload: Omit<AdminRecipe, 'id' | 'isDeleted'> = {
         title: editor.title ?? '', author: editor.author?.trim() || 'CocinAPP',
-        description: editor.description?.trim() ?? '', category: editor.mealShifts?.[0] ?? 'Almuerzo',
+        description: editor.description?.trim() ?? '', category: mealShifts[0],
         minutes: editor.minutes ?? 0, portions: editor.portions ?? 0,
-        difficulty: editor.difficulty ?? 'Fácil', calories: editor.calories ?? 0,
-        mealShift: editor.mealShifts?.[0] ?? '', mealShifts: editor.mealShifts ?? [], dietaryTags: editor.dietaryTags ?? [], featured: editor.featured ?? false,
+        difficulty: editor.difficulty, calories: editor.calories ?? 0,
+        mealShift: mealShifts[0], mealShifts, dietaryTags: editor.dietaryTags ?? [], featured: editor.featured ?? false,
         ingredients: editor.ingredients ?? [], steps: editor.steps ?? [], stepMeta: editor.stepMeta ?? [],
-        status: editor.status ?? 'draft', active: editor.active ?? true, symbol: editor.symbol?.trim() || editor.title?.trim().slice(0, 1).toLocaleUpperCase('es') || 'R',
-        color: editor.color ?? 'green', image: editor.image?.trim() || undefined, imageAlt: editor.imageAlt?.trim() || undefined,
+        status: editor.status, active: editor.active, symbol: editor.symbol?.trim() || editor.title?.trim().slice(0, 1).toLocaleUpperCase('es') || 'R',
+        color: editor.color, image: editor.image?.trim() || undefined, imageAlt: editor.imageAlt?.trim() || undefined,
         preparationMinutes: editor.preparationMinutes, cookingMinutes: editor.cookingMinutes,
       }
       if (editor.id) await adminRepository.updateRecipe(editor.id, payload)
@@ -209,23 +219,22 @@ export function RecipesTab() {
           <label className="field"><span>Tiempo total (minutos)</span><input min="1" onChange={(event) => setEditor({ ...editor, minutes: event.currentTarget.valueAsNumber })} required type="number" value={editor.minutes ?? ''} /></label>
           <label className="field"><span>Preparación (minutos)</span><input min="0" onChange={(event) => setEditor({ ...editor, preparationMinutes: event.currentTarget.value ? event.currentTarget.valueAsNumber : undefined })} type="number" value={editor.preparationMinutes ?? ''} /></label>
           <label className="field"><span>Cocción (minutos)</span><input min="0" onChange={(event) => setEditor({ ...editor, cookingMinutes: event.currentTarget.value ? event.currentTarget.valueAsNumber : undefined })} type="number" value={editor.cookingMinutes ?? ''} /></label>
-          <label className="field"><span>Dificultad</span><select onChange={(event) => setEditor({ ...editor, difficulty: event.currentTarget.value as AdminRecipe['difficulty'] })} value={editor.difficulty ?? 'Fácil'}><option>Fácil</option><option>Intermedia</option><option>Avanzada</option></select></label>
+          <label className="field"><span>Dificultad</span><select onChange={(event) => setEditor({ ...editor, difficulty: event.currentTarget.value ? event.currentTarget.value as AdminRecipe['difficulty'] : undefined })} required value={editor.difficulty ?? ''}><option value="">Seleccionar…</option><option>Fácil</option><option>Intermedia</option><option>Avanzada</option></select></label>
           <label className="field"><span>Calorías de referencia por porción</span><input min="0" step="any" onChange={(event) => setEditor({ ...editor, calories: event.currentTarget.valueAsNumber })} required type="number" value={editor.calories ?? ''} /></label>
-          <fieldset className="admin-meal-shifts"><legend>Turnos de comida</legend><p className="field-help">Elegí uno o más turnos donde se puede encontrar esta receta.</p><div>{(['Desayuno', 'Almuerzo', 'Merienda', 'Cena'] as const).map((shift) => <label key={shift}><input checked={(editor.mealShifts ?? [editor.mealShift ?? 'Almuerzo']).includes(shift)} onChange={(event) => { const current = editor.mealShifts ?? [editor.mealShift ?? 'Almuerzo']; const next = event.currentTarget.checked ? [...current, shift] : current.filter((item) => item !== shift); setEditor({ ...editor, mealShifts: next, mealShift: next[0], category: next[0] }) }} type="checkbox" />{shift}</label>)}</div></fieldset>
+          <fieldset className="admin-meal-shifts" tabIndex={-1}><legend>Turnos de comida</legend><p className="field-help">Elegí uno o más turnos donde se puede encontrar esta receta.</p><div>{(['Desayuno', 'Almuerzo', 'Merienda', 'Cena'] as const).map((shift) => <label key={shift}><input checked={(editor.mealShifts ?? (editor.mealShift ? [editor.mealShift] : [])).includes(shift)} onChange={(event) => { const current = editor.mealShifts ?? (editor.mealShift ? [editor.mealShift] : []); const next = event.currentTarget.checked ? [...current, shift] : current.filter((item) => item !== shift); setEditor({ ...editor, mealShifts: next, mealShift: next[0], category: next[0] }) }} type="checkbox" />{shift}</label>)}</div></fieldset>
         </div>
         <label className="field"><span>Descripción</span><textarea maxLength={280} onChange={(event) => setEditor({ ...editor, description: event.currentTarget.value })} value={editor.description ?? ''} /></label>
         <div className="shopping-form-grid"><label className="field"><span>Ruta local de la imagen</span><input onChange={(event) => setEditor({ ...editor, image: event.currentTarget.value })} placeholder="/assets/recipes/mi-receta.webp" value={editor.image ?? ''} /><small className="field-help">Guardá el archivo en public/assets/recipes. Se aceptan AVIF, WebP, PNG y JPEG.</small></label><label className="field"><span>Texto alternativo</span><input maxLength={180} onChange={(event) => setEditor({ ...editor, imageAlt: event.currentTarget.value })} placeholder="Plato terminado de…" value={editor.imageAlt ?? ''} /></label></div>
         <section aria-labelledby="admin-recipe-visual-title" className="admin-recipe-visual-section">
-          <div className={`admin-recipe-preview ${editor.color ?? 'green'}`}><RecipeImage className="admin-recipe-preview-art" recipe={{ name: editor.title?.trim() || 'Nombre de la receta', image: editor.image, imageAlt: editor.imageAlt, symbol: editor.symbol?.trim() || editor.title?.trim().slice(0, 1).toLocaleUpperCase('es') || 'R', color: editor.color ?? 'green' }} /><div><small>Vista previa en el catálogo</small><strong>{editor.title?.trim() || 'Nombre de la receta'}</strong><em>{(editor.mealShifts ?? [editor.mealShift ?? 'Almuerzo']).join(', ')} · {editor.minutes ?? 0} min</em></div></div>
+          <div className={`admin-recipe-preview ${editor.color ?? 'green'}`}><RecipeImage className="admin-recipe-preview-art" recipe={{ name: editor.title?.trim() || 'Nombre de la receta', image: editor.image, imageAlt: editor.imageAlt, symbol: editor.symbol?.trim() || editor.title?.trim().slice(0, 1).toLocaleUpperCase('es') || 'R', color: editor.color ?? 'green' }} /><div><small>Vista previa en el catálogo</small><strong>{editor.title?.trim() || 'Nombre de la receta'}</strong><em>{(editor.mealShifts ?? (editor.mealShift ? [editor.mealShift] : [])).join(', ') || 'Sin turno seleccionado'} · {editor.minutes ?? 0} min</em></div></div>
           <div className="admin-recipe-visual-controls"><h3 id="admin-recipe-visual-title">Identidad visual</h3><p className="field-help">La fotografía se usa en el catálogo. El símbolo y el color quedan como respaldo si el archivo no está disponible.</p>
             <div aria-label="Símbolos sugeridos" className="admin-symbol-picker">{recipeSymbols.map((symbol) => <button aria-label={`Usar ${symbol} como símbolo`} aria-pressed={editor.symbol === symbol} key={symbol} onClick={() => setEditor({ ...editor, symbol })} type="button">{symbol}</button>)}</div>
-            <label className="field"><span>Símbolo o emoji personalizado</span><input maxLength={4} onChange={(event) => setEditor({ ...editor, symbol: event.currentTarget.value })} value={editor.symbol ?? ''} /></label>
-            <fieldset className="admin-color-picker"><legend>Color de la tarjeta</legend>{recipeColors.map((color) => <label key={color.value}><input checked={editor.color === color.value} name="recipe-color" onChange={() => setEditor({ ...editor, color: color.value })} type="radio" /><span className={color.value} aria-hidden="true" />{color.label}</label>)}</fieldset>
+            <fieldset className="admin-color-picker"><legend>Color de la tarjeta</legend>{recipeColors.map((color, index) => <label key={color.value}><input checked={editor.color === color.value} name="recipe-color" onChange={() => setEditor({ ...editor, color: color.value })} required={index === 0} type="radio" /><span className={color.value} aria-hidden="true" />{color.label}</label>)}</fieldset>
           </div>
         </section>
         <label className="field"><span>Etiquetas dietéticas (separadas por coma)</span><input onChange={(event) => setEditor({ ...editor, dietaryTags: event.currentTarget.value.split(',').map((tag) => tag.trim()).filter(Boolean) })} placeholder="Vegana, Sin TACC, Vegetariana" value={(editor.dietaryTags ?? []).join(', ')} /></label>
-        <label className="field"><span>Disponibilidad en el catálogo</span><select onChange={(event) => setEditor({ ...editor, status: event.currentTarget.value as AdminRecipe['status'] })} value={editor.status ?? 'draft'}><option value="draft">Borrador: no visible para usuarios</option><option value="published">Publicada</option></select></label>
-        <label className="field"><span>Estado</span><select onChange={(event) => setEditor({ ...editor, active: event.currentTarget.value === 'active' })} value={editor.active === false ? 'inactive' : 'active'}><option value="active">Activo · disponible para usuarios si está publicada</option><option value="inactive">Inactivo · no disponible para nuevas acciones</option></select></label>
+        <label className="field"><span>Disponibilidad en el catálogo</span><select onChange={(event) => setEditor({ ...editor, status: event.currentTarget.value ? event.currentTarget.value as AdminRecipe['status'] : undefined })} required value={editor.status ?? ''}><option value="">Seleccionar…</option><option value="draft">Borrador: no visible para usuarios</option><option value="published">Publicada</option></select></label>
+        <label className="field"><span>Estado</span><select onChange={(event) => setEditor({ ...editor, active: event.currentTarget.value ? event.currentTarget.value === 'active' : undefined })} required value={editor.active === undefined ? '' : editor.active ? 'active' : 'inactive'}><option value="">Seleccionar…</option><option value="active">Activo · disponible para usuarios si está publicada</option><option value="inactive">Inactivo · no disponible para nuevas acciones</option></select></label>
         <label className="recipe-pantry-toggle"><input checked={editor.featured ?? false} onChange={(event) => setEditor({ ...editor, featured: event.currentTarget.checked })} type="checkbox" /> Destacar en Explorar recetas</label>
 
         <section className="admin-recipe-section" aria-labelledby="admin-ingredients-title"><div className="section-header"><h3 id="admin-ingredients-title">Ingredientes</h3><button className="button button-quiet" onClick={() => setEditor({ ...editor, ingredients: [...(editor.ingredients ?? []), { ingredientId: '', quantity: 1, unitId: '' }] })} type="button"><Plus size={15} /> Agregar ingrediente</button></div>
@@ -234,9 +243,9 @@ export function RecipesTab() {
             const baseUnit = data.units.find((unit) => unit.id === ingredient?.baseUnitId && !unit.isDeleted)
             const compatibleUnits = baseUnit ? data.units.filter((unit) => !unit.isDeleted && unit.dimension === baseUnit.dimension && (unit.active || unit.id === entry.unitId)) : []
             return <div className="admin-recipe-row" key={`${index}-${entry.ingredientId}`}>
-              <label className="field"><span>Ingrediente {index + 1}</span><select onChange={(event) => { const selected = availableIngredients.find((item) => item.id === event.currentTarget.value); updateIngredient(index, { ingredientId: event.currentTarget.value, unitId: selected?.baseUnitId ?? '' }) }} required value={entry.ingredientId}><option value="">Seleccioná ingrediente</option>{availableIngredients.map((item) => <option key={item.id} value={item.id}>{item.name}{item.active ? '' : ' (Inactivo)'}</option>)}</select></label>
+              <label className="field"><span>Ingrediente {index + 1}</span><select onChange={(event) => updateIngredient(index, { ingredientId: event.currentTarget.value, unitId: '' })} required value={entry.ingredientId}><option value="">Seleccionar…</option>{availableIngredients.map((item) => <option key={item.id} value={item.id}>{item.name}{item.active ? '' : ' (Inactivo)'}</option>)}</select></label>
               <label className="field"><span>Cantidad</span><input min="0.000001" onChange={(event) => updateIngredient(index, { quantity: event.currentTarget.valueAsNumber })} required step="any" type="number" value={entry.quantity ?? ''} /></label>
-              <label className="field"><span>Unidad</span><select onChange={(event) => updateIngredient(index, { unitId: event.currentTarget.value })} required value={entry.unitId}><option value="">Unidad compatible</option>{compatibleUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.name} ({unit.abbreviation})</option>)}</select></label>
+              <label className="field"><span>Unidad</span><select onChange={(event) => updateIngredient(index, { unitId: event.currentTarget.value })} required value={entry.unitId}><option value="">Seleccionar…</option>{compatibleUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.name} ({unit.abbreviation})</option>)}</select></label>
               <div className="admin-recipe-row-actions"><button aria-label={`Mover ingrediente ${index + 1} arriba`} className="pantry-icon-button" disabled={index === 0} onClick={() => setEditor({ ...editor, ingredients: moveItem(editor.ingredients ?? [], index, -1) })} type="button"><ArrowUp size={17} /></button><button aria-label={`Mover ingrediente ${index + 1} abajo`} className="pantry-icon-button" disabled={index === (editor.ingredients?.length ?? 0) - 1} onClick={() => setEditor({ ...editor, ingredients: moveItem(editor.ingredients ?? [], index, 1) })} type="button"><ArrowDown size={17} /></button><button aria-label={`Quitar ingrediente ${index + 1}`} className="pantry-icon-button" onClick={() => setEditor({ ...editor, ingredients: (editor.ingredients ?? []).filter((_, itemIndex) => itemIndex !== index) })} type="button"><X size={17} /></button></div>
             </div>
           })}
