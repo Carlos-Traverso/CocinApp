@@ -29,11 +29,11 @@ Recipes can be assigned to more than one meal shift. The recipe catalog filters 
 
 ## Transient notices and confirmations
 
-Use the app-wide `NotificationProvider` and the `useNotifications()` hook from `src/shared/notifications/NotificationProvider.tsx` for transient modal notices. Choose `success` for completed actions, `info` for neutral guidance, `warning` for caution, and `error` for failed actions. Each request includes a short `title` and `message`.
+Use the app-wide `NotificationProvider` and the `useNotifications()` hook from `src/shared/notifications/NotificationProvider.tsx` for modal notices. Avoid interrupting routine successful actions: a `success` request without `cancelLabel` resolves immediately to `true` and does not open a modal. Use `info` only for information the user needs to act on or understand an unavailable option; use `error` for failures that need attention. Each displayed request includes a short `title` and `message`.
 
-For a confirmation, provide explicit `confirmLabel` and `cancelLabel`, then await `notify(...)`. Continue the action only when it resolves to `true`; cancellation, Escape, or dismissal resolves to `false`.
+For a confirmation, provide explicit `confirmLabel` and `cancelLabel`, then await `notify(...)`. These requests remain decisions even when their type is `success`; continue the action only when it resolves to `true`. Cancellation, Escape, or dismissal resolves to `false`. Preserve confirmations for destructive actions.
 
-When validating a form inside an already-open native dialog, show the field error inline and focus the invalid field. Do not open another notice dialog over it, which would stack modal dialogs.
+Show routine form validation errors inline beside the relevant field or form, associate field errors with their controls using `aria-describedby`, and focus the first invalid field when submission fails. Do not use a modal notice for these validation errors. This also avoids stacking a notice dialog over an already-open native dialog.
 
 ## Demo limitations
 

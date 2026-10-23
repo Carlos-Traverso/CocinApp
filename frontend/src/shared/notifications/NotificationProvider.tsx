@@ -54,6 +54,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const notify = useCallback((request: NotificationRequest) => {
+    // Routine success notices are informational; they must not interrupt the
+    // action that just completed or replace a pending decision/error dialog.
+    if (request.type === 'success' && !request.cancelLabel) {
+      return Promise.resolve(true)
+    }
+
     return new Promise<boolean>((resolve) => {
       const pending: PendingNotification = {
         id: ++nextIdRef.current,
@@ -100,6 +106,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       setActive(pending)
     })
   }, [activateNext])
+
+  useEffect(() => {
+    const handlePantrySyncError = () => {
+      void notify({ type: 'error', title: 'No se pudo guardar la despensa', message: 'Un cambio local no llegó a Supabase. Revisá la conexión y volvé a cargar la despensa.' })
+    }
+    window.addEventListener('cocinapp:pantry-sync-error', handlePantrySyncError)
+    return () => window.removeEventListener('cocinapp:pantry-sync-error', handlePantrySyncError)
+  }, [notify])
 
   const finish = useCallback((id: number, confirmed: boolean) => {
     const current = activeRef.current

@@ -152,7 +152,6 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
 
   async function leave() {
     if (persistingProgress || progressWriteRef.current) return
-    if ((completedCount > 0 || session!.stepIndex > 0) && !await notify({ type: 'warning', title: 'Salir del modo cocina', message: 'El progreso quedará guardado. ¿Querés salir?', confirmLabel: 'Salir', cancelLabel: 'Seguir cocinando' })) return
     if (await update({ ...session!, timer: undefined })) navigate(`/recipes/${recipe!.id}`)
   }
 

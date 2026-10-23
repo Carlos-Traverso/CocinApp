@@ -1,5 +1,5 @@
 import { PencilLine, Save, LogOut } from 'lucide-react'
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { authRepository } from '../features/auth/data/AuthRepository'
 import { profileRepository } from '../features/profile/data/ProfileRepository'
@@ -21,6 +21,8 @@ export function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [validationError, setValidationError] = useState('')
+  const invalidFieldRef = useRef<HTMLInputElement | HTMLSelectElement | null>(null)
   const { notify } = useNotifications()
   useEffect(() => { void profileRepository.getProfile().then(setProfile).catch(() => { void notify({ type: 'error', title: 'No se pudo cargar el perfil', message: 'No se pudo cargar el perfil.' }) }).finally(() => setLoading(false)) }, [notify])
   const age = profile.birthDate ? calculateAge(profile.birthDate) : undefined
@@ -36,21 +38,43 @@ export function ProfilePage() {
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = event.currentTarget
+    clearValidationError()
     if (!form.checkValidity()) {
       const invalidField = form.querySelector<HTMLInputElement | HTMLSelectElement>(':invalid')
       invalidField?.focus()
-      await notify({ type: 'warning', title: 'Revisá los datos del perfil', message: invalidField ? profileFieldValidationMessage(invalidField) : 'Revisá los datos ingresados.' })
+      showValidationError(invalidField, invalidField ? profileFieldValidationMessage(invalidField) : 'Revisá los datos ingresados.')
       return
     }
     if (!profileIsComplete(profile) || age === undefined || age < 18 || age > 100) {
-      form.querySelector<HTMLInputElement>('[name="birthDate"]')?.focus()
-      await notify({ type: 'warning', title: 'Revisá los datos del perfil', message: 'Completá los datos requeridos con valores válidos antes de guardar el perfil.' })
+      const field = form.querySelector<HTMLInputElement>('[name="birthDate"]') ?? null
+      field?.focus()
+      showValidationError(field, 'Completá los datos requeridos con valores válidos antes de guardar el perfil.')
       return
     }
     setSaving(true)
     try { await profileRepository.saveProfile(profile); await notify({ type: 'success', title: 'Perfil guardado', message: 'Tus datos y preferencias se guardaron correctamente.' }) }
     catch { await notify({ type: 'error', title: 'No se pudo guardar el perfil', message: 'Revisá el espacio disponible del navegador e intentá de nuevo.' }) }
     finally { setSaving(false) }
+  }
+
+  function showValidationError(field: HTMLInputElement | HTMLSelectElement | null, message: string) {
+    invalidFieldRef.current = field
+    if (field) {
+      const ids = field.getAttribute('aria-describedby')?.split(/\s+/).filter(Boolean) ?? []
+      if (!ids.includes('profile-validation-error')) field.setAttribute('aria-describedby', [...ids, 'profile-validation-error'].join(' '))
+    }
+    setValidationError(message)
+  }
+
+  function clearValidationError() {
+    const field = invalidFieldRef.current
+    if (field) {
+      const ids = field.getAttribute('aria-describedby')?.split(/\s+/).filter((id) => id && id !== 'profile-validation-error') ?? []
+      if (ids.length) field.setAttribute('aria-describedby', ids.join(' '))
+      else field.removeAttribute('aria-describedby')
+    }
+    invalidFieldRef.current = null
+    setValidationError('')
   }
 
   return <div className="page profile-page">
@@ -63,7 +87,8 @@ export function ProfilePage() {
       </div>
     </header>
     <div className="profile-layout">
-      <form className="profile-form surface" noValidate onSubmit={save}>
+      <form className="profile-form surface" noValidate onInput={clearValidationError} onChange={clearValidationError} onSubmit={save}>
+        {validationError && <p className="form-message error" id="profile-validation-error" role="alert">{validationError}</p>}
         <div className="section-heading"><div><h2>Datos y objetivos</h2><p>Guardados solo en este navegador durante esta etapa.</p></div></div>
         {loading ? <p role="status">Cargando perfil…</p> : <><ProfileFields profile={profile} showEmail onChange={(changes) => { setProfile({ ...profile, ...changes }) }} />
         <p className="medical-note compact">Las etiquetas dietéticas son informativas y no garantizan ausencia de contaminación cruzada.</p></>}
