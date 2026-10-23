@@ -1,3 +1,43 @@
+.shopping-ingredient-picker {
+  position: relative;
+}
+
+.shopping-ingredient-dropdown {
+  position: absolute;
+  inset: 100% 0 auto;
+  z-index: 2;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid #d5dfd5;
+  border-radius: 8px;
+  background: white;
+  color: #243b2b;
+  box-shadow: 0 6px 18px #0002;
+}
+
+.shopping-ingredient-dropdown ul {
+  list-style: none;
+  padding: 4px;
+  margin: 0;
+}
+
+.shopping-ingredient-dropdown [role="option"] {
+  padding: 9px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.shopping-ingredient-dropdown [role="option"]:hover,
+.shopping-ingredient-dropdown [role="option"].active {
+  background: #edf4ed;
+}
+
+.shopping-picker-help {
+  margin: 4px 12px 10px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .shopping-page .shopping-share-actions {
   align-items: center;
   gap: 8px;
