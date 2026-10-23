@@ -59,7 +59,11 @@ function isSession(value: unknown): value is SessionInfo {
   return typeof session.token === 'string' && session.token.length > 0
     && (session.role === 'USER' || session.role === 'ADMIN')
     && typeof session.email === 'string' && typeof session.name === 'string'
-    && (session.role !== 'ADMIN' || session.email === demoAdminEmail)
+    && (session.role !== 'ADMIN' || session.email === demoAdminEmail || session.token.startsWith('supabase-user:'))
+}
+
+function isSupabaseSession(session: SessionInfo): boolean {
+  return session.token.startsWith('supabase-user:')
 }
 
 export function getSession(): SessionInfo | null {
@@ -71,7 +75,7 @@ export function getSession(): SessionInfo | null {
       localStorage.removeItem(authKey)
       return null
     }
-    if (value.role === 'USER' && !getAccounts().some((account) => account.email === value.email && account.active !== false)) {
+    if (value.role === 'USER' && !isSupabaseSession(value) && !getAccounts().some((account) => account.email === value.email && account.active !== false)) {
       localStorage.removeItem(authKey)
       return null
     }
@@ -80,6 +84,29 @@ export function getSession(): SessionInfo | null {
     localStorage.removeItem(authKey)
     return null
   }
+}
+
+/** Keep the signed-in Supabase identity available to existing local feature stores. */
+export function startSupabaseUserSession(userId: string, email: string, name: string, role: UserRole = 'USER'): SessionInfo {
+  const cleanEmail = email.trim().toLocaleLowerCase('es')
+  if (!userId || !cleanEmail) throw new Error('La cuenta de Supabase no tiene una identidad válida.')
+  migrateLegacyPersonalData(cleanEmail)
+  const session: SessionInfo = { token: `supabase-user:${userId}`, role, email: cleanEmail, name: name.trim() || cleanEmail }
+  const previous = getSession()
+  if (!previous || previous.token !== session.token || previous.email !== session.email || previous.name !== session.name || previous.role !== session.role) {
+    localStorage.setItem(authKey, JSON.stringify(session))
+    if (personalStorage.getItem('cocinapp.profile.v1') === null) {
+      personalStorage.setItem('cocinapp.profile.v1', JSON.stringify({ name: session.name, email: session.email }))
+    }
+    dispatchAuthChange()
+  }
+  return session
+}
+
+/** Clear a stale local demo user after Supabase reports that there is no remote session. */
+export function clearStoredUserSession(): void {
+  const session = getSession()
+  if (session?.role === 'USER' || session && isSupabaseSession(session)) localStorage.removeItem(authKey)
 }
 
 export function startSession(role: UserRole, email: string, name: string) {
