@@ -204,7 +204,7 @@ test('shared unit conversion normalizes built-ins and custom compatible chains',
 })
 
 describe('admin navigation', () => {
-  test('exposes every catalog required by the functional specification as its own route', () => {
+  test('exposes administrator catalogs and audit history as their own routes', () => {
     assert.deepEqual(adminNavigation.map((item) => item.path), [
       '/admin',
       '/admin/recipes',
@@ -212,6 +212,7 @@ describe('admin navigation', () => {
       '/admin/categories',
       '/admin/units',
       '/admin/users',
+      '/admin/history',
     ])
   })
 
