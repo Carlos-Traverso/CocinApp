@@ -13,6 +13,7 @@ import { RecipeDetailPage } from '../pages/RecipeDetailPage'
 import { ShoppingPage } from '../pages/ShoppingPage'
 import { WelcomePage } from '../pages/WelcomePage'
 import { NotFoundPage } from '../pages/NotFoundPage'
+import { RequestPasswordRecoveryPage, ResetPasswordPage } from '../pages/PasswordRecoveryPage'
 import { AdminShell } from '../components/AdminShell'
 import { RequireAdmin, RequireUser, RedirectIfAuthenticated } from './AuthGuards'
 import { NotificationProvider } from '../shared/notifications/NotificationProvider'
@@ -22,6 +23,8 @@ export function App() {
     <NotificationProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="recuperar-contrasena" element={<RequestPasswordRecoveryPage />} />
+          <Route path="restablecer-contrasena" element={<ResetPasswordPage />} />
           <Route element={<RedirectIfAuthenticated />}>
             <Route index element={<WelcomePage />} />
             <Route path="auth" element={<Navigate replace to="/" />} />

@@ -1,0 +1,65 @@
+.session-error-page {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100svh;
+  place-items: center;
+  padding: 32px 20px;
+  background: radial-gradient(ellipse at 10% 5%, #e2eedc 0, transparent 55%),
+    radial-gradient(ellipse at 95% 95%, #efe5ca 0, transparent 45%), #f6f7f3;
+}
+
+.session-error-card {
+  width: min(100%, 500px);
+  padding: 38px clamp(24px, 6vw, 44px) 36px;
+  border: 1px solid #dbe5d6;
+  border-top: 5px solid var(--green);
+  border-radius: 22px;
+  background: #fffefa;
+  box-shadow: 0 20px 65px #254b3412;
+  text-align: center;
+}
+
+.session-error-logo { margin-bottom: 32px; }
+.session-error-logo .brand-logo-mark { width: 44px; height: 44px; }
+.session-error-logo .brand-logo-name { font-size: 25px; }
+
+.session-error-symbol {
+  display: grid;
+  width: 72px;
+  height: 72px;
+  place-items: center;
+  margin: 0 auto 23px;
+  border: 1px solid #eaddb8;
+  border-radius: 22px;
+  color: #916926;
+  background: #fbf1d9;
+}
+
+.session-error-card .eyebrow { margin-bottom: 12px; letter-spacing: .06em; }
+.session-error-card h1 { margin-bottom: 14px; color: var(--green-dark); font-size: clamp(25px, 5vw, 31px); line-height: 1.2; }
+.session-error-description { margin-bottom: 23px; color: var(--muted); font-size: 14px; line-height: 1.7; }
+
+.session-error-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 13px 15px;
+  margin-bottom: 26px;
+  border: 1px solid #e8dfc9;
+  border-radius: 10px;
+  background: #f9f5e9;
+  text-align: left;
+}
+
+.session-error-notice p { margin: 0; color: #75603a; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.session-error-notice-dot { flex: none; width: 7px; height: 7px; margin-top: 7px; border-radius: 50%; background: #ab8239; }
+.session-error-actions { display: flex; gap: 12px; }
+.session-error-actions .button { flex: 1; min-height: 46px; border-radius: 9px; cursor: pointer; }
+.session-error-actions .button:disabled { opacity: .7; cursor: wait; }
+.session-error-home { border-color: #cfded0; color: var(--green-dark); background: #fffefa; }
+.session-error-home:hover { border-color: var(--green); background: #edf5eb; }
+
+@media (max-width: 440px) {
+  .session-error-actions { flex-direction: column; }
+  .session-error-card { padding-top: 28px; padding-bottom: 28px; }
+}
