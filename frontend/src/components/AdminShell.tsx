@@ -1,4 +1,4 @@
-import { BookOpen, Boxes, FolderTree, LayoutDashboard, LogOut, Menu, Ruler, ShieldCheck, UsersRound, X } from 'lucide-react'
+import { BookOpen, Boxes, FolderTree, History, LayoutDashboard, LogOut, Menu, Ruler, ShieldCheck, UsersRound, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { authRepository, useAuth } from '../features/auth/data/AuthRepository'
@@ -13,6 +13,7 @@ const icons = {
   categories: FolderTree,
   units: Ruler,
   users: UsersRound,
+  audit: History,
 } satisfies Record<AdminNavigationKey, typeof LayoutDashboard>
 
 export function AdminShell() {
