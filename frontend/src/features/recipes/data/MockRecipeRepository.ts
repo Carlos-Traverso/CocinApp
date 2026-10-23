@@ -2,7 +2,7 @@ import type { RecipeRepository } from './RecipeRepository'
 import { getAvailableRecipes, getKnownRecipes, getRecipeById } from './availableRecipes'
 import { filterRecipes, getRecipeReadiness, type RecipeFilters } from '../domain/recipeRules'
 import type { PantryItem } from '../../pantry/domain/pantry'
-import { readLocalProfile } from '../../profile/data/localProfileStore'
+import { profileRepository } from '../../profile/data/ProfileRepository'
 import { getAdminData } from '../../admin/data/localAdminStore'
 
 export const mockRecipeRepository: RecipeRepository = {
@@ -24,6 +24,6 @@ export const mockRecipeRepository: RecipeRepository = {
     const { percentage, label, ingredients } = getRecipeReadiness(recipe, pantry, portions ?? recipe.portions, new Date(), getAdminData().units.length ? getAdminData().units : undefined)
     return { percentage, label, ingredients }
   },
-  async getDietaryPreferences() { return readLocalProfile().preferences ?? [] },
-  async getProfile() { return readLocalProfile() },
+  async getDietaryPreferences() { return (await profileRepository.getProfile()).preferences ?? [] },
+  async getProfile() { return profileRepository.getProfile() },
 }
