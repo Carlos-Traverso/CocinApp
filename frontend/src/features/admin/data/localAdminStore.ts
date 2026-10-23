@@ -27,7 +27,7 @@ function isValidMealShifts(value: unknown): value is string[] {
   return Array.isArray(value) && value.length > 0 && value.every((shift) => typeof shift === 'string' && ['Desayuno', 'Almuerzo', 'Merienda', 'Cena'].includes(shift))
 }
 
-function readRecipe(value: unknown): AdminRecipe | undefined {
+export function parseAdminRecipe(value: unknown): AdminRecipe | undefined {
   if (!isRecord(value) || typeof value.id !== 'string' || !value.id || typeof value.title !== 'string' || !value.title) return undefined
   const allowedMealShifts = ['Desayuno', 'Almuerzo', 'Merienda', 'Cena']
   const legacyShift = typeof value.mealShift === 'string' ? value.mealShift : typeof value.category === 'string' ? value.category : 'Almuerzo'
@@ -95,7 +95,7 @@ function getAdminData(): AdminStorageData {
           typeof ingredient.categoryId === 'string' && typeof ingredient.baseUnitId === 'string'
             ? [{ id: ingredient.id, name: ingredient.name, categoryId: ingredient.categoryId, baseUnitId: ingredient.baseUnitId, active: typeof ingredient.active === 'boolean' ? ingredient.active : ingredient.isDeleted !== true, isDeleted: ingredient.isDeleted === true }] : []) : [],
         recipes: Array.isArray(record.recipes) ? record.recipes.flatMap((value): AdminRecipe[] => {
-          const recipe = readRecipe(value)
+          const recipe = parseAdminRecipe(value)
           return recipe ? [recipe] : []
         }) : [],
       }

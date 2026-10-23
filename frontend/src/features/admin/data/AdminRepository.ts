@@ -7,12 +7,87 @@ import { createRecipe, createSeedRecipeOverride, deleteRecipe, duplicateRecipe, 
 import type { AdminRecipe } from '../domain/adminModels'
 import type { Recipe } from '../../recipes/domain/Recipe'
 import type { DeleteResult } from './deleteResult'
+import { readSupabaseCatalogCore, writeSupabaseCatalogCore } from './supabaseCatalogCore'
+import { supabase } from '../../../shared/data/supabaseClient'
+import { readSupabaseRecipes, writeSupabaseRecipes } from './supabaseRecipes'
 
 export type { DeleteResult } from './deleteResult'
 
+interface CatalogSnapshot {
+  data: AdminStorageData
+  coreVersion: number | null
+  recipesVersion: number | null
+}
+
+async function isRemoteAdmin(): Promise<boolean> {
+  if (!supabase) return false
+  const { data, error } = await supabase.rpc('current_app_role')
+  if (error) throw error
+  return data === 'ADMIN'
+}
+
+async function loadCatalogSnapshot(): Promise<CatalogSnapshot> {
+  const local = getAdminData()
+  const [remoteCore, remoteRecipes] = await Promise.all([readSupabaseCatalogCore(), readSupabaseRecipes()])
+  if (remoteCore.status === 'unavailable') return { data: local, coreVersion: null, recipesVersion: null }
+
+  const isAdmin = await isRemoteAdmin()
+  if (remoteCore.status === 'empty' || remoteRecipes.status === 'empty') {
+    if (!isAdmin) throw new Error('El administrador todavía no inicializó el catálogo compartido. Ingresá primero con la cuenta administradora.')
+  }
+
+  let coreVersion = remoteCore.status === 'found' ? remoteCore.version : null
+  let recipesVersion = remoteRecipes.status === 'found' ? remoteRecipes.version : null
+  if (remoteCore.status === 'empty') coreVersion = await writeSupabaseCatalogCore(local, null)
+  if (remoteRecipes.status === 'empty') recipesVersion = await writeSupabaseRecipes(local.recipes, null)
+
+  const catalog = {
+    ...local,
+    ...(remoteCore.status === 'found' ? remoteCore.catalog : {}),
+    recipes: remoteRecipes.status === 'found' ? remoteRecipes.recipes : local.recipes,
+  }
+  saveAdminData(catalog)
+  return { data: catalog, coreVersion, recipesVersion }
+}
+
+async function loadCatalog(): Promise<AdminStorageData> {
+  return (await loadCatalogSnapshot()).data
+}
+
+async function mutateCore<T>(mutation: () => T): Promise<T> {
+  if (!supabase) return mutation()
+  const snapshot = await loadCatalogSnapshot()
+  const previous = snapshot.data
+  if (!await isRemoteAdmin()) throw new Error('Solo una cuenta administradora puede modificar el catálogo.')
+  const result = mutation()
+  const updated = getAdminData()
+  try {
+    await writeSupabaseCatalogCore(updated, snapshot.coreVersion)
+    return result
+  } catch (error) {
+    saveAdminData(previous)
+    throw error
+  }
+}
+
+async function mutateRecipes<T>(mutation: () => T): Promise<T> {
+  if (!supabase) return mutation()
+  const snapshot = await loadCatalogSnapshot()
+  const previous = snapshot.data
+  if (!await isRemoteAdmin()) throw new Error('Solo una cuenta administradora puede modificar las recetas.')
+  const result = mutation()
+  const updated = getAdminData()
+  try {
+    await writeSupabaseRecipes(updated.recipes, snapshot.recipesVersion)
+    return result
+  } catch (error) {
+    saveAdminData(previous)
+    throw error
+  }
+}
+
 export interface AdminRepository {
   getCatalog(): Promise<AdminStorageData>
-  saveCatalog(data: AdminStorageData): Promise<void>
   createCategory(name: string, active?: boolean): Promise<string>
   updateCategory(id: string, name: string, active?: boolean): Promise<void>
   deleteCategory(id: string): Promise<DeleteResult>
@@ -36,25 +111,24 @@ export interface AdminRepository {
 
 // Delayed local mock keeps the async boundary identical to a future HTTP repository.
 export const adminRepository: AdminRepository = {
-  async getCatalog() { await Promise.resolve(); return getAdminData() },
-  async saveCatalog(data) { await Promise.resolve(); saveAdminData(data) },
-  async createCategory(...args) { await Promise.resolve(); return createCategory(...args) },
-  async updateCategory(...args) { await Promise.resolve(); updateCategory(...args) },
-  async deleteCategory(...args) { await Promise.resolve(); return deleteCategory(...args) },
-  async restoreCategory(...args) { await Promise.resolve(); restoreCategory(...args) },
-  async createUnit(...args) { await Promise.resolve(); return createUnit(...args) },
-  async updateUnit(...args) { await Promise.resolve(); updateUnit(...args) },
-  async deleteUnit(...args) { await Promise.resolve(); return deleteUnit(...args) },
-  async restoreUnit(...args) { await Promise.resolve(); restoreUnit(...args) },
-  async createIngredient(...args) { await Promise.resolve(); return createIngredient(...args) },
-  async updateIngredient(...args) { await Promise.resolve(); updateIngredient(...args) },
-  async deleteIngredient(...args) { await Promise.resolve(); return deleteIngredient(...args) },
-  async restoreIngredient(...args) { await Promise.resolve(); restoreIngredient(...args) },
-  async createRecipe(...args) { await Promise.resolve(); return createRecipe(...args) },
-  async updateRecipe(...args) { await Promise.resolve(); updateRecipe(...args) },
-  async deleteRecipe(...args) { await Promise.resolve(); return deleteRecipe(...args) },
-  async duplicateRecipe(...args) { await Promise.resolve(); return duplicateRecipe(...args) },
-  async setRecipeActive(...args) { await Promise.resolve(); setRecipeActive(...args) },
-  async setRecipeFeatured(...args) { await Promise.resolve(); setRecipeFeatured(...args) },
-  async createSeedRecipeOverride(...args) { await Promise.resolve(); return createSeedRecipeOverride(...args) },
+  async getCatalog() { return loadCatalog() },
+  async createCategory(...args) { return mutateCore(() => createCategory(...args)) },
+  async updateCategory(...args) { return mutateCore(() => updateCategory(...args)) },
+  async deleteCategory(...args) { return mutateCore(() => deleteCategory(...args)) },
+  async restoreCategory(...args) { return mutateCore(() => restoreCategory(...args)) },
+  async createUnit(...args) { return mutateCore(() => createUnit(...args)) },
+  async updateUnit(...args) { return mutateCore(() => updateUnit(...args)) },
+  async deleteUnit(...args) { return mutateCore(() => deleteUnit(...args)) },
+  async restoreUnit(...args) { return mutateCore(() => restoreUnit(...args)) },
+  async createIngredient(...args) { return mutateCore(() => createIngredient(...args)) },
+  async updateIngredient(...args) { return mutateCore(() => updateIngredient(...args)) },
+  async deleteIngredient(...args) { return mutateCore(() => deleteIngredient(...args)) },
+  async restoreIngredient(...args) { return mutateCore(() => restoreIngredient(...args)) },
+  async createRecipe(...args) { return mutateRecipes(() => createRecipe(...args)) },
+  async updateRecipe(...args) { return mutateRecipes(() => updateRecipe(...args)) },
+  async deleteRecipe(...args) { return mutateRecipes(() => deleteRecipe(...args)) },
+  async duplicateRecipe(...args) { return mutateRecipes(() => duplicateRecipe(...args)) },
+  async setRecipeActive(...args) { return mutateRecipes(() => setRecipeActive(...args)) },
+  async setRecipeFeatured(...args) { return mutateRecipes(() => setRecipeFeatured(...args)) },
+  async createSeedRecipeOverride(...args) { return mutateRecipes(() => createSeedRecipeOverride(...args)) },
 }
