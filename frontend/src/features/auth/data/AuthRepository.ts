@@ -4,12 +4,34 @@ import { supabase } from '../../../shared/data/supabaseClient'
 import type { UserRole } from './localAuthStore'
 import { adminRepository } from '../../admin/data/AdminRepository'
 import { assertAuthenticationConfigured } from '../domain/security'
+import { clearSessionPolicy, detectSessionDevice, hasSessionExpired, monitorSessionPolicy, startSessionPolicy } from './sessionTimeout'
+
+function policyIdentity(session: Pick<SessionInfo, 'token' | 'email'>): string {
+  return `${session.token}|${session.email.toLocaleLowerCase('es')}`
+}
+
+function beginSessionPolicy(session: SessionInfo): void {
+  startSessionPolicy(policyIdentity(session))
+}
+
+async function expireCurrentSession(identity: string): Promise<void> {
+  const current = getSession()
+  if (!current || policyIdentity(current) !== identity) return
+  try {
+    await supabase?.auth.signOut({ scope: 'local' })
+  } catch {
+    // Always clear this browser's local session when its inactivity limit is reached.
+  }
+  if (getSession() && policyIdentity(getSession()!) === identity) endSession()
+}
 
 let sessionRevision = 0
 if (supabase) {
   supabase.auth.onAuthStateChange((event) => {
     if (event === 'SIGNED_OUT') {
       sessionRevision += 1
+      const current = getSession()
+      if (current) clearSessionPolicy(policyIdentity(current))
       endSession()
     }
   })
@@ -57,11 +79,27 @@ export const authRepository: AuthRepository = {
     requireConfiguredAuthentication()
     const revision = sessionRevision
     const localSession = getSession()
-    if (!supabase) { await Promise.resolve(); return localSession }
+    if (!supabase) {
+      await Promise.resolve()
+      if (!localSession) return null
+      const identity = policyIdentity(localSession)
+      if (hasSessionExpired(identity, detectSessionDevice())) {
+        clearSessionPolicy(identity)
+        endSession()
+        return null
+      }
+      return localSession
+    }
 
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError) throw sessionError
     if (!session) { clearStoredUserSession(); return null }
+    const identity = `supabase-user:${session.user.id}|${session.user.email?.toLocaleLowerCase('es') ?? ''}`
+    if (hasSessionExpired(identity, detectSessionDevice())) {
+      try { await supabase.auth.signOut({ scope: 'local' }) } catch { /* The local deadline still applies while offline. */ }
+      if (revision === sessionRevision) endSession()
+      return null
+    }
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError) throw userError
     if (!user?.email) { clearStoredUserSession(); return null }
@@ -76,18 +114,18 @@ export const authRepository: AuthRepository = {
   },
   async login(email, password) {
     requireConfiguredAuthentication()
-    if (!supabase) { await Promise.resolve(); startUserSession(authenticateUser(email, password)); return }
+    if (!supabase) { await Promise.resolve(); startUserSession(authenticateUser(email, password)); beginSessionPolicy(getSession()!); return }
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
     if (error) throw mapAuthError(error.message)
     if (!data.user?.email) throw new Error('Supabase no devolvió los datos de la cuenta.')
     const metadataName = data.user.user_metadata.name ?? data.user.user_metadata.full_name
     const name = typeof metadataName === 'string' && metadataName.trim() ? metadataName : data.user.email.split('@')[0]
-    startSupabaseUserSession(data.user.id, data.user.email, name, await getRemoteRole())
+    beginSessionPolicy(startSupabaseUserSession(data.user.id, data.user.email, name, await getRemoteRole()))
     await preloadCatalog()
   },
   async register(name, email, password) {
     requireConfiguredAuthentication()
-    if (!supabase) { await Promise.resolve(); startUserSession(registerAccount(name, email, password)); return }
+    if (!supabase) { await Promise.resolve(); startUserSession(registerAccount(name, email, password)); beginSessionPolicy(getSession()!); return }
     const cleanName = name.trim()
     const cleanEmail = email.trim().toLocaleLowerCase('es')
     if (!cleanName) throw new Error('Ingresá tu nombre.')
@@ -103,19 +141,22 @@ export const authRepository: AuthRepository = {
     if (!data.session || !data.user?.email) {
       throw new Error('La cuenta se creó. Confirmá tu correo desde el mensaje de Supabase y después iniciá sesión.')
     }
-    startSupabaseUserSession(data.user.id, data.user.email, cleanName, await getRemoteRole())
+    beginSessionPolicy(startSupabaseUserSession(data.user.id, data.user.email, cleanName, await getRemoteRole()))
     await preloadCatalog()
   },
   async loginAsDemoAdmin() {
     requireConfiguredAuthentication()
     if (supabase) throw new Error('Ingresá con una cuenta que tenga el rol de administrador en Supabase.')
     startDemoAdminSession()
+    beginSessionPolicy(getSession()!)
   },
   async logout() {
+    const current = getSession()
     if (supabase) {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
     } else await Promise.resolve()
+    if (current) clearSessionPolicy(policyIdentity(current))
     endSession()
   },
 }
@@ -133,6 +174,7 @@ function mapAuthError(message: string): Error {
 
 export function useAuth() {
   const [state, setState] = useState<{ session: SessionInfo | null; loading: boolean; error: string }>({ session: null, loading: true, error: '' })
+  const sessionPolicyIdentity = state.session ? policyIdentity(state.session) : null
   const retry = useCallback(() => {
     setState((current) => ({ ...current, loading: true }))
     void authRepository.session().then((session) => setState({ session, loading: false, error: '' })).catch(() => setState({ session: null, loading: false, error: 'No se pudo cargar la sesión.' }))
@@ -158,5 +200,9 @@ export function useAuth() {
     window.addEventListener('storage', refresh)
     return () => { mounted = false; subscription?.unsubscribe(); window.removeEventListener('auth-change', refresh); window.removeEventListener('storage', refresh) }
   }, [])
+  useEffect(() => {
+    if (!sessionPolicyIdentity) return
+    return monitorSessionPolicy(sessionPolicyIdentity, () => { void expireCurrentSession(sessionPolicyIdentity) })
+  }, [sessionPolicyIdentity])
   return { ...state, retry }
 }
