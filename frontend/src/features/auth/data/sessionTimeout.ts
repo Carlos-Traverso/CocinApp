@@ -100,7 +100,10 @@ export function monitorSessionPolicy(
     if (stopped) return
     stopped = true
     targetWindow.clearInterval(interval)
-    for (const event of ['pointerdown', 'keydown', 'touchstart', 'wheel', 'focus', 'pageshow', 'storage']) {
+    for (const event of ['pointerdown', 'keydown', 'touchstart', 'wheel']) {
+      targetWindow.removeEventListener(event, activity)
+    }
+    for (const event of ['focus', 'pageshow', 'storage']) {
       targetWindow.removeEventListener(event, check)
     }
   }

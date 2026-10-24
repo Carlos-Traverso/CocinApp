@@ -81,3 +81,18 @@ test('the active app signs out on timeout and recent activity extends only the i
   browser.tick()
   assert.equal(expirations, 1)
 })
+
+test('stopping the session monitor removes activity listeners and cannot extend the old session', () => {
+  const storage = new MemoryStorage()
+  const browser = new FakeWindow()
+  let now = 1_000
+  startSessionPolicy('user-a', now, storage)
+  const stop = monitorSessionPolicy('user-a', () => {}, browser as unknown as Window, storage, () => now, 'desktop')
+
+  stop()
+  stop()
+  now += hour
+  for (const event of ['pointerdown', 'keydown', 'touchstart', 'wheel']) browser.dispatch(event)
+
+  assert.equal(hasSessionExpired('user-a', 'desktop', 1_000 + 8 * hour, storage), true)
+})
