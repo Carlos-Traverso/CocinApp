@@ -1,6 +1,6 @@
 # CocinAPP frontend
 
-CocinAPP is a React, TypeScript, and Vite single page app. It uses plain CSS in `src/index.css`, `src/App.css`, and feature styles; Tailwind is not installed. The frontend is a local demonstration and does not require Supabase or another service.
+CocinAPP is a React, TypeScript, and Vite single page app. It uses plain CSS in `src/index.css`, `src/App.css`, and feature styles; Tailwind is not installed. Supabase provides authentication and remote persistence. Local demo adapters remain available during development without Supabase configuration; production requires Supabase.
 
 ## Run it
 
@@ -12,16 +12,22 @@ npm run dev
 
 Check the app with `npm run typecheck`, `npm run lint`, `npm test`, or `npm run build`.
 
+Copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` to the public project configuration. Restart Vite after editing the environment. Keep service-role keys, secret keys, and SMTP credentials on the server.
+
+The backend migrations and `admin-users` Edge Function live on `feat/cocinapp-etapa-backend`; frontend changes live on `feat/cocinapp-etapa-frontend`. Use a local integration branch containing both sets of commits for full application development. Deploy the migrations and function following `backend/supabase/functions/README.md` in that combined checkout.
+
+`npm run test:admin-users-edge` exercises the actual backend handler with simulated transports. This command requires `backend/supabase/functions/admin-users/index.ts` from the backend branch as well as the frontend dependencies. `npm test` covers the frontend suite independently.
+
 ## Structure and data boundary
 
-- `src/app` contains routes and role based demo guards.
+- `src/app` contains routes and session and role guards.
 - `src/pages` composes route screens.
 - `src/features/*/domain` contains models, calculations, and validation.
-- `src/features/*/data` contains repository contracts and replaceable local mock adapters.
+- `src/features/*/data` contains repository contracts, Supabase adapters, and local caches or demo adapters.
 - `src/shared/domain/units.ts` centralizes unit conversion and quantity rounding.
 - `src/components` contains shared navigation and shell components.
 
-Pages call asynchronous repository contracts for authentication, profile, recipes, pantry, cooking, planning, shopping, dashboard, and administration. Local adapters use browser storage for demo data. Replacing an adapter with a remote implementation is future integration work; there is no database, Supabase Auth, RLS, RPC, or remote persistence in this stage.
+Pages call asynchronous repository contracts for authentication, profile, recipes, pantry, cooking, planning, shopping, dashboard, and administration. With Supabase configured, the app uses Auth, private pantry and personal-data tables, shared catalogs, administrative RPCs, and the user-management Edge Function. Catalog writes compare versions to reject stale saves. Some adapters retain historical `Mock` names while delegating to Supabase. Browser caches still support several flows; transfers between shopping and pantry and cooking finalization need further work to make their remote writes atomic.
 
 ## Recipe meal shifts
 
@@ -29,14 +35,14 @@ Recipes can be assigned to more than one meal shift. The recipe catalog filters 
 
 ## Transient notices and confirmations
 
-Use the app-wide `NotificationProvider` and the `useNotifications()` hook from `src/shared/notifications/NotificationProvider.tsx` for transient modal notices. Choose `success` for completed actions, `info` for neutral guidance, `warning` for caution, and `error` for failed actions. Each request includes a short `title` and `message`.
+Use the app-wide `NotificationProvider` and the `useNotifications()` hook from `src/shared/notifications/NotificationProvider.tsx` for modal notices. Avoid interrupting routine successful actions: a `success` request without `cancelLabel` resolves immediately to `true` and does not open a modal. Use `info` only for information the user needs to act on or understand an unavailable option; use `error` for failures that need attention. Each displayed request includes a short `title` and `message`.
 
-For a confirmation, provide explicit `confirmLabel` and `cancelLabel`, then await `notify(...)`. Continue the action only when it resolves to `true`; cancellation, Escape, or dismissal resolves to `false`.
+For a confirmation, provide explicit `confirmLabel` and `cancelLabel`, then await `notify(...)`. These requests remain decisions even when their type is `success`; continue the action only when it resolves to `true`. Cancellation, Escape, or dismissal resolves to `false`. Preserve confirmations for destructive actions.
 
-When validating a form inside an already-open native dialog, show the field error inline and focus the invalid field. Do not open another notice dialog over it, which would stack modal dialogs.
+Show routine form validation errors inline beside the relevant field or form, associate field errors with their controls using `aria-describedby`, and focus the first invalid field when submission fails. Do not use a modal notice for these validation errors. This also avoids stacking a notice dialog over an already-open native dialog.
 
 ## Demo limitations
 
-Local accounts and the fixed admin demo role are not secure authentication or authorization. Never enter a real password. Role guards only hide or redirect screens in this frontend. The receipt scanner validates an image locally and returns editable sample rows; it does not upload, retain, or log image contents. Actual receipt recognition requires a future external service. Recipe suggestions use the curated mock catalog; recipes generated by AI are not part of the product.
+When using local development adapters, accounts and the fixed admin demo role are simulated; use fictitious credentials. In Supabase mode, database permissions and server checks enforce authorization in addition to frontend route guards. The receipt scanner validates an image locally and returns editable sample rows; it does not upload, retain, or log image contents. Actual receipt recognition requires a future external service. Recipe suggestions use the curated catalog; recipes generated by AI are not part of the product.
 
 Dietary tags are informational and cannot guarantee allergen or cross contamination safety. Users should check product labels and preparation conditions.

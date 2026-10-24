@@ -2,6 +2,9 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { calculateAge, calculateEnergyEstimate, estimateForProfile, profileIsComplete, recipeGoalPercentageRange } from '../src/features/profile/domain/profile'
 import { readLocalProfile, saveLocalProfile } from '../src/features/profile/data/localProfileStore'
+import { createProfileRepository } from '../src/features/profile/data/ProfileRepository'
+import { endSession, startSupabaseUserSession } from '../src/features/auth/data/localAuthStore'
+import type { PersonalDataSession } from '../src/shared/data/personalDataSession'
 
 test('calculates age from the birth date without adding a year before the birthday', () => {
   const today = new Date(2026, 8, 23)
@@ -84,4 +87,100 @@ test('profile storage survives valid data and ignores malformed older values', (
   assert.equal(readLocalProfile(storage).goal, 'gain')
   saveLocalProfile({ name: 'Carla', goal: 'gain-muscle' }, storage)
   assert.equal(readLocalProfile(storage).goal, 'gain-muscle')
+})
+
+test('discards an in-flight profile load from account A after switching to account B', async () => {
+  localStorage.clear()
+  let resolveLoad!: (value: unknown | null) => void
+  const requestedSessions: PersonalDataSession[] = []
+  let saveCalls = 0
+  const repository = createProfileRepository({
+    isSupabaseConfigured: true,
+    loadPersonalData: async (_key, session) => {
+      requestedSessions.push(session)
+      return new Promise((resolve) => { resolveLoad = resolve })
+    },
+    savePersonalData: async () => { saveCalls += 1 },
+  })
+
+  startSupabaseUserSession('account-a', 'ana@example.com', 'Ana')
+  const pendingLoad = repository.getProfile()
+  assert.equal(requestedSessions[0]?.token, 'supabase-user:account-a')
+
+  startSupabaseUserSession('account-b', 'luis@example.com', 'Luis')
+  resolveLoad({ name: 'Dato privado de Ana', goal: 'lose' })
+
+  await assert.rejects(pendingLoad, /La sesión cambió/)
+  const accountAProfile = localStorage.getItem('cocinapp.user.ana%40example.com.cocinapp.profile.v1')
+  const accountBProfile = localStorage.getItem('cocinapp.user.luis%40example.com.cocinapp.profile.v1')
+  assert.equal(accountAProfile?.includes('Dato privado de Ana'), false)
+  assert.equal(accountBProfile?.includes('Dato privado de Ana'), false)
+  assert.equal(saveCalls, 0)
+  localStorage.clear()
+})
+
+test('does not import account A local data after switching accounts during the remote check', async () => {
+  localStorage.clear()
+  let resolveLoad!: (value: unknown | null) => void
+  const saveSessions: PersonalDataSession[] = []
+  const repository = createProfileRepository({
+    isSupabaseConfigured: true,
+    loadPersonalData: async () => new Promise((resolve) => { resolveLoad = resolve }),
+    savePersonalData: async (_key, _value, session) => { saveSessions.push(session) },
+  })
+
+  startSupabaseUserSession('account-a', 'ana@example.com', 'Ana')
+  saveLocalProfile({ name: 'Perfil privado de Ana', goal: 'gain' })
+  const pendingLoad = repository.getProfile()
+  startSupabaseUserSession('account-b', 'luis@example.com', 'Luis')
+  resolveLoad(null)
+
+  await assert.rejects(pendingLoad, /La sesión cambió/)
+  assert.deepEqual(saveSessions, [])
+  assert.equal(localStorage.getItem('cocinapp.user.luis%40example.com.cocinapp.profile.v1')?.includes('Perfil privado de Ana'), false)
+  localStorage.clear()
+})
+
+test('discards a pending load after the same account signs out and back in', async () => {
+  localStorage.clear()
+  let resolveLoad!: (value: unknown | null) => void
+  const repository = createProfileRepository({
+    isSupabaseConfigured: true,
+    loadPersonalData: async () => new Promise((resolve) => { resolveLoad = resolve }),
+    savePersonalData: async () => {},
+  })
+
+  startSupabaseUserSession('account-a', 'ana@example.com', 'Ana')
+  const pendingLoad = repository.getProfile()
+  endSession()
+  startSupabaseUserSession('account-a', 'ana@example.com', 'Ana')
+  resolveLoad({ name: 'Resultado de la sesión anterior', goal: 'lose' })
+
+  await assert.rejects(pendingLoad, /La sesión cambió/)
+  assert.equal(localStorage.getItem('cocinapp.user.ana%40example.com.cocinapp.profile.v1')?.includes('Resultado de la sesión anterior'), false)
+  localStorage.clear()
+})
+
+test('keeps a pending profile save bound to account A and skips its cache write after switching to B', async () => {
+  localStorage.clear()
+  let resolveSave!: () => void
+  const saveSessions: PersonalDataSession[] = []
+  const repository = createProfileRepository({
+    isSupabaseConfigured: true,
+    loadPersonalData: async () => null,
+    savePersonalData: async (_key, _value, session) => {
+      saveSessions.push(session)
+      await new Promise<void>((resolve) => { resolveSave = resolve })
+    },
+  })
+
+  startSupabaseUserSession('account-a', 'ana@example.com', 'Ana')
+  const pendingSave = repository.saveProfile({ name: 'Dato privado de Ana' })
+  assert.equal(saveSessions[0]?.token, 'supabase-user:account-a')
+  startSupabaseUserSession('account-b', 'luis@example.com', 'Luis')
+  resolveSave()
+
+  await assert.rejects(pendingSave, /La sesión cambió/)
+  assert.equal(localStorage.getItem('cocinapp.user.luis%40example.com.cocinapp.profile.v1')?.includes('Dato privado de Ana'), false)
+  localStorage.clear()
 })

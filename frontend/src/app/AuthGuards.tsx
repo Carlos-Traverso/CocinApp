@@ -1,19 +1,11 @@
-import { useEffect } from 'react'
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../features/auth/data/AuthRepository'
 import { canAccessPath, roleHome } from '../features/auth/domain/routeAccess'
-import { useLocation } from 'react-router-dom'
-import { useNotifications } from '../shared/notifications/NotificationProvider'
-
-function SessionError({ message, retry }: { message: string; retry: () => void }) {
-  const { notify } = useNotifications()
-  useEffect(() => { void notify({ type: 'error', title: 'No se pudo comprobar la sesión', message }) }, [message, notify])
-  return <main className="page"><button className="button button-primary" onClick={retry} type="button">Reintentar</button></main>
-}
+import { SessionError } from './SessionError'
 
 export function RequireAuth() {
   const { session, loading, error, retry } = useAuth()
-  if (error) return <SessionError message={error} retry={retry} />
+  if (error) return <SessionError message={error} retry={retry} retrying={loading} />
   if (loading) return <p className="route-loading" role="status">Comprobando sesión…</p>
   if (!session) {
     return <Navigate to="/" replace />
@@ -24,7 +16,7 @@ export function RequireAuth() {
 export function RequireUser() {
   const auth = useAuth()
   const location = useLocation()
-  if (auth.error) return <SessionError message={auth.error} retry={auth.retry} />
+  if (auth.error) return <SessionError message={auth.error} retry={auth.retry} retrying={auth.loading} />
   if (auth.loading) return <p className="route-loading" role="status">Comprobando sesión…</p>
   const { session } = auth
   if (!session) return <Navigate to="/" replace />
@@ -34,7 +26,7 @@ export function RequireUser() {
 
 export function RequireAdmin() {
   const { session, loading, error, retry } = useAuth()
-  if (error) return <SessionError message={error} retry={retry} />
+  if (error) return <SessionError message={error} retry={retry} retrying={loading} />
   if (loading) return <p className="route-loading" role="status">Comprobando sesión…</p>
   if (!session) {
     return <Navigate to="/" replace />
@@ -46,8 +38,16 @@ export function RequireAdmin() {
 }
 
 export function RedirectIfAuthenticated() {
+  const location = useLocation()
+  // Let the user reach the public sign-in screen even when session checks fail.
+  // Protected routes still run their normal authentication and role checks.
+  if (location.state?.showSignIn === true) return <Outlet />
+  return <SessionRedirect />
+}
+
+function SessionRedirect() {
   const { session, loading, error, retry } = useAuth()
-  if (error) return <SessionError message={error} retry={retry} />
+  if (error) return <SessionError message={error} retry={retry} retrying={loading} />
   if (loading) return <p className="route-loading" role="status">Comprobando sesión…</p>
   if (session) {
     return <Navigate to={roleHome(session.role)} replace />

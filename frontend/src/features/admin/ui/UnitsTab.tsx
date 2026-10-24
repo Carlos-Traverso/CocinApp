@@ -9,6 +9,8 @@ import { countAdminUsage } from '../domain/adminUsage'
 import { useAdminCatalog } from './useAdminCatalog'
 import { useNotifications } from '../../../shared/notifications/NotificationProvider'
 
+const BASE_UNIT_NONE = '__base_unit__'
+
 export function UnitsTab() {
   const { notify } = useNotifications()
   const { data: snapshot, knownRecipes, loading, error, setError, reload } = useAdminCatalog()
@@ -18,10 +20,10 @@ export function UnitsTab() {
     id?: string
     name: string
     abbreviation: string
-    dimension: string
+    dimension: string | null
     baseUnitId: string
     equivalenceMultiplier: string
-    active: boolean
+    active: boolean | null
   } | null>(null)
   const [pending, setPending] = useState(false)
   const [search, setSearch] = useState('')
@@ -33,26 +35,29 @@ export function UnitsTab() {
     e.preventDefault()
     if (!editor) return
     const invalidField = e.currentTarget.querySelector<HTMLElement>(':invalid')
-    if (invalidField || !editor.name.trim() || !editor.abbreviation.trim()) {
-      const invalidText = !editor.name.trim() ? 'Ingresá un nombre válido para la unidad.' : !editor.abbreviation.trim() ? 'Ingresá una abreviatura válida para la unidad.' : 'Revisá los campos obligatorios y sus valores.'
+    if (invalidField || !editor.name.trim() || !editor.abbreviation.trim() || editor.dimension === null || editor.active === null) {
+      const invalidText = !editor.name.trim() ? 'Ingresá un nombre válido para la unidad.' : !editor.abbreviation.trim() ? 'Ingresá una abreviatura válida para la unidad.' : editor.dimension === null ? 'Seleccioná una dimensión para la unidad.' : editor.active === null ? 'Seleccioná un estado para la unidad.' : 'Revisá los campos obligatorios y sus valores.'
       setError(invalidText)
       ;(invalidField ?? e.currentTarget.querySelector<HTMLElement>('input'))?.focus()
       return
     }
+    const dimension = editor.dimension
+    const active = editor.active
     try {
       setPending(true)
       setError('')
-      const multiplier = editor.baseUnitId ? parseFloat(editor.equivalenceMultiplier) : undefined
-      if (editor.baseUnitId && (!multiplier || multiplier <= 0)) {
+      const baseUnitId = editor.baseUnitId === BASE_UNIT_NONE ? '' : editor.baseUnitId
+      const multiplier = baseUnitId ? parseFloat(editor.equivalenceMultiplier) : undefined
+      if (baseUnitId && (!multiplier || multiplier <= 0)) {
         setError('Debe especificar un multiplicador válido mayor a 0.')
         e.currentTarget.querySelector<HTMLElement>('input[type="number"]')?.focus()
         return
       }
 
       if (editor.id) {
-        await adminRepository.updateUnit(editor.id, editor.name.trim(), editor.abbreviation.trim(), editor.dimension, editor.baseUnitId || undefined, multiplier, editor.active)
+        await adminRepository.updateUnit(editor.id, editor.name.trim(), editor.abbreviation.trim(), dimension, baseUnitId || undefined, multiplier, active)
       } else {
-        await adminRepository.createUnit(editor.name.trim(), editor.abbreviation.trim(), editor.dimension, editor.baseUnitId || undefined, multiplier, editor.active)
+        await adminRepository.createUnit(editor.name.trim(), editor.abbreviation.trim(), dimension, baseUnitId || undefined, multiplier, active)
       }
       setEditor(null)
       setError('')
@@ -126,7 +131,7 @@ export function UnitsTab() {
     <div className="panel">
       <div className="section-header">
         <div><h2>Unidades de medida</h2><p className="panel-intro"><SearchFeedback resultCount={visibleUnits.length} status={debouncedSearch.status} /> · {units.length} unidades totales</p></div>
-        <button className="button button-primary" disabled={loading || pending} onClick={() => { setEditor({ name: '', abbreviation: '', dimension: 'masa', baseUnitId: '', equivalenceMultiplier: '', active: true }); setError('') }} type="button">
+        <button className="button button-primary" disabled={loading || pending} onClick={() => { setEditor({ name: '', abbreviation: '', dimension: null, baseUnitId: '', equivalenceMultiplier: '', active: null }); setError('') }} type="button">
           <Plus size={16} /> Nueva unidad
         </button>
       </div>
@@ -147,7 +152,7 @@ export function UnitsTab() {
               <div className="record-actions">
                 {!u.isDeleted ? (
                   <>
-                    <button aria-label={`Editar unidad ${u.name}`} className="pantry-icon-button" disabled={pending} onClick={() => setEditor({ id: u.id, name: u.name, abbreviation: u.abbreviation, dimension: u.dimension, baseUnitId: u.baseUnitId || '', equivalenceMultiplier: String(u.equivalenceMultiplier || ''), active: u.active })} type="button">
+                    <button aria-label={`Editar unidad ${u.name}`} className="pantry-icon-button" disabled={pending} onClick={() => setEditor({ id: u.id, name: u.name, abbreviation: u.abbreviation, dimension: u.dimension, baseUnitId: u.baseUnitId || BASE_UNIT_NONE, equivalenceMultiplier: String(u.equivalenceMultiplier || ''), active: u.active })} type="button">
                       <Pencil size={17} />
                     </button>
                     <button aria-label={`Eliminar unidad ${u.name}`} className="pantry-icon-button" disabled={pending} onClick={() => void handleDelete(u.id, u.name)} type="button">
@@ -181,28 +186,30 @@ export function UnitsTab() {
             </div>
             <label className="field">
               <span>Dimensión física</span>
-              <select required value={editor.dimension} onChange={(e) => setEditor({ ...editor, dimension: e.target.value, baseUnitId: '', equivalenceMultiplier: '' })}>
+              <select required value={editor.dimension ?? ''} onChange={(e) => setEditor({ ...editor, dimension: e.target.value || null, baseUnitId: '', equivalenceMultiplier: '' })}>
+                <option value="">Seleccionar…</option>
                 <option value="masa">Masa</option>
                 <option value="volumen">Volumen</option>
                 <option value="conteo">Conteo</option>
               </select>
             </label>
             <label className="field">
-              <span>Unidad base (Opcional)</span>
-              <select value={editor.baseUnitId} onChange={(e) => setEditor({ ...editor, baseUnitId: e.target.value })}>
-                <option value="">(Esta es una unidad base)</option>
+              <span>Unidad base</span>
+              <select required value={editor.baseUnitId} onChange={(e) => setEditor({ ...editor, baseUnitId: e.target.value })}>
+                <option value="">Seleccionar…</option>
+                <option value={BASE_UNIT_NONE}>Sin equivalencia (unidad base)</option>
                 {units.filter(u => u.dimension === editor.dimension && u.id !== editor.id && !u.isDeleted && (u.active || u.id === editor.baseUnitId)).map(u => (
                   <option key={u.id} value={u.id}>{u.name} ({u.abbreviation})</option>
                 ))}
               </select>
             </label>
-            {editor.baseUnitId && (
+            {editor.baseUnitId && editor.baseUnitId !== BASE_UNIT_NONE && (
               <label className="field">
                 <span>Equivale a (multiplicador)</span>
                 <input required type="number" step="any" min="0.000001" value={editor.equivalenceMultiplier} onChange={(e) => setEditor({ ...editor, equivalenceMultiplier: e.target.value })} placeholder={`Ej.: 1000`} />
               </label>
             )}
-            <label className="field"><span>Estado</span><select onChange={(event) => setEditor({ ...editor, active: event.currentTarget.value === 'active' })} value={editor.active ? 'active' : 'inactive'}><option value="active">Activo · disponible para usar</option><option value="inactive">Inactivo · no disponible para nuevos usos</option></select></label>
+            <label className="field"><span>Estado</span><select required onChange={(event) => setEditor({ ...editor, active: event.currentTarget.value ? event.currentTarget.value === 'active' : null })} value={editor.active === null ? '' : editor.active ? 'active' : 'inactive'}><option value="">Seleccionar…</option><option value="active">Activo · disponible para usar</option><option value="inactive">Inactivo · no disponible para nuevos usos</option></select></label>
             {error && <p className="form-message error" role="alert">{error}</p>}
             <div className="pantry-dialog-actions">
               <button className="button button-quiet" type="button" onClick={() => setEditor(null)}>Cancelar</button>

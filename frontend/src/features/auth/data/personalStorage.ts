@@ -27,7 +27,7 @@ export function migrateLegacyPersonalData(email: string) {
 
 function scopedKey(key: string): string {
   const session = getSession()
-  if (!session || session.role !== 'USER') return key
+  if (!session || session.role !== 'USER' && !session.token.startsWith('supabase-user:')) return key
   return `cocinapp.user.${encodeURIComponent(session.email.toLocaleLowerCase('es'))}.${key}`
 }
 
@@ -35,7 +35,7 @@ export const personalStorage: Storage = {
   get length() { return localStorage.length },
   clear() {
     const session = getSession()
-    const prefix = session?.role === 'USER' ? `cocinapp.user.${encodeURIComponent(session.email.toLocaleLowerCase('es'))}.` : ''
+    const prefix = session && (session.role === 'USER' || session.token.startsWith('supabase-user:')) ? `cocinapp.user.${encodeURIComponent(session.email.toLocaleLowerCase('es'))}.` : ''
     for (let index = localStorage.length - 1; index >= 0; index -= 1) {
       const key = localStorage.key(index)
       if (key && (!prefix || key.startsWith(prefix))) localStorage.removeItem(key)

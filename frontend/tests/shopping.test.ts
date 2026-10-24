@@ -246,19 +246,36 @@ test('new pantry products use a null expiry and legacy checked items are not ass
   const legacy = { id: 'milk', name: 'Producto de texto libre', category: 'Lácteos', quantity: 2, unit: 'l', note: '', checked: true, sources: ['manual'] }
   entries.set('cocinapp.shopping.v1', JSON.stringify([legacy]))
   assert.equal(readShoppingItems(storage)[0].transferredToPantry, false)
-  transferPurchasedToPantry(storage)
-  assert.deepEqual(readPantryItems(storage), [])
-  assert.deepEqual(readShoppingItems(storage).map((item) => item.id), ['milk'])
+  assert.equal(transferPurchasedToPantry(storage).transferredCount, 1)
+  assert.equal(readPantryItems(storage)[0].name, 'Producto de texto libre')
+  assert.equal(readPantryItems(storage)[0].expiry, null)
+  assert.equal(readPantryItems(storage)[0].quantity, 2)
+  assert.deepEqual(readShoppingItems(storage), [])
+  assert.equal(transferPurchasedToPantry(storage).transferredCount, 0)
+  assert.equal(readPantryItems(storage)[0].quantity, 2)
 })
 
-test('explicit free text with a catalog-matching name stays unassociated after reload and cannot transfer', () => {
+test('explicit free text with a catalog-matching name stays unassociated and transfers once', () => {
   const entries = new Map<string, string>()
   const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
   const freeText = shoppingItem({ id: 'free', name: 'Tomates cherry', quantity: 1, unit: 'g', checked: true, ingredientId: null })
   writeShoppingItems([freeText], storage)
   assert.equal(readShoppingItems(storage)[0]?.ingredientId, null)
   const result = transferPurchasedToPantry(storage)
-  assert.equal(result.transferredCount, 0)
+  assert.equal(result.transferredCount, 1)
+  assert.equal(readPantryItems(storage)[0]?.ingredientId, undefined)
+  assert.equal(readPantryItems(storage)[0]?.quantity, 1)
+  assert.deepEqual(readShoppingItems(storage), [])
+  assert.equal(transferPurchasedToPantry(storage).transferredCount, 0)
+  assert.equal(readPantryItems(storage)[0]?.quantity, 1)
+})
+
+test('invalid explicit associations cannot transfer as free text after reload', () => {
+  const entries = new Map<string, string>()
+  const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
+  writeShoppingItems([shoppingItem({ name: 'Artículo propio', checked: true, ingredientId: 'missing-ingredient' })], storage)
+  assert.equal(readShoppingItems(storage)[0]?.ingredientId, 'missing-ingredient')
+  assert.equal(transferPurchasedToPantry(storage).transferredCount, 0)
   assert.deepEqual(readPantryItems(storage), [])
   assert.equal(readShoppingItems(storage)[0]?.checked, true)
 })

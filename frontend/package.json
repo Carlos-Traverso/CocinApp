@@ -7,9 +7,9 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --pretty false",
-    "test": "node --import jiti/register --test --test-isolation=none tests/auth.test.ts tests/admin.test.ts tests/profile.test.ts tests/pantry.test.ts tests/recipes.test.ts tests/planner.test.ts tests/shopping.test.ts tests/cooking.test.ts tests/dashboard.test.ts tests/search.test.ts tests/ui.test.ts",
-    "test:admin-users-edge": "node --import jiti/register --test tests/admin-users-edge.test.ts",
+    "test": "node --import jiti/register --test --test-isolation=none tests/auth.test.ts tests/sessionTimeout.test.ts tests/admin.test.ts tests/profile.test.ts tests/pantry.test.ts tests/recipes.test.ts tests/planner.test.ts tests/shopping.test.ts tests/cooking.test.ts tests/dashboard.test.ts tests/search.test.ts tests/ui.test.ts tests/admin-users-edge.test.ts tests/admin-users-permission-race.test.ts",
     "test:profile": "node --import jiti/register --test --test-isolation=none tests/auth.test.ts tests/admin.test.ts tests/profile.test.ts",
+    "test:admin-users-edge": "node --import jiti/register --test tests/admin-users-edge.test.ts tests/admin-users-permission-race.test.ts",
     "test:pantry": "node --import jiti/register --test --test-isolation=none tests/pantry.test.ts",
     "test:recipes": "node --import jiti/register --test --test-isolation=none tests/recipes.test.ts",
     "test:planner": "node --import jiti/register --test --test-isolation=none tests/planner.test.ts",
@@ -20,6 +20,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "lucide-react": "^1.47.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -33,6 +34,6 @@
     "jiti": "^2.7.0",
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
-    "vite": "^8.3.0"
+    "vite": "^8.3.5"
   }
 }

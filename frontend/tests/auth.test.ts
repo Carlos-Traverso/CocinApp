@@ -11,13 +11,35 @@ global.window = { dispatchEvent: () => {}, addEventListener: () => {}, removeEve
 
 import assert from 'node:assert/strict'
 import test, { beforeEach, describe } from 'node:test'
-import { authenticateUser, demoAdminEmail, endSession, getSession, registerAccount, startDemoAdminSession, startSession, startUserSession } from '../src/features/auth/data/localAuthStore'
+import { authenticateUser, clearStoredUserSession, demoAdminEmail, endSession, getSession, registerAccount, startDemoAdminSession, startSession, startSupabaseUserSession, startUserSession } from '../src/features/auth/data/localAuthStore'
 import { canAccessPath, roleHome } from '../src/features/auth/domain/routeAccess'
 import { personalStorage } from '../src/features/auth/data/personalStorage'
+import { assertAuthenticationConfigured } from '../src/features/auth/domain/security'
 import { adminUsersRepository } from '../src/features/admin/data/AdminUsersRepository'
 
 describe('local access flows', () => {
+  test('production fails closed without Supabase instead of accepting demo authentication', () => {
+    assert.throws(() => assertAuthenticationConfigured(true, false), /conexión segura/)
+    assert.doesNotThrow(() => assertAuthenticationConfigured(true, true))
+    assert.doesNotThrow(() => assertAuthenticationConfigured(false, false))
+  })
   beforeEach(() => localStorage.clear())
+
+  test('Supabase role changes retain scoped data and stale admin sessions can be cleared', () => {
+    startSupabaseUserSession('remote-account', 'ana@example.com', 'Ana')
+    personalStorage.setItem('cocinapp.shopping.v1', '["private-data"]')
+    startSupabaseUserSession('remote-account', 'ana@example.com', 'Ana', 'ADMIN')
+    assert.equal(getSession()?.role, 'ADMIN')
+    assert.equal(personalStorage.getItem('cocinapp.shopping.v1'), '["private-data"]')
+    startSupabaseUserSession('remote-account', 'ana@example.com', 'Ana', 'USER')
+    assert.equal(getSession()?.role, 'USER')
+    assert.equal(personalStorage.getItem('cocinapp.shopping.v1'), '["private-data"]')
+    startSupabaseUserSession('remote-account', 'ana@example.com', 'Ana', 'ADMIN')
+    clearStoredUserSession()
+    assert.equal(getSession(), null)
+    startSupabaseUserSession('other-account', 'luis@example.com', 'Luis', 'ADMIN')
+    assert.equal(personalStorage.getItem('cocinapp.shopping.v1'), null)
+  })
 
   test('registration validates identity, duplicate email and password', () => {
     const account = registerAccount(' Ana ', 'ANA@example.com', 'clave-segura')

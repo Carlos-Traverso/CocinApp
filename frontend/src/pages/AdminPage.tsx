@@ -8,6 +8,7 @@ import { UnitsTab } from '../features/admin/ui/UnitsTab'
 import { IngredientsTab } from '../features/admin/ui/IngredientsTab'
 import { RecipesTab } from '../features/admin/ui/RecipesTab'
 import { UsersTab } from '../features/admin/ui/UsersTab'
+import { AdminAuditTab } from '../features/admin/ui/AdminAuditTab'
 import { mockRecipeRepository } from '../features/recipes/data/MockRecipeRepository'
 import { useNotifications } from '../shared/notifications/NotificationProvider'
 
@@ -51,6 +52,10 @@ export function AdminUnitsPage() {
 
 export function AdminUsersPage() {
   return <AdminSection eyebrow="ADMINISTRACIÓN" title="Usuarios" description="Administrá las cuentas de usuario de la aplicación."><UsersTab /></AdminSection>
+}
+
+export function AdminAuditPage() {
+  return <AdminSection eyebrow="SEGURIDAD" title="Historial administrativo" description="Consultá quién realizó cambios importantes y cuándo."><AdminAuditTab /></AdminSection>
 }
 
 function OverviewTab() {

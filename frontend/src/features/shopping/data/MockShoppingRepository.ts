@@ -6,15 +6,39 @@ import { getFavoriteIds } from '../../recipes/data/localFavoritesStore'
 import { getAvailableRecipes } from '../../recipes/data/availableRecipes'
 import { readMealPlan } from '../../planner/data/localMealPlanStore'
 import { suggestForRecipes, suggestPantryRestock } from '../domain/shopping'
+import { isSupabaseConfigured } from '../../../shared/data/supabaseClient'
+import { loadPersonalData, savePersonalData } from '../../../shared/data/personalDataRepository'
+import type { ShoppingItem } from '../domain/shopping'
+import { assertPersonalDataSessionCurrent, capturePersonalDataSession, type PersonalDataSession } from '../../../shared/data/personalDataSession'
+
+async function loadShoppingItems(session: PersonalDataSession): Promise<ShoppingItem[]> {
+  if (!isSupabaseConfigured) return readShoppingItems()
+  const remote = await loadPersonalData('shopping', session)
+  assertPersonalDataSessionCurrent(session)
+  if (remote !== null) {
+    writeShoppingItems(Array.isArray(remote) ? remote as ShoppingItem[] : [])
+    return readShoppingItems()
+  }
+  const local = readShoppingItems()
+  if (local.length) await savePersonalData('shopping', local, session)
+  assertPersonalDataSessionCurrent(session)
+  return local
+}
+
+async function saveShoppingItems(items: ShoppingItem[], session: PersonalDataSession): Promise<void> {
+  if (isSupabaseConfigured) await savePersonalData('shopping', items, session)
+  assertPersonalDataSessionCurrent(session)
+  writeShoppingItems(items)
+}
 
 export const mockShoppingRepository: ShoppingRepository = {
-  async list() { return readShoppingItems() },
-  async save(items) { writeShoppingItems(items) },
-  async append(suggestions) { return appendShoppingSuggestions(suggestions) },
-  async setPurchased(id, checked) { return setShoppingPurchased(id, checked) },
-  async markAllPurchased() { return markAllShoppingPurchased() },
-  async transferPurchased() { return transferPurchasedToPantry() },
-  async load() { return { items: readShoppingItems(), catalog: getAdminData() } },
+  async list() { return loadShoppingItems(capturePersonalDataSession()) },
+  async save(items) { const session = capturePersonalDataSession(); await saveShoppingItems(items, session) },
+  async append(suggestions) { const session = capturePersonalDataSession(); const items = appendShoppingSuggestions(suggestions); await saveShoppingItems(items, session); return items },
+  async setPurchased(id, checked) { const session = capturePersonalDataSession(); const items = setShoppingPurchased(id, checked); await saveShoppingItems(items, session); return items },
+  async markAllPurchased() { const session = capturePersonalDataSession(); const items = markAllShoppingPurchased(); await saveShoppingItems(items, session); return items },
+  async transferPurchased() { const session = capturePersonalDataSession(); const result = transferPurchasedToPantry(); await saveShoppingItems(result.items, session); return result },
+  async load() { const session = capturePersonalDataSession(); const items = await loadShoppingItems(session); assertPersonalDataSessionCurrent(session); return { items, catalog: getAdminData() } },
   async suggestionsFromFavorites() {
     const ids = await getFavoriteIds()
     return suggestForRecipes(getAvailableRecipes().filter((recipe) => ids.includes(recipe.id)), readPantryItems(), 'favorites', new Date(), getAdminData().units)

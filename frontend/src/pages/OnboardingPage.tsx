@@ -21,6 +21,8 @@ export function OnboardingPage() {
   const [profile, setProfile] = useState<ProfileDraft>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [validationError, setValidationError] = useState('')
+  const invalidFieldRef = useRef<HTMLInputElement | HTMLSelectElement | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
   useEffect(() => { void profileRepository.getProfile().then(setProfile).catch(() => { void notify({ type: 'error', title: 'No se pudo cargar el perfil', message: 'No se pudo cargar el perfil.' }) }).finally(() => setLoading(false)) }, [notify])
 
@@ -30,21 +32,43 @@ export function OnboardingPage() {
   async function saveAndContinue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = event.currentTarget
+    clearValidationError()
     if (!form.checkValidity()) {
       const invalidField = form.querySelector<HTMLInputElement | HTMLSelectElement>(':invalid')
       invalidField?.focus()
-      await notify({ type: 'warning', title: 'Revisá los datos requeridos', message: invalidField ? profileFieldValidationMessage(invalidField) : 'Revisá los datos ingresados.' })
+      showValidationError(invalidField, invalidField ? profileFieldValidationMessage(invalidField) : 'Revisá los datos ingresados.')
       return
     }
     if (!profileIsComplete(profile) || age === undefined || age < 18 || age > 100) {
-      await notify({ type: 'warning', title: 'Revisá los datos requeridos', message: 'Completá los datos requeridos. La configuración inicial está orientada a personas adultas.' })
-      formRef.current?.querySelector<HTMLInputElement>('[name="birthDate"]')?.focus()
+      const field = formRef.current?.querySelector<HTMLInputElement>('[name="birthDate"]') ?? null
+      field?.focus()
+      showValidationError(field, 'Completá los datos requeridos. La configuración inicial está orientada a personas adultas.')
       return
     }
     setSaving(true)
     try { await profileRepository.saveProfile(profile); navigate('/profile') }
     catch { await notify({ type: 'error', title: 'No se pudo guardar el perfil', message: 'Revisá el espacio disponible del navegador e intentá de nuevo.' }) }
     finally { setSaving(false) }
+  }
+
+  function showValidationError(field: HTMLInputElement | HTMLSelectElement | null, message: string) {
+    invalidFieldRef.current = field
+    if (field) {
+      const ids = field.getAttribute('aria-describedby')?.split(/\s+/).filter(Boolean) ?? []
+      if (!ids.includes('setup-validation-error')) field.setAttribute('aria-describedby', [...ids, 'setup-validation-error'].join(' '))
+    }
+    setValidationError(message)
+  }
+
+  function clearValidationError() {
+    const field = invalidFieldRef.current
+    if (field) {
+      const ids = field.getAttribute('aria-describedby')?.split(/\s+/).filter((id) => id && id !== 'setup-validation-error') ?? []
+      if (ids.length) field.setAttribute('aria-describedby', ids.join(' '))
+      else field.removeAttribute('aria-describedby')
+    }
+    invalidFieldRef.current = null
+    setValidationError('')
   }
 
   return <main className="setup-page">
@@ -54,7 +78,8 @@ export function OnboardingPage() {
       <p className="eyebrow">PRIMEROS PASOS</p>
       <h1 id="setup-title">Organicemos tu perfil</h1>
       <p className="setup-lead">Estos datos permiten mostrar una referencia de energía y priorizar recetas compatibles. Podés modificarlos cuando quieras.</p>
-      <form noValidate onSubmit={saveAndContinue} ref={formRef}>
+      <form noValidate onInput={clearValidationError} onChange={clearValidationError} onSubmit={saveAndContinue} ref={formRef}>
+        {validationError && <p className="form-message error" id="setup-validation-error" role="alert">{validationError}</p>}
         {loading ? <p role="status">Cargando preferencias…</p> : <ProfileFields profile={profile} onChange={(changes) => { setProfile({ ...profile, ...changes }) }} />}
         {age !== undefined && <p className="calculated-age">Edad calculada: <strong>{age} años</strong></p>}
         {estimate && <EnergySummary estimate={estimate} />}

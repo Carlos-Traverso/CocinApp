@@ -1,7 +1,7 @@
 import { daysUntilExpiry, normalizePantryName, type PantryCategory, type PantryItem, type PantryUnit } from '../../pantry/domain/pantry'
 import type { Recipe } from '../../recipes/domain/Recipe'
-import { convertQuantity, normalizeQuantity, quantityDeficit, roundQuantity } from '../../../shared/domain/units'
-import type { AdminUnit } from '../../admin/domain/adminModels'
+import { compatibleUnitAbbreviations, convertQuantity, normalizeQuantity, quantityDeficit, roundQuantity } from '../../../shared/domain/units'
+import type { AdminCategory, AdminIngredient, AdminUnit } from '../../admin/domain/adminModels'
 
 export type ShoppingSource = 'manual' | 'recipe' | 'plan' | 'favorites' | 'pantry'
 export interface ShoppingItem {
@@ -18,6 +18,18 @@ export interface ShoppingItem {
   ingredientId?: string | null
 }
 
+export function isShoppingItemTransferable(item: ShoppingItem, catalog: { ingredients: AdminIngredient[]; units: AdminUnit[]; categories: AdminCategory[] }): boolean {
+  if (!item.checked || item.transferredToPantry
+    || !item.name.trim() || item.name.length > 70
+    || !Number.isFinite(item.quantity) || item.quantity <= 0 || item.quantity > 1_000_000
+    || !catalog.categories.some((category) => category.active && !category.isDeleted && category.name === item.category)
+    || !normalizeQuantity(item.quantity, item.unit, catalog.units)) return false
+  if (item.ingredientId === undefined || item.ingredientId === null) return true
+  const ingredient = catalog.ingredients.find((candidate) => candidate.id === item.ingredientId && candidate.active && !candidate.isDeleted && normalizePantryName(candidate.name) === normalizePantryName(item.name))
+  const baseUnit = ingredient && catalog.units.find((unit) => unit.id === ingredient.baseUnitId && unit.active && !unit.isDeleted)
+  return Boolean(baseUnit && compatibleUnitAbbreviations(baseUnit.abbreviation, catalog.units).includes(item.unit))
+}
+
 export function addPurchaseToPantry(pantry: PantryItem[], purchase: ShoppingItem, units?: AdminUnit[]): PantryItem[] {
   if (pantry.some((item) => item.sourceShoppingIds?.includes(purchase.id))) return pantry
   const matchingIndex = pantry.findIndex((item) => {
@@ -28,6 +40,7 @@ export function addPurchaseToPantry(pantry: PantryItem[], purchase: ShoppingItem
   if (matchingIndex < 0) return [...pantry, {
     id: crypto.randomUUID(), name: purchase.name, category: purchase.category, quantity: purchase.quantity,
     unit: purchase.unit, minimum: 0, expiry: null, sourceShoppingIds: [purchase.id],
+    ...(purchase.ingredientId ? { ingredientId: purchase.ingredientId } : {}),
   }]
   return pantry.map((item, index) => {
     if (index !== matchingIndex) return item

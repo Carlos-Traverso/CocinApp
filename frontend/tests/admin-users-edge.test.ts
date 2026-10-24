@@ -4,46 +4,31 @@ import test from 'node:test'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 
-// Run the actual Edge handler with a fake Supabase transport and a delayed body
-// parse so a role revocation can happen after initial authentication.
+// Execute the actual Edge handler with fake Supabase transports. These tests
+// verify integration and failure handling; database concurrency has SQL tests.
 const source = readFileSync(new URL('../../backend/supabase/functions/admin-users/index.ts', import.meta.url), 'utf8')
 const compiled = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2023 },
 }).outputText
 
-type AdminAction =
-  | { action: 'create'; name: string; email: string; password: string }
-  | { action: 'update_name'; email: string; name: string }
-
-function setup(onBodyRead: () => Promise<void>) {
+function setup(options: { role?: string; rejectRpc?: boolean; legacyBan?: boolean; rejectUnban?: boolean } = {}) {
   const calls: string[] = []
-  let currentRole = 'ADMIN'
   let handler: ((request: Request) => Promise<Response>) | undefined
   const caller = {
     auth: { getUser: async () => ({ data: { user: { id: 'actor' } }, error: null }) },
-    rpc: async (name: string) => {
-      calls.push(name)
-      return name === 'current_app_role' ? { data: currentRole, error: null } : { data: null, error: null }
+    rpc: async (name: string, args?: Record<string, unknown>) => {
+      calls.push(`${name}:${JSON.stringify(args ?? {})}`)
+      if (name === 'current_app_role') return { data: options.role ?? 'ADMIN', error: null }
+      return { data: null, error: options.rejectRpc ? { message: 'Operación rechazada por permisos.' } : null }
     },
   }
-  const admin = {
-    auth: { admin: {
-      listUsers: async () => ({ data: { users: [{ id: 'target', email: 'target@example.com', user_metadata: { name: 'Target' } }] }, error: null }),
-      createUser: async () => {
-        calls.push('createUser')
-        return { data: { user: { id: 'created-user' } }, error: null }
-      },
-      updateUserById: async () => {
-        calls.push('updateUserById')
-        return { error: null }
-      },
-    } },
-    from: (table: string) => ({
-      select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { value: {} }, error: null }) }) }) }),
-      upsert: async () => { calls.push(`${table}.upsert`); return { error: null } },
-      insert: async () => { calls.push(`${table}.insert`); return { error: null } },
-    }),
-  }
+  const admin = { auth: { admin: {
+    listUsers: async () => ({ data: { users: [{ id: 'target', email: 'target@example.com', banned_until: options.legacyBan ? '2999-01-01T00:00:00Z' : null }] }, error: null }),
+    updateUserById: async (_id: string, args: Record<string, unknown>) => {
+      calls.push(`updateUserById:${JSON.stringify(args)}`)
+      return { error: options.rejectUnban ? { message: 'Auth unavailable' } : null }
+    },
+  } } }
   let clients = 0
   runInNewContext(compiled, {
     exports: {}, Request, Response, Date,
@@ -58,70 +43,51 @@ function setup(onBodyRead: () => Promise<void>) {
   })
   return {
     calls,
-    revokeAdmin: () => { currentRole = 'USER' },
-    invoke: async (action: AdminAction) => {
+    invoke: async (active: unknown, authorized = true) => {
       assert.ok(handler)
-      const request = new Request('https://example.test/admin-users', {
+      return handler(new Request('https://example.test/admin-users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer test-token' },
-        body: JSON.stringify(action),
-      })
-      Object.defineProperty(request, 'json', { value: async () => { await onBodyRead(); return action } })
-      return handler(request)
+        headers: { 'Content-Type': 'application/json', ...(authorized ? { Authorization: 'Bearer test-token' } : {}) },
+        body: JSON.stringify({ action: 'set_active', email: 'target@example.com', active }),
+      }))
     },
   }
 }
 
-function deferred() {
-  let signalRead!: () => void
-  let release!: () => void
-  return {
-    read: new Promise<void>((resolve) => { signalRead = resolve }),
-    gate: new Promise<void>((resolve) => { release = resolve }),
-    signalRead: () => signalRead(),
-    release: () => release(),
-  }
-}
-
-test('rejects create when administrator permissions are revoked before the action is admitted', async () => {
-  const pause = deferred()
-  const app = setup(async () => { pause.signalRead(); await pause.gate })
-  const pending = app.invoke({ action: 'create', name: 'New user', email: 'new@example.com', password: 'secure-pass-123' })
-
-  await pause.read
-  app.revokeAdmin()
-  pause.release()
-
-  const result = await pending
-  assert.equal(result.status, 403)
-  assert.deepEqual(app.calls, ['current_app_role', 'current_app_role'])
+test('deactivation delegates to atomic caller RPC and never issues a separate Auth ban', async () => {
+  const { calls, invoke } = setup()
+  assert.equal((await invoke(false)).status, 200)
+  assert.deepEqual(calls, ['current_app_role:{}', 'admin_set_user_active:{"target_user_id":"target","new_active":false}'])
 })
 
-test('rejects name update when administrator permissions are revoked before the first write', async () => {
-  const pause = deferred()
-  const app = setup(async () => { pause.signalRead(); await pause.gate })
-  const pending = app.invoke({ action: 'update_name', email: 'target@example.com', name: 'Changed name' })
-
-  await pause.read
-  app.revokeAdmin()
-  pause.release()
-
-  const result = await pending
-  assert.equal(result.status, 403)
-  assert.equal(app.calls.includes('personal_data.upsert'), false)
-  assert.equal(app.calls.includes('updateUserById'), false)
-  assert.equal(app.calls.includes('admin_audit_log.insert'), false)
+test('database rejection never falls through to clearing a legacy ban', async () => {
+  const { calls, invoke } = setup({ rejectRpc: true, legacyBan: true })
+  assert.equal((await invoke(true)).status, 400)
+  assert.equal(calls.some((call) => call.startsWith('updateUserById:')), false)
 })
 
-test('admits create and name update while the administrator still has the role at the final check', async () => {
-  const create = setup(async () => {})
-  const createResult = await create.invoke({ action: 'create', name: 'New user', email: 'new@example.com', password: 'secure-pass-123' })
-  assert.equal(createResult.status, 200)
-  assert.equal(create.calls.includes('createUser'), true)
+test('legacy reactivation clears Auth ban only after atomic state change', async () => {
+  const { calls, invoke } = setup({ legacyBan: true })
+  assert.equal((await invoke(true)).status, 200)
+  assert.deepEqual(calls.slice(1), ['admin_set_user_active:{"target_user_id":"target","new_active":true}', 'updateUserById:{"ban_duration":"none"}'])
+})
 
-  const update = setup(async () => {})
-  const updateResult = await update.invoke({ action: 'update_name', email: 'target@example.com', name: 'Changed name' })
-  assert.equal(updateResult.status, 200)
-  assert.equal(update.calls.includes('personal_data.upsert'), true)
-  assert.equal(update.calls.includes('updateUserById'), true)
+test('legacy unban failure reports partial completion and permits a retry', async () => {
+  const { calls, invoke } = setup({ legacyBan: true, rejectUnban: true })
+  const result = await invoke(true)
+  assert.equal(result.status, 502)
+  assert.match((await result.json()).error, /estado se guardó.*reintentar/)
+  assert.equal(calls.length, 3)
+})
+
+test('unauthenticated, non-admin and malformed requests cannot mutate account state', async () => {
+  const unauthenticated = setup()
+  assert.equal((await unauthenticated.invoke(false, false)).status, 401)
+  assert.equal(unauthenticated.calls.length, 0)
+  const user = setup({ role: 'USER' })
+  assert.equal((await user.invoke(false)).status, 403)
+  assert.equal(user.calls.length, 1)
+  const malformed = setup()
+  assert.equal((await malformed.invoke('false')).status, 400)
+  assert.equal(malformed.calls.length, 1)
 })

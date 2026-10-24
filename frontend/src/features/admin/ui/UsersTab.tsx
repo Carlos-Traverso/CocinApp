@@ -6,6 +6,7 @@ import { useNotifications } from '../../../shared/notifications/NotificationProv
 import { adminUsersRepository } from '../data/AdminUsersRepository'
 import type { ManagedUser } from '../data/AdminUsersRepository'
 import './UsersTab.css'
+import { isSupabaseConfigured } from '../../../shared/data/supabaseClient'
 
 type UserDraft = { mode: 'create'; name: string; email: string; password: string } | { mode: 'edit'; name: string; email: string }
 
@@ -132,11 +133,37 @@ export function UsersTab() {
     }
   }
 
+  const changeRole = async (user: ManagedUser, role: 'USER' | 'ADMIN') => {
+    if (user.isDemoAdmin || role === user.role || busyRef.current) return
+    const nextRole = role === 'ADMIN' ? 'administrador' : 'usuario'
+    const confirmed = await notify({
+      type: 'warning',
+      title: role === 'ADMIN' ? 'Dar acceso de administrador' : 'Quitar acceso de administrador',
+      message: `¿Cambiar el rol de ${user.name} (${user.email}) a ${nextRole}? El cambio se aplicará cuando esa persona vuelva a iniciar sesión.`,
+      confirmLabel: 'Cambiar rol',
+      cancelLabel: 'Cancelar',
+    })
+    if (!confirmed) return
+    busyRef.current = true
+    setPending(true)
+    try {
+      await adminUsersRepository.setRole(user.email, role)
+      await reload()
+      void notify({ type: 'success', title: 'Rol actualizado', message: `La cuenta ahora tiene el rol ${role === 'ADMIN' ? 'Administrador' : 'Usuario'}.` })
+    } catch (cause) {
+      void notify({ type: 'error', title: 'No se pudo cambiar el rol', message: cause instanceof Error ? cause.message : 'Ocurrió un error al cambiar el rol.' })
+    } finally {
+      busyRef.current = false
+      setPending(false)
+    }
+  }
+
   return <div className="panel users-tab">
     <div className="section-header">
       <div><h2>Usuarios</h2><p className="panel-intro"><SearchFeedback resultCount={visibleUsers.length} status={debouncedSearch.status} /> · {users.length} usuarios totales</p></div>
       <button className="button button-primary" disabled={loading || pending} onClick={(event) => { openerRef.current = event.currentTarget; setDraft({ mode: 'create', name: '', email: '', password: '' }) }} type="button"><Plus size={16} /> Nuevo usuario</button>
     </div>
+    {isSupabaseConfigured && <p className="panel-intro">Las cuentas nuevas se crean con correo confirmado y la contraseña inicial que definas. El usuario podrá cambiarla después desde su cuenta.</p>}
     <div className="admin-catalog-filters users-filters">
       <label className="field admin-filter-search"><span>Buscar por nombre o email</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label>
       <label className="field"><span>Estado</span><select onChange={(event) => setStatusFilter(event.currentTarget.value as typeof statusFilter)} value={statusFilter}><option value="all">Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select></label>
@@ -146,6 +173,7 @@ export function UsersTab() {
         <div className="record-main"><strong>{user.name}</strong><small className="users-email">{user.email}</small><span className={`admin-entity-status ${user.active ? 'active' : 'inactive'}`}>{user.active ? 'Activo' : 'Inactivo'}</span><small>Rol: {user.role === 'ADMIN' ? 'Administrador' : 'Usuario'}{user.isDemoAdmin ? ' · Cuenta de demostración' : ''}</small></div>
         <div className="record-actions">
           {user.isDemoAdmin ? <span className="users-readonly">Solo lectura</span> : <>
+            {isSupabaseConfigured && <label className="users-role-control"><span className="sr-only">Rol de {user.name}</span><select aria-label={`Rol de ${user.name}`} disabled={pending} onChange={(event) => void changeRole(user, event.currentTarget.value as 'USER' | 'ADMIN')} value={user.role}><option value="USER">Usuario</option><option value="ADMIN">Administrador</option></select></label>}
             <button aria-label={`Editar nombre de ${user.name}`} className="pantry-icon-button" disabled={pending} onClick={(event) => { openerRef.current = event.currentTarget; setDraft({ mode: 'edit', name: user.name, email: user.email }) }} type="button"><Pencil size={17} /></button>
             <button aria-label={`${user.active ? 'Desactivar' : 'Activar'} usuario ${user.name}`} className="button button-quiet users-status-button" disabled={pending} onClick={() => void toggleActive(user)} type="button">{user.active ? <><UserRoundX size={16} /> Desactivar</> : <><UserRoundCheck size={16} /> Activar</>}</button>
           </>}
@@ -160,7 +188,7 @@ export function UsersTab() {
         <label className="field"><span>Nombre</span><input autoComplete="name" disabled={pending} maxLength={80} onChange={(event) => setDraft({ ...draft, name: event.currentTarget.value })} required value={draft.name} /></label>
         {draft.mode === 'create' ? <>
           <label className="field"><span>Email</span><input autoComplete="email" disabled={pending} maxLength={254} onChange={(event) => setDraft({ ...draft, email: event.currentTarget.value })} required type="email" value={draft.email} /></label>
-          <label className="field"><span>Contraseña inicial</span><input autoComplete="new-password" disabled={pending} minLength={8} onChange={(event) => setDraft({ ...draft, password: event.currentTarget.value })} required type="password" value={draft.password} /></label>
+          <label className="field"><span>Contraseña inicial (8 a 72 caracteres)</span><input autoComplete="new-password" disabled={pending} maxLength={72} minLength={8} onChange={(event) => setDraft({ ...draft, password: event.currentTarget.value })} required type="password" value={draft.password} /></label>
         </> : <label className="field"><span>Email</span><input readOnly value={draft.email} /></label>}
         <div className="pantry-dialog-actions"><button className="button button-quiet" disabled={pending} onClick={closeEditor} type="button">Cancelar</button><button className="button button-primary" disabled={pending} type="submit">{pending ? 'Guardando…' : 'Guardar'}</button></div>
       </form>

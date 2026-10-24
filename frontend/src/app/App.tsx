@@ -1,7 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { CookingPage } from '../pages/CookingPage'
-import { AdminCategoriesPage, AdminIngredientsPage, AdminPage, AdminRecipesPage, AdminUnitsPage, AdminUsersPage } from '../pages/AdminPage'
+import { AdminAuditPage, AdminCategoriesPage, AdminIngredientsPage, AdminPage, AdminRecipesPage, AdminUnitsPage, AdminUsersPage } from '../pages/AdminPage'
 import { HomePage } from '../pages/HomePage'
 import { HistoryPage } from '../pages/HistoryPage'
 import { OnboardingPage } from '../pages/OnboardingPage'
@@ -13,6 +13,7 @@ import { RecipeDetailPage } from '../pages/RecipeDetailPage'
 import { ShoppingPage } from '../pages/ShoppingPage'
 import { WelcomePage } from '../pages/WelcomePage'
 import { NotFoundPage } from '../pages/NotFoundPage'
+import { RequestPasswordRecoveryPage, ResetPasswordPage } from '../pages/PasswordRecoveryPage'
 import { AdminShell } from '../components/AdminShell'
 import { RequireAdmin, RequireUser, RedirectIfAuthenticated } from './AuthGuards'
 import { NotificationProvider } from '../shared/notifications/NotificationProvider'
@@ -22,6 +23,8 @@ export function App() {
     <NotificationProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="recuperar-contrasena" element={<RequestPasswordRecoveryPage />} />
+          <Route path="restablecer-contrasena" element={<ResetPasswordPage />} />
           <Route element={<RedirectIfAuthenticated />}>
             <Route index element={<WelcomePage />} />
             <Route path="auth" element={<Navigate replace to="/" />} />
@@ -35,6 +38,7 @@ export function App() {
               <Route path="categories" element={<AdminCategoriesPage />} />
               <Route path="units" element={<AdminUnitsPage />} />
               <Route path="users" element={<AdminUsersPage />} />
+              <Route path="history" element={<AdminAuditPage />} />
               <Route path="*" element={<NotFoundPage homeLabel="Volver a Administración" homePath="/admin" />} />
             </Route>
           </Route>

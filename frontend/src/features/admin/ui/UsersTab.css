@@ -3,6 +3,7 @@
 .users-email { overflow-wrap: anywhere; }
 .users-readonly { color: var(--muted); font-size: .85rem; }
 .users-status-button { white-space: nowrap; }
+.users-role-control select { min-width: 145px; }
 .users-load-error { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .users-load-error p { margin: 0; color: var(--muted); }
 
