@@ -67,6 +67,11 @@ async function recordAdminAction(admin: SupabaseClient, actorUserId: string, act
   })
 }
 
+async function isCurrentAdministrator(caller: SupabaseClient): Promise<boolean> {
+  const { data: role, error } = await caller.rpc('current_app_role')
+  return !error && role === 'ADMIN'
+}
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (request.method !== 'POST') return response({ error: 'Método no permitido.' }, 405)
@@ -105,6 +110,12 @@ Deno.serve(async (request) => {
       if (typeof input.password !== 'string' || input.password.length < 8 || input.password.length > 72) {
         return response({ error: 'La contraseña inicial debe tener entre 8 y 72 caracteres.' }, 400)
       }
+      // This final role check admits the whole operation. Once it succeeds,
+      // the Auth request may finish if a role change happens while it is in
+      // flight; Auth and SQL writes cannot share one atomic transaction.
+      if (!await isCurrentAdministrator(caller)) {
+        return response({ error: 'Se revocó tu permiso de administrador antes de crear la cuenta.' }, 403)
+      }
       const { data: created, error } = await admin.auth.admin.createUser({
         email,
         password: input.password,
@@ -134,6 +145,11 @@ Deno.serve(async (request) => {
       const currentProfile = profileRow?.value && typeof profileRow.value === 'object' && !Array.isArray(profileRow.value)
         ? profileRow.value as Record<string, unknown>
         : {}
+      // This check admits the profile and Auth updates as one logical action.
+      // A later role change cannot cancel an Auth request already in flight.
+      if (!await isCurrentAdministrator(caller)) {
+        return response({ error: 'Se revocó tu permiso de administrador antes de actualizar el nombre.' }, 403)
+      }
       const { error: profileWriteError } = await admin.from('personal_data').upsert({
         user_id: user.id,
         data_key: 'profile',
