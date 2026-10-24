@@ -3,65 +3,84 @@ import type { CookingRepository } from './CookingRepository'
 import { isSupabaseConfigured } from '../../../shared/data/supabaseClient'
 import { loadPersonalData, savePersonalData } from '../../../shared/data/personalDataRepository'
 import type { CookingSession, PreparationEvent } from '../domain/cooking'
+import { assertPersonalDataSessionCurrent, capturePersonalDataSession, type PersonalDataSession } from '../../../shared/data/personalDataSession'
 
-async function loadCookingData(key: 'cooking_progress' | 'cooking_history'): Promise<unknown | null> {
+async function loadCookingData(key: 'cooking_progress' | 'cooking_history', session: PersonalDataSession): Promise<unknown | null> {
   if (!isSupabaseConfigured) return null
-  return loadPersonalData(key)
+  const data = await loadPersonalData(key, session)
+  assertPersonalDataSessionCurrent(session)
+  return data
 }
 
-async function loadSession(recipeId: string): Promise<CookingSession | null> {
-  const remote = await loadCookingData('cooking_progress')
+async function loadSession(recipeId: string, sessionContext: PersonalDataSession): Promise<CookingSession | null> {
+  const remote = await loadCookingData('cooking_progress', sessionContext)
   if (remote !== null) {
     const sessions = Array.isArray(remote) ? remote as CookingSession[] : []
     const session = sessions.find((entry) => entry.recipeId === recipeId) ?? null
-    for (const session of sessions) await persistCookingSession(session)
+    for (const savedSession of sessions) {
+      assertPersonalDataSessionCurrent(sessionContext)
+      await persistCookingSession(savedSession)
+      assertPersonalDataSessionCurrent(sessionContext)
+    }
     return session
   }
   return getCookingSession(recipeId)
 }
 
-async function saveSession(session: CookingSession): Promise<void> {
-  const current = await loadCookingData('cooking_progress')
+async function saveSession(session: CookingSession, sessionContext: PersonalDataSession): Promise<void> {
+  const current = await loadCookingData('cooking_progress', sessionContext)
   const sessions = Array.isArray(current) ? current as CookingSession[] : []
   const next = [...sessions.filter((item) => item.recipeId !== session.recipeId), session]
-  await savePersonalData('cooking_progress', next)
+  assertPersonalDataSessionCurrent(sessionContext)
+  await savePersonalData('cooking_progress', next, sessionContext)
+  assertPersonalDataSessionCurrent(sessionContext)
   await persistCookingSession(session)
+  assertPersonalDataSessionCurrent(sessionContext)
 }
 
-async function loadHistory(): Promise<PreparationEvent[]> {
-  const remote = await loadCookingData('cooking_history')
+async function loadHistory(sessionContext: PersonalDataSession): Promise<PreparationEvent[]> {
+  const remote = await loadCookingData('cooking_history', sessionContext)
   if (remote !== null) {
     const history = Array.isArray(remote) ? remote as PreparationEvent[] : []
+    assertPersonalDataSessionCurrent(sessionContext)
     await persistCookingHistory(history)
-    return getCookingHistory()
+    assertPersonalDataSessionCurrent(sessionContext)
+    return history
   }
   return getCookingHistory()
 }
 
-async function saveHistory(history: PreparationEvent[]): Promise<void> {
-  await savePersonalData('cooking_history', history)
+async function saveHistory(history: PreparationEvent[], sessionContext: PersonalDataSession): Promise<void> {
+  await savePersonalData('cooking_history', history, sessionContext)
+  assertPersonalDataSessionCurrent(sessionContext)
   await persistCookingHistory(history)
+  assertPersonalDataSessionCurrent(sessionContext)
 }
 
 export const mockCookingRepository: CookingRepository = {
-  async getSession(recipeId) { return isSupabaseConfigured ? loadSession(recipeId) : getCookingSession(recipeId) },
-  async saveSession(session) { if (!isSupabaseConfigured) return persistCookingSession(session); await saveSession(session) },
-  async getHistory() { return isSupabaseConfigured ? loadHistory() : getCookingHistory() },
+  async getSession(recipeId) { const context = capturePersonalDataSession(); return isSupabaseConfigured ? loadSession(recipeId, context) : getCookingSession(recipeId) },
+  async saveSession(session) { const context = capturePersonalDataSession(); if (!isSupabaseConfigured) return persistCookingSession(session); await saveSession(session, context) },
+  async getHistory() { const context = capturePersonalDataSession(); return isSupabaseConfigured ? loadHistory(context) : getCookingHistory() },
   async removeHistoryEntry(eventId) {
     if (!isSupabaseConfigured) return removeCookingHistoryEntry(eventId)
-    await saveHistory((await loadHistory()).filter((event) => event.id !== eventId))
+    const context = capturePersonalDataSession()
+    const history = await loadHistory(context)
+    assertPersonalDataSessionCurrent(context)
+    await saveHistory(history.filter((event) => event.id !== eventId), context)
   },
-  async clearHistory() { if (!isSupabaseConfigured) return clearCookingHistory(); await saveHistory([]) },
+  async clearHistory() { if (!isSupabaseConfigured) return clearCookingHistory(); await saveHistory([], capturePersonalDataSession()) },
   checkStock: checkCookingStock,
   async finalize(recipe, session, discount) {
-    const result = await finishCookingSession(recipe, session, discount)
+    const context = capturePersonalDataSession()
+    const result = await finishCookingSession(recipe, session, discount, new Date(), () => assertPersonalDataSessionCurrent(context))
+    assertPersonalDataSessionCurrent(context)
     if (isSupabaseConfigured) {
-      const history = await loadHistory()
+      const history = await loadHistory(context)
       const updated = [...history.filter((event) => !result.history.some((saved) => saved.id === event.id)), ...result.history]
-      await saveHistory(updated)
-      const sessions = await loadCookingData('cooking_progress')
+      await saveHistory(updated, context)
+      const sessions = await loadCookingData('cooking_progress', context)
       const nextSessions = (Array.isArray(sessions) ? sessions as CookingSession[] : []).filter((entry) => entry.recipeId !== session.recipeId)
-      await savePersonalData('cooking_progress', nextSessions)
+      await savePersonalData('cooking_progress', nextSessions, context)
     }
     return result
   },

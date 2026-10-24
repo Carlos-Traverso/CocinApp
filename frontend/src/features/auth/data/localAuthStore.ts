@@ -21,10 +21,14 @@ export interface LocalAccount {
 const authKey = 'cocinapp.auth.v1'
 const accountsKey = 'cocinapp.accounts.v1'
 export const demoAdminEmail = 'admin@cocinapp.local'
+let sessionRevision = 0
 
 function dispatchAuthChange() {
+  sessionRevision += 1
   window.dispatchEvent(new Event('auth-change'))
 }
+
+export function getSessionRevision(): number { return sessionRevision }
 
 export function getAccounts(): LocalAccount[] {
   try {

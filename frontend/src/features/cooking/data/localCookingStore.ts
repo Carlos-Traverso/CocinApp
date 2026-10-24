@@ -117,13 +117,15 @@ export function finalizeCookingSession(recipe: Recipe, session: CookingSession, 
 export async function getCookingSession(recipeId: string): Promise<CookingSession | null> { return readCookingSession(recipeId) }
 export async function persistCookingSession(session: CookingSession): Promise<void> { saveCookingSession(session) }
 export async function getCookingHistory(): Promise<PreparationEvent[]> { return readHistory() }
-export async function finishCookingSession(recipe: Recipe, session: CookingSession, discount: boolean, now = new Date()): Promise<{ history: PreparationEvent[]; exhaustedIngredients: string[] }> {
+export async function finishCookingSession(recipe: Recipe, session: CookingSession, discount: boolean, now = new Date(), assertCurrent: () => void = () => {}): Promise<{ history: PreparationEvent[]; exhaustedIngredients: string[] }> {
   const savedHistory = readHistory()
   if (savedHistory.some((event) => event.recipeId === session.recipeId && event.sessionStartedAt === session.startedAt)) {
+    assertCurrent()
     clearCookingSession(session.recipeId)
     return { history: savedHistory, exhaustedIngredients: [] }
   }
   const stockCheck = discount ? await checkCookingStock(recipe, session.portions, now) : []
+  assertCurrent()
   const history = finalizeCookingSession(recipe, session, discount, personalStorage, now)
   const exhaustedIngredients = stockCheck.filter((item) => item.missing === 0 && item.available <= item.required).map((item) => item.ingredient.name)
   return { history, exhaustedIngredients }
