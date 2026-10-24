@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --pretty false",
     "test": "node --import jiti/register --test --test-isolation=none tests/auth.test.ts tests/admin.test.ts tests/profile.test.ts tests/pantry.test.ts tests/recipes.test.ts tests/planner.test.ts tests/shopping.test.ts tests/cooking.test.ts tests/dashboard.test.ts tests/search.test.ts tests/ui.test.ts",
+    "test:admin-users-edge": "node --import jiti/register --test tests/admin-users-edge.test.ts",
     "test:profile": "node --import jiti/register --test --test-isolation=none tests/auth.test.ts tests/admin.test.ts tests/profile.test.ts",
     "test:pantry": "node --import jiti/register --test --test-isolation=none tests/pantry.test.ts",
     "test:recipes": "node --import jiti/register --test --test-isolation=none tests/recipes.test.ts",
