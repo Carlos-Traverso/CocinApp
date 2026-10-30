@@ -1,0 +1,50 @@
+.loading-screen {
+  display: grid;
+  width: 100%;
+  place-items: center;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.loading-screen-page { min-height: calc(100svh - 109px); }
+.loading-screen-fullscreen { min-height: 100svh; }
+.loading-screen-section { min-height: max(280px, calc(100svh - 330px)); }
+.loading-screen-content { display: grid; justify-items: center; gap: 18px; max-width: 100%; }
+.loading-screen-emblem {
+  display: grid;
+  width: 124px;
+  height: 124px;
+  place-items: center;
+  border: 1px solid #d7e6d9;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fffdf4, var(--green-soft));
+  box-shadow: 0 12px 36px #296b4a0d;
+}
+.loading-screen-emblem img { object-fit: contain; animation: kitchen-logo-breathe 2.4s ease-in-out infinite; }
+.loading-screen-brand .brand-logo-mark { display: none; }
+.loading-screen-brand .brand-logo-name { font-size: 26px; }
+.loading-screen .loading-screen-message { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
+.loading-screen-dots { display: flex; gap: 7px; }
+.loading-screen-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: kitchen-loading-dot 1.5s ease-in-out infinite; }
+.loading-screen-dots span:nth-child(2) { animation-delay: .18s; }
+.loading-screen-dots span:nth-child(3) { animation-delay: .36s; }
+
+@keyframes kitchen-logo-breathe {
+  0%, 100% { transform: translateY(2px) scale(.96); }
+  50% { transform: translateY(-4px) scale(1.04); }
+}
+@keyframes kitchen-loading-dot {
+  0%, 70%, 100% { opacity: .3; transform: translateY(0); }
+  35% { opacity: 1; transform: translateY(-4px); }
+}
+
+@media (max-width: 850px) and (min-width: 621px) {
+  .loading-screen-page { min-height: calc(100svh - 77px); }
+}
+@media (max-width: 620px) {
+  .loading-screen-page { min-height: calc(100svh - 171px - env(safe-area-inset-bottom)); }
+  .loading-screen-section { min-height: 280px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-screen-emblem img, .loading-screen-dots span { animation: none; }
+}

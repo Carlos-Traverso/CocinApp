@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../../../components/LoadingScreen'
 import { useEffect, useState } from 'react'
 import { RefreshCw, Search } from 'lucide-react'
 import { adminAuditRepository, type AdminAuditEvent } from '../data/AdminAuditRepository'
@@ -57,7 +58,7 @@ export function AdminAuditTab() {
         <button aria-label="Actualizar historial" className="button button-quiet" disabled={loading} onClick={() => setRefresh((value) => value + 1)} type="button"><RefreshCw aria-hidden="true" size={16} /> Actualizar</button>
       </div>
     </div>
-    {loading || debouncedSearch.status === 'waiting' ? <p role="status">Buscando en el historial…</p> : failed ? <div className="users-load-error"><p>No se pudo cargar el historial. Confirmá que la migración esté aplicada y volvé a intentarlo.</p><button className="button button-quiet" onClick={() => setRefresh((value) => value + 1)} type="button">Reintentar</button></div> : events.length === 0 ? <p className="empty">{search.trim() ? 'No hay cambios que coincidan con la búsqueda.' : 'Todavía no hay cambios administrativos registrados.'}</p> : <ol aria-label="Cambios administrativos recientes" className="admin-audit-list">
+    {loading || debouncedSearch.status === 'waiting' ? <LoadingScreen message="Buscando en el historial…" variant="section" /> : failed ? <div className="users-load-error"><p>No se pudo cargar el historial. Confirmá que la migración esté aplicada y volvé a intentarlo.</p><button className="button button-quiet" onClick={() => setRefresh((value) => value + 1)} type="button">Reintentar</button></div> : events.length === 0 ? <p className="empty">{search.trim() ? 'No hay cambios que coincidan con la búsqueda.' : 'Todavía no hay cambios administrativos registrados.'}</p> : <ol aria-label="Cambios administrativos recientes" className="admin-audit-list">
       {events.map((event) => <li className="admin-audit-event" key={event.id}>
         <div className="admin-audit-event-main">
           <strong>{actionLabels[event.action] ?? 'Acción administrativa'}</strong>

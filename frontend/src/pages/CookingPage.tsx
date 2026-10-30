@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../components/LoadingScreen'
 import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, Clock3, CookingPot, Lightbulb, Minus, Plus, Thermometer, UtensilsCrossed, X } from 'lucide-react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -110,7 +111,7 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
   }, [session, activeTimer, finishedTimer, notify])
 
   if (!recipe) {
-    if (loading) return <main className="cooking-missing"><p role="status">Cargando receta y progreso…</p></main>
+    if (loading) return <LoadingScreen message="Cargando receta y progreso…" variant="fullscreen" />
     return <main className="cooking-missing"><h1>Receta no encontrada</h1><Link className="button button-primary" to="/recipes">Volver a recetas</Link></main>
   }
   if (!session || session.recipeId !== recipe.id || recipe.steps.length === 0) {

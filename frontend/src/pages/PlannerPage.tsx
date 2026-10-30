@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../components/LoadingScreen'
 import { useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -60,7 +61,7 @@ export function PlannerPage() {
   return <div className="page planner-page">
     <header className="page-heading"><div><p className="eyebrow">ORGANIZÁ TUS COMIDAS</p><h1>Planificación semanal</h1><p className="page-lead">Asigná recetas de lunes a domingo para desayuno, almuerzo, merienda y cena. Cada semana se guarda por separado.</p></div><div className="planner-head-actions"><Link className="button button-quiet" to="/recipes">Explorar recetas</Link><button className="button button-primary" disabled={loading || saving} onClick={sendWeekToShopping} type="button">Generar compras de esta semana</button></div></header>
     <div className="planner-toolbar"><h2>Semana del {new Date(`${dates[0]}T12:00:00`).toLocaleDateString('es-AR')} al {new Date(`${dates[6]}T12:00:00`).toLocaleDateString('es-AR')}</h2><div><button aria-label="Semana anterior" className="button button-quiet" onClick={() => setWeekOffset(weekOffset - 1)} type="button"><ChevronLeft size={18} /></button><button className="button button-quiet" onClick={() => setWeekOffset(0)} type="button">Esta semana</button><button aria-label="Semana siguiente" className="button button-quiet" onClick={() => setWeekOffset(weekOffset + 1)} type="button"><ChevronRight size={18} /></button></div></div>
-    {loading && <p role="status">Cargando plan semanal…</p>}{saving && <p role="status">Guardando cambio…</p>}
+    {loading && <LoadingScreen message="Cargando plan semanal…" variant="section" />}{saving && <p role="status">Guardando cambio…</p>}
     <section aria-label="Calendario de comidas de la semana" className="planner-grid">
       {dates.map((date) => {
         const dayLabel = dayFormatter.format(new Date(`${date}T12:00:00`))

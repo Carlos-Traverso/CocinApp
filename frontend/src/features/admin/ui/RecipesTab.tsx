@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../../../components/LoadingScreen'
 import { useState, type FormEvent } from 'react'
 import { ArrowDown, ArrowUp, Copy, Eye, Pencil, Plus, Power, Star, Trash2, X } from 'lucide-react'
 import { adminRepository } from '../data/AdminRepository'
@@ -197,7 +198,7 @@ export function RecipesTab() {
       <label className="field"><span>Visibilidad</span><select onChange={(event) => { setFeatured(event.currentTarget.value as AdminRecipeFilters['featured']); setPage(1) }} value={featured}><option value="all">Todas</option><option value="featured">Solo destacadas</option></select></label>
       <label className="field"><span>Ordenar</span><select onChange={(event) => setSort(event.currentTarget.value as AdminRecipeFilters['sort'])} value={sort}><option value="title-asc">Título A–Z</option><option value="title-desc">Título Z–A</option><option value="newest">Más recientes</option><option value="oldest">Más antiguas</option></select></label>
     </div>
-    {loading ? <p role="status">Cargando catálogo…</p> : <div className="records">
+    {loading ? <LoadingScreen message="Cargando catálogo…" variant="section" /> : <div className="records">
       {visibleRecipes.map((recipe) => <article className="record admin-recipe-record" key={recipe.id}>
         <RecipeImage className="admin-recipe-record-art" recipe={recipe.recipe} />
         <div className="record-main"><span className="admin-record-title"><strong>{recipe.title}</strong>{recipe.featured && <Star aria-label="Destacada" fill="currentColor" size={14} />}</span><small>{(recipe.mealShifts ?? [recipe.category]).join(', ')} · {recipe.minutes} min · {recipe.difficulty}</small><span className={`admin-recipe-status ${recipe.status}`}>{recipe.status === 'published' ? recipe.source === 'initial' ? 'Inicial · Publicada' : 'Publicada' : recipe.status === 'draft' ? 'Borrador' : 'Inactiva'}</span><small>{recipe.modifiedAt ? `Modificada ${new Date(recipe.modifiedAt).toLocaleDateString('es-AR')}` : 'Receta inicial versionada'}</small></div>

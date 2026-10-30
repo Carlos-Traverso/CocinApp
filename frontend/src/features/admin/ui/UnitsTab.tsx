@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../../../components/LoadingScreen'
 import { useState } from 'react'
 import { Plus, Pencil, RotateCcw, Trash2, X } from 'lucide-react'
 import { normalizePantryName } from '../../pantry/domain/pantry'
@@ -138,7 +139,7 @@ export function UnitsTab() {
 
       <div className="admin-catalog-filters"><label className="field admin-filter-search"><span>Buscar unidad</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label><label className="field"><span>Dimensión</span><select onChange={(event) => setDimensionFilter(event.currentTarget.value)} value={dimensionFilter}><option value="">Todas</option><option value="masa">Masa</option><option value="volumen">Volumen</option><option value="conteo">Conteo</option></select></label><label className="field"><span>Estado</span><select onChange={(event) => setStatusFilter(event.currentTarget.value as typeof statusFilter)} value={statusFilter}><option value="all">Todas</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select></label></div>
 
-      {loading ? <p role="status">Cargando catálogo…</p> : <div className="records">
+      {loading ? <LoadingScreen message="Cargando catálogo…" variant="section" /> : <div className="records">
         {visibleUnits.map((u) => {
           const base = units.find(x => x.id === u.baseUnitId)
           return (

@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../../../components/LoadingScreen'
 import { useState } from 'react'
 import { Plus, Pencil, RotateCcw, Trash2, X } from 'lucide-react'
 import { normalizePantryName } from '../../pantry/domain/pantry'
@@ -119,7 +120,7 @@ export function CategoriesTab() {
 
       <div className="admin-catalog-filters"><label className="field admin-filter-search"><span>Buscar categoría</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label><label className="field"><span>Estado</span><select onChange={(event) => setStatusFilter(event.currentTarget.value as typeof statusFilter)} value={statusFilter}><option value="all">Todas</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select></label></div>
 
-      {loading ? <p role="status">Cargando catálogo…</p> : <div className="records">
+      {loading ? <LoadingScreen message="Cargando catálogo…" variant="section" /> : <div className="records">
         {visibleCategories.map((c) => (
           <article className="record" key={c.id}>
             <div className="record-main">

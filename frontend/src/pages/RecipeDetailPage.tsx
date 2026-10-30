@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../components/LoadingScreen'
 import { useEffect, useState } from 'react'
 import { ArrowLeft, ChefHat, Clock3, Heart, Minus, Plus, UsersRound } from 'lucide-react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
@@ -63,7 +64,7 @@ export function RecipeDetailPage() {
     return () => { current = false }
   }, [recipe, pantry, portions, notify])
 
-  if (loading) return <div className="page"><p role="status">Cargando receta…</p></div>
+  if (loading) return <div className="page"><LoadingScreen message="Cargando receta…" /></div>
   if (loadFailed) return <div className="page"><Link className="back-link" to="/recipes"><ArrowLeft size={16} /> Recetas</Link><h1>No se pudo cargar la receta</h1><p>Volvé a intentarlo para consultar sus datos.</p><button className="button button-primary" onClick={() => setLoadAttempt((attempt) => attempt + 1)} type="button">Reintentar</button></div>
   if (!recipe) return <div className="page"><Link className="back-link" to="/recipes"><ArrowLeft size={16} /> Recetas</Link><h1>Receta no encontrada</h1></div>
 

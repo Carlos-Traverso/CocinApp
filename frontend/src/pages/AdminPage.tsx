@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../components/LoadingScreen'
 import { useEffect, useState, type ReactNode } from 'react'
 import { AlertTriangle, ArrowRight, BookOpen, Boxes, CircleCheck, FolderTree, Ruler, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -70,7 +71,7 @@ function OverviewTab() {
       .catch(() => { if (current) { setLoadFailed(true); void notify({ type: 'error', title: 'No se pudo cargar el resumen', message: 'No se pudo cargar el resumen del catálogo.' }) } })
     return () => { current = false }
   }, [notify, retry])
-  if (!dashboard) return loadFailed ? <button className="button button-quiet" onClick={() => { setLoadFailed(false); setRetry((value) => value + 1) }} type="button">Reintentar carga del resumen</button> : <p role="status">Cargando resumen…</p>
+  if (!dashboard) return loadFailed ? <button className="button button-quiet" onClick={() => { setLoadFailed(false); setRetry((value) => value + 1) }} type="button">Reintentar carga del resumen</button> : <LoadingScreen message="Cargando resumen…" variant="section" />
   const stats = [
     { label: 'Recetas totales', value: dashboard.metrics.total, icon: BookOpen },
     { label: 'Publicadas y activas', value: dashboard.metrics.active, icon: CircleCheck },

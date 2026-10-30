@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../components/LoadingScreen'
 import { ArrowLeft, ArrowRight, CircleAlert } from 'lucide-react'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -80,7 +81,7 @@ export function OnboardingPage() {
       <p className="setup-lead">Estos datos permiten mostrar una referencia de energía y priorizar recetas compatibles. Podés modificarlos cuando quieras.</p>
       <form noValidate onInput={clearValidationError} onChange={clearValidationError} onSubmit={saveAndContinue} ref={formRef}>
         {validationError && <p className="form-message error" id="setup-validation-error" role="alert">{validationError}</p>}
-        {loading ? <p role="status">Cargando preferencias…</p> : <ProfileFields profile={profile} onChange={(changes) => { setProfile({ ...profile, ...changes }) }} />}
+        {loading ? <LoadingScreen message="Cargando preferencias…" variant="section" /> : <ProfileFields profile={profile} onChange={(changes) => { setProfile({ ...profile, ...changes }) }} />}
         {age !== undefined && <p className="calculated-age">Edad calculada: <strong>{age} años</strong></p>}
         {estimate && <EnergySummary estimate={estimate} />}
         <p className="medical-note"><CircleAlert size={17} /> Esta estimación es informativa; no reemplaza el asesoramiento de un profesional de nutrición. Las etiquetas dietéticas no garantizan ausencia de contaminación cruzada.</p>

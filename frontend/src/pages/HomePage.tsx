@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../components/LoadingScreen'
 import { useEffect, useState } from 'react'
 import { Clock3, History, PackageCheck, SunMedium } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -32,7 +33,7 @@ export function HomePage() {
   const [loadAttempt, setLoadAttempt] = useState(0)
   useEffect(() => { let current = true; void mockDashboardRepository.loadHome().then((loaded) => { if (current) setData(loaded) }).catch(() => { if (current) { setLoadFailed(true); void notify({ type: 'error', title: 'No se pudo cargar el panel', message: 'Probá de nuevo más tarde.' }) } }); return () => { current = false } }, [loadAttempt, notify])
   if (loadFailed) return <div className="page dashboard-page"><header className="dashboard-focus-heading"><div><p className="eyebrow">MI COCINA</p><h1>Panel</h1><p>No se pudo cargar tu cocina.</p><button className="button button-primary" onClick={() => { setLoadFailed(false); setLoadAttempt((attempt) => attempt + 1) }} type="button">Reintentar</button></div></header></div>
-  if (!data) return <div className="page dashboard-page"><p role="status">Cargando tu cocina…</p></div>
+  if (!data) return <div className="page dashboard-page"><LoadingScreen message="Cargando tu cocina…" /></div>
   const preferences = data.profile.preferences ?? []
   const recipes = data.recipes.filter((recipe) => matchesDietaryPreferences(recipe, preferences))
   const history = data.history

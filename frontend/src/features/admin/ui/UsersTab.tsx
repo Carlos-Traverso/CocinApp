@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../../../components/LoadingScreen'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Pencil, Plus, UserRoundX, UserRoundCheck, X } from 'lucide-react'
 import { SearchFeedback } from '../../../shared/search/SearchFeedback'
@@ -168,7 +169,7 @@ export function UsersTab() {
       <label className="field admin-filter-search"><span>Buscar por nombre o email</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label>
       <label className="field"><span>Estado</span><select onChange={(event) => setStatusFilter(event.currentTarget.value as typeof statusFilter)} value={statusFilter}><option value="all">Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select></label>
     </div>
-    {loading ? <p role="status">Cargando usuarios…</p> : loadError ? <div className="users-load-error"><button className="button button-quiet" disabled={pending} onClick={() => void retryLoad()} type="button">Reintentar carga de usuarios</button></div> : <div className="records">
+    {loading ? <LoadingScreen message="Cargando usuarios…" variant="section" /> : loadError ? <div className="users-load-error"><button className="button button-quiet" disabled={pending} onClick={() => void retryLoad()} type="button">Reintentar carga de usuarios</button></div> : <div className="records">
       {visibleUsers.map((user) => <article className="record users-record" key={user.email}>
         <div className="record-main"><strong>{user.name}</strong><small className="users-email">{user.email}</small><span className={`admin-entity-status ${user.active ? 'active' : 'inactive'}`}>{user.active ? 'Activo' : 'Inactivo'}</span><small>Rol: {user.role === 'ADMIN' ? 'Administrador' : 'Usuario'}{user.isDemoAdmin ? ' · Cuenta de demostración' : ''}</small></div>
         <div className="record-actions">

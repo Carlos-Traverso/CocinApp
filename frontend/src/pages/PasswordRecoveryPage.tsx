@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../components/LoadingScreen'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { ArrowLeft, ArrowRight, CheckCircle2, KeyRound, MailCheck } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -121,7 +122,7 @@ export function ResetPasswordPage() {
 
   return <RecoveryLayout>
     <p className="eyebrow">SEGURIDAD DE TU CUENTA</p>
-    {checking ? <><h1>Validando enlace…</h1><p className="field-help" role="status">Esperá un momento.</p></>
+    {checking ? <LoadingScreen message="Validando enlace…" variant="section" />
       : complete ? <>
         <span className="recovery-success-icon"><CheckCircle2 aria-hidden="true" size={24} /></span>
         <h1>Contraseña actualizada</h1>

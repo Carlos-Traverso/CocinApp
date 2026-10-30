@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../components/LoadingScreen'
 import { PencilLine, Save, LogOut } from 'lucide-react'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -90,7 +91,7 @@ export function ProfilePage() {
       <form className="profile-form surface" noValidate onInput={clearValidationError} onChange={clearValidationError} onSubmit={save}>
         {validationError && <p className="form-message error" id="profile-validation-error" role="alert">{validationError}</p>}
         <div className="section-heading"><div><h2>Datos y objetivos</h2><p>Guardados solo en este navegador durante esta etapa.</p></div></div>
-        {loading ? <p role="status">Cargando perfil…</p> : <><ProfileFields profile={profile} showEmail onChange={(changes) => { setProfile({ ...profile, ...changes }) }} />
+        {loading ? <LoadingScreen message="Cargando perfil…" variant="section" /> : <><ProfileFields profile={profile} showEmail onChange={(changes) => { setProfile({ ...profile, ...changes }) }} />
         <p className="medical-note compact">Las etiquetas dietéticas son informativas y no garantizan ausencia de contaminación cruzada.</p></>}
         <div className="profile-save-row"><button className="button button-primary" disabled={loading || saving} type="submit"><Save size={17} /> {saving ? 'Guardando…' : 'Guardar perfil'}</button></div>
       </form>

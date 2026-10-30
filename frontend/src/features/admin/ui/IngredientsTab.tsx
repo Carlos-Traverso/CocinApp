@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../../../components/LoadingScreen'
 import { useState } from 'react'
 import { Plus, Pencil, RotateCcw, Trash2, X } from 'lucide-react'
 import { normalizePantryName } from '../../pantry/domain/pantry'
@@ -111,7 +112,7 @@ export function IngredientsTab() {
 
       <div className="admin-catalog-filters"><label className="field admin-filter-search"><span>Buscar ingrediente</span><input onChange={(event) => setSearch(event.currentTarget.value)} type="search" value={search} /></label><label className="field"><span>Categoría</span><select onChange={(event) => setCategoryFilter(event.currentTarget.value)} value={categoryFilter}><option value="">Todas</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><label className="field"><span>Estado</span><select onChange={(event) => setStatusFilter(event.currentTarget.value as typeof statusFilter)} value={statusFilter}><option value="all">Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select></label></div>
 
-      {loading ? <p role="status">Cargando catálogo…</p> : <div className="records">
+      {loading ? <LoadingScreen message="Cargando catálogo…" variant="section" /> : <div className="records">
         {visibleIngredients.map((i) => {
           const cat = data.categories.find(c => c.id === i.categoryId)
           const unit = data.units.find(u => u.id === i.baseUnitId)
