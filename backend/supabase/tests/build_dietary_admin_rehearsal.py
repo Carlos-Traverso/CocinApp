@@ -1,0 +1,22 @@
+"""Build rollback-only dietary administration rehearsals and local installer."""
+from pathlib import Path
+
+root = Path(__file__).resolve().parent.parent
+migrations = (
+    '202610300003_personal_write_rpcs.sql', '202610300004_planning_write_rpcs.sql',
+    '202610300005_shopping_write_rpcs.sql', '202610300006_shopping_transfer_rpcs.sql',
+    '202610300007_shopping_suggestions_rpc.sql', '202610310001_pantry_write_rpcs.sql',
+    '202610310002_cooking_session_rpcs.sql', '202610310003_cooking_finish_rpcs.sql',
+    '202610310004_cooking_queries_history_rpcs.sql', '202610310005_catalog_admin_rpcs.sql',
+    '202611010001_recipe_admin_rpcs.sql', '202611010002_dietary_admin_rpcs.sql',
+)
+schema = (root / 'migrations/202610300002_add_relational_domain_tables.sql').read_text(encoding='utf-8').rsplit('commit;', 1)[0]
+rpcs = ''.join((root / 'migrations' / name).read_text(encoding='utf-8').replace('begin;', '', 1).rsplit('commit;', 1)[0] for name in migrations)
+stage = (root / 'tests/dietary_admin.stage.sql').read_text(encoding='utf-8')
+full_schema = schema.replace('begin;', "begin;\nset local lock_timeout='5s';\nset local statement_timeout='120s';", 1)
+(root / 'tests/dietary_admin_rehearsal.sql').write_text(
+    '-- DIETARY ADMIN REHEARSAL: run as one SQL Editor request; preserve final ROLLBACK.\n'
+    + full_schema + rpcs + stage + '\nrollback;\n', encoding='utf-8')
+(root / 'tests/fixtures/dietary_admin_schema_local.sql').write_text(
+    '-- LOCAL ISOLATED DATABASE ONLY. Full relational schema and RPC installer.\n'
+    + schema + rpcs + '\ncommit;\n', encoding='utf-8')

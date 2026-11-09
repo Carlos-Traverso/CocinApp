@@ -1,0 +1,1 @@
+{"activity_factors":{"sedentary":1.2,"light":1.375,"moderate":1.55,"active":1.725,"very-active":1.9},"goal_adjustments":{"lose":{"minimum":-600,"maximum":-400},"maintain":{"minimum":-100,"maximum":100},"gain":{"minimum":250,"maximum":400},"gain-muscle":{"minimum":200,"maximum":300}}}

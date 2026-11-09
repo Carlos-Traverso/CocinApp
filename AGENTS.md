@@ -10,9 +10,15 @@
 
 ## Engineering practices
 
+- Keep token use low: send bounded context and request concise agent reports; avoid repeated polling and re-reading unchanged files.
+- Use GPT-6.1 Sol for coordination and GPT-6 Luna with medium effort for bounded implementation/review when available. Assign one writer per file; auditors remain read-only.
+- Give the user numbered continuation steps with absolute file links for Supabase rehearsals, and distinguish local PASS, remote PASS, and permanent deployment.
+
 - Follow this repository's existing architecture, conventions, and documentation.
 - For complex changes, make a concise plan before implementation.
 - When tests are part of the requested work, prefer test-first development and verify the behavior after implementation. Do not impose an arbitrary coverage target without project-specific evidence.
 - Validate untrusted input at system boundaries, handle errors explicitly, and avoid exposing secrets or sensitive details.
 - Review changes for correctness, security, and maintainability. Keep the review proportional to the change and report verification performed and any remaining risks.
 - Use focused ECC-style skills and workflows when available and relevant; do not assume ECC is installed just because these practices are documented here.
+
+- At the end of each completed work group, propose a concise next-step plan and ask whether the user wants to continue.
