@@ -1,0 +1,1230 @@
+{
+  "seedVersion": 3,
+  "recipes": [
+    {
+      "id": "quinoa-bowl",
+      "name": "Bowl de quinoa y verduras",
+      "description": "Verduras asadas, quinoa y aderezo de limón.",
+      "category": "Almuerzo",
+      "minutes": 30,
+      "portions": 2,
+      "difficulty": "Fácil",
+      "ingredients": [
+        {
+          "name": "Quinoa",
+          "quantity": 150,
+          "unit": "g"
+        },
+        {
+          "name": "Tomates cherry",
+          "quantity": 150,
+          "unit": "g"
+        },
+        {
+          "name": "Aceite de oliva",
+          "quantity": 30,
+          "unit": "ml"
+        },
+        {
+          "name": "Limón",
+          "quantity": 1,
+          "unit": "u"
+        }
+      ],
+      "steps": [
+        "Cociná la quinoa según el envase.",
+        "Cortá los tomates y mezclalos con aceite de oliva.",
+        "Serví la quinoa con las verduras y terminá con limón."
+      ],
+      "stepMeta": [
+        {
+          "durationMinutes": 15,
+          "stepIngredients": [
+            {
+              "name": "Quinoa",
+              "quantity": 150,
+              "unit": "g"
+            }
+          ],
+          "utensils": [
+            "Colador fino",
+            "Olla con tapa"
+          ],
+          "temperature": "Hervor suave",
+          "tip": "Enjuagá la quinoa antes de cocinarla para quitarle el sabor amargo.",
+          "warning": "Usá el colador fino para no perder los granos."
+        },
+        {
+          "durationMinutes": 5,
+          "stepIngredients": [
+            {
+              "name": "Tomates cherry",
+              "quantity": 150,
+              "unit": "g"
+            },
+            {
+              "name": "Aceite de oliva",
+              "quantity": 30,
+              "unit": "ml"
+            }
+          ],
+          "utensils": [
+            "Tabla",
+            "Cuchillo",
+            "Bol"
+          ],
+          "tip": "Cortá los tomates justo antes de servir para conservar su textura."
+        },
+        {
+          "durationMinutes": 2,
+          "stepIngredients": [
+            {
+              "name": "Limón",
+              "quantity": 1,
+              "unit": "u"
+            }
+          ],
+          "utensils": [
+            "Fuente para servir"
+          ],
+          "specialInstructions": "Probá y ajustá el limón justo antes de llevar el plato a la mesa."
+        }
+      ],
+      "symbol": "🥗",
+      "color": "green",
+      "featured": true,
+      "dietaryTags": [
+        "Sin TACC",
+        "Vegana",
+        "Vegetariana",
+        "Sin lactosa",
+        "Sin frutos secos"
+      ],
+      "crossContaminationNote": "Aunque los ingredientes no contienen gluten, verificá rótulos y evitá la contaminación cruzada en superficies y utensilios compartidos.",
+      "image": "/assets/recipes/quinoa-bowl.webp",
+      "imageAlt": "Bowl de quinoa con tomates cherry y verduras asadas servido en cerámica clara"
+    },
+    {
+      "id": "pumpkin-pasta",
+      "name": "Pasta cremosa de calabaza",
+      "description": "Una salsa suave con salvia y queso rallado.",
+      "category": "Cena",
+      "minutes": 25,
+      "portions": 3,
+      "difficulty": "Intermedia",
+      "ingredients": [
+        {
+          "name": "Pasta",
+          "quantity": 300,
+          "unit": "g"
+        },
+        {
+          "name": "Calabaza",
+          "quantity": 400,
+          "unit": "g"
+        },
+        {
+          "name": "Queso rallado",
+          "quantity": 60,
+          "unit": "g"
+        }
+      ],
+      "steps": [
+        "Cociná la pasta y reservá un poco del agua.",
+        "Cociná la calabaza hasta que esté tierna y procesala.",
+        "Mezclá la salsa con la pasta y terminá con queso rallado."
+      ],
+      "stepMeta": [
+        {
+          "minutes": 10,
+          "tip": "Reservá una taza del agua de cocción para ajustar la textura de la salsa."
+        },
+        {
+          "minutes": 12,
+          "tip": "Procesá la calabaza caliente con cuidado y agregá líquido de a poco."
+        }
+      ],
+      "symbol": "🍝",
+      "color": "gold",
+      "featured": true,
+      "dietaryTags": [
+        "Vegetariana",
+        "Sin frutos secos"
+      ],
+      "image": "/assets/recipes/pumpkin-pasta.webp",
+      "imageAlt": "Pasta cremosa de calabaza con queso rallado y hojas de salvia"
+    },
+    {
+      "id": "chickpea-salad",
+      "name": "Ensalada tibia de garbanzos",
+      "description": "Garbanzos crocantes, hojas frescas y yogur.",
+      "category": "Almuerzo",
+      "minutes": 20,
+      "portions": 2,
+      "difficulty": "Fácil",
+      "ingredients": [
+        {
+          "name": "Garbanzos",
+          "quantity": 250,
+          "unit": "g"
+        },
+        {
+          "name": "Hojas verdes",
+          "quantity": 100,
+          "unit": "g"
+        },
+        {
+          "name": "Yogur",
+          "quantity": 100,
+          "unit": "g"
+        }
+      ],
+      "steps": [
+        "Salteá los garbanzos hasta que estén dorados.",
+        "Lavá y escurrí las hojas verdes.",
+        "Serví todo con yogur."
+      ],
+      "stepMeta": [
+        {
+          "minutes": 8,
+          "tip": "Secá los garbanzos antes de saltearlos para que doren mejor."
+        }
+      ],
+      "symbol": "🥙",
+      "color": "pink",
+      "dietaryTags": [
+        "Sin TACC",
+        "Vegetariana",
+        "Sin frutos secos"
+      ],
+      "crossContaminationNote": "Aunque los ingredientes no contienen gluten, verificá rótulos y evitá la contaminación cruzada en superficies y utensilios compartidos.",
+      "image": "/assets/recipes/chickpea-salad.webp",
+      "imageAlt": "Ensalada tibia de garbanzos dorados con hojas verdes y yogur"
+    },
+    {
+      "id": "chicken-rice",
+      "name": "Pollo con arroz integral",
+      "description": "Pollo dorado con arroz y tomates cherry frescos.",
+      "category": "Cena",
+      "minutes": 35,
+      "portions": 2,
+      "difficulty": "Fácil",
+      "ingredients": [
+        {
+          "name": "Pechuga de pollo",
+          "quantity": 300,
+          "unit": "g"
+        },
+        {
+          "name": "Arroz integral",
+          "quantity": 160,
+          "unit": "g"
+        },
+        {
+          "name": "Tomates cherry",
+          "quantity": 120,
+          "unit": "g"
+        },
+        {
+          "name": "Aceite de oliva",
+          "quantity": 20,
+          "unit": "ml"
+        }
+      ],
+      "steps": [
+        "Cociná el arroz integral según las indicaciones del envase.",
+        "Cortá el pollo y doralo en una sartén con el aceite de oliva.",
+        "Serví el pollo sobre el arroz y agregá los tomates cortados."
+      ],
+      "stepMeta": [
+        {
+          "durationMinutes": 25,
+          "stepIngredients": [
+            {
+              "name": "Arroz integral",
+              "quantity": 160,
+              "unit": "g"
+            }
+          ],
+          "utensils": [
+            "Olla con tapa"
+          ],
+          "temperature": "Hervor suave",
+          "tip": "Dejá reposar el arroz tapado durante 5 minutos al apagar el fuego."
+        },
+        {
+          "durationMinutes": 10,
+          "stepIngredients": [
+            {
+              "name": "Pechuga de pollo",
+              "quantity": 300,
+              "unit": "g"
+            },
+            {
+              "name": "Aceite de oliva",
+              "quantity": 20,
+              "unit": "ml"
+            }
+          ],
+          "utensils": [
+            "Tabla para carnes",
+            "Cuchillo",
+            "Sartén"
+          ],
+          "temperature": "Fuego medio-alto",
+          "warning": "Lavá manos y utensilios después de manipular pollo crudo."
+        },
+        {
+          "durationMinutes": 4,
+          "stepIngredients": [
+            {
+              "name": "Tomates cherry",
+              "quantity": 120,
+              "unit": "g"
+            }
+          ],
+          "utensils": [
+            "Tabla",
+            "Cuchillo"
+          ],
+          "tip": "Agregá los tomates al final para conservar su frescura."
+        }
+      ],
+      "symbol": "🍗",
+      "color": "blue",
+      "dietaryTags": [
+        "Sin TACC",
+        "Sin lactosa",
+        "Sin frutos secos"
+      ],
+      "crossContaminationNote": "Aunque los ingredientes no contienen gluten, verificá rótulos y evitá la contaminación cruzada en superficies y utensilios compartidos.",
+      "image": "/assets/recipes/chicken-rice.webp",
+      "imageAlt": "Pollo dorado con arroz integral y tomates cherry servido en un plato"
+    },
+    {
+      "id": "yogurt-fruit",
+      "name": "Yogur con banana y avena",
+      "description": "Un desayuno rápido con fruta y avena.",
+      "category": "Desayuno",
+      "minutes": 8,
+      "portions": 1,
+      "difficulty": "Fácil",
+      "ingredients": [
+        {
+          "name": "Yogur",
+          "quantity": 180,
+          "unit": "g"
+        },
+        {
+          "name": "Banana",
+          "quantity": 1,
+          "unit": "u"
+        },
+        {
+          "name": "Avena",
+          "quantity": 40,
+          "unit": "g"
+        }
+      ],
+      "steps": [
+        "Serví el yogur en un bol.",
+        "Cortá la banana y agregala con la avena."
+      ],
+      "stepMeta": [
+        {
+          "tip": "Agregá la avena justo antes de comer para mantener su textura."
+        }
+      ],
+      "symbol": "🥣",
+      "color": "pink",
+      "calories": 310,
+      "featured": true,
+      "dietaryTags": [
+        "Vegetariana",
+        "Sin frutos secos"
+      ],
+      "image": "/assets/recipes/yogurt-fruit.webp",
+      "imageAlt": "Bol de yogur con rodajas de banana y avena"
+    },
+    {
+      "id": "apple-toast",
+      "name": "Tostadas con manzana",
+      "description": "Merienda simple con fruta y queso untable.",
+      "category": "Merienda",
+      "minutes": 10,
+      "portions": 1,
+      "difficulty": "Fácil",
+      "ingredients": [
+        {
+          "name": "Pan integral",
+          "quantity": 2,
+          "unit": "u"
+        },
+        {
+          "name": "Manzana",
+          "quantity": 1,
+          "unit": "u"
+        },
+        {
+          "name": "Queso untable",
+          "quantity": 40,
+          "unit": "g"
+        }
+      ],
+      "steps": [
+        "Tostá el pan integral.",
+        "Untá el queso y sumá la manzana en láminas."
+      ],
+      "symbol": "🍎",
+      "color": "gold",
+      "calories": 285,
+      "dietaryTags": [
+        "Vegetariana",
+        "Sin frutos secos"
+      ],
+      "image": "/assets/recipes/apple-toast.webp",
+      "imageAlt": "Tostadas integrales con queso untable y láminas de manzana"
+    },
+    {
+      "id": "vegetable-omelette",
+      "name": "Omelette de verduras",
+      "description": "Huevos, espinaca y tomates en una cena simple y completa.",
+      "category": "Cena",
+      "minutes": 15,
+      "portions": 1,
+      "difficulty": "Fácil",
+      "ingredients": [
+        {
+          "name": "Huevos",
+          "quantity": 2,
+          "unit": "u"
+        },
+        {
+          "name": "Espinaca",
+          "quantity": 80,
+          "unit": "g"
+        },
+        {
+          "name": "Tomates cherry",
+          "quantity": 80,
+          "unit": "g"
+        }
+      ],
+      "steps": [
+        "Batí los huevos.",
+        "Salteá la espinaca y los tomates.",
+        "Agregá los huevos y cociná de ambos lados."
+      ],
+      "symbol": "🍳",
+      "color": "gold",
+      "calories": 340,
+      "dietaryTags": [
+        "Sin TACC",
+        "Vegetariana",
+        "Sin lactosa",
+        "Sin frutos secos"
+      ],
+      "crossContaminationNote": "Aunque los ingredientes no contienen gluten, verificá rótulos y evitá la contaminación cruzada en superficies y utensilios compartidos.",
+      "image": "/assets/recipes/vegetable-omelette.webp",
+      "imageAlt": "Omelette de espinaca y tomates cherry servido en un plato claro"
+    },
+    {
+      "id": "lentil-stew",
+      "name": "Guiso rápido de lentejas",
+      "description": "Lentejas, tomate y verduras en un plato cálido de todos los días.",
+      "category": "Cena",
+      "minutes": 40,
+      "portions": 4,
+      "difficulty": "Intermedia",
+      "ingredients": [
+        {
+          "name": "Lentejas",
+          "quantity": 400,
+          "unit": "g"
+        },
+        {
+          "name": "Tomate",
+          "quantity": 2,
+          "unit": "u"
+        },
+        {
+          "name": "Zanahoria",
+          "quantity": 2,
+          "unit": "u"
+        }
+      ],
+      "steps": [
+        "Cortá las verduras.",
+        "Cocinalas con el tomate.",
+        "Sumá las lentejas y cociná hasta integrar."
+      ],
+      "symbol": "🍲",
+      "color": "pink",
+      "dietaryTags": [
+        "Sin TACC",
+        "Vegana",
+        "Vegetariana",
+        "Sin lactosa",
+        "Sin frutos secos"
+      ],
+      "crossContaminationNote": "Aunque los ingredientes no contienen gluten, verificá rótulos y evitá la contaminación cruzada en superficies y utensilios compartidos.",
+      "image": "/assets/recipes/lentil-stew.webp",
+      "imageAlt": "Guiso de lentejas con tomate y zanahoria servido en un cuenco"
+    },
+    {
+      "id": "avocado-toast",
+      "name": "Tostadas con palta y huevo",
+      "description": "Un desayuno cremoso, fresco y listo en pocos minutos.",
+      "category": "Desayuno",
+      "minutes": 12,
+      "portions": 1,
+      "difficulty": "Fácil",
+      "ingredients": [
+        {
+          "name": "Pan integral",
+          "quantity": 2,
+          "unit": "u"
+        },
+        {
+          "name": "Palta",
+          "quantity": 1,
+          "unit": "u"
+        },
+        {
+          "name": "Huevos",
+          "quantity": 1,
+          "unit": "u"
+        }
+      ],
+      "steps": [
+        "Tostá el pan.",
+        "Pisá la palta y condimentá.",
+        "Cociná el huevo y servilo sobre las tostadas."
+      ],
+      "symbol": "🥑",
+      "color": "green",
+      "calories": 390,
+      "dietaryTags": [
+        "Vegetariana",
+        "Sin frutos secos"
+      ],
+      "image": "/assets/recipes/avocado-toast.webp",
+      "imageAlt": "Tostadas integrales con palta y huevo cocido"
+    },
+    {
+      "id": "banana-pancakes",
+      "name": "Panqueques de banana y avena",
+      "description": "Panqueques suaves sin harina, ideales para empezar el día.",
+      "category": "Desayuno",
+      "minutes": 18,
+      "portions": 2,
+      "difficulty": "Fácil",
+      "ingredients": [
+        {
+          "name": "Banana",
+          "quantity": 2,
+          "unit": "u"
+        },
+        {
+          "name": "Avena",
+          "quantity": 100,
+          "unit": "g"
+        },
+        {
+          "name": "Huevos",
+          "quantity": 2,
+          "unit": "u"
+        }
+      ],
+      "steps": [
+        "Procesá la banana, la avena y los huevos.",
+        "Volcá porciones en una sartén caliente.",
+        "Doralos de ambos lados y serví."
+      ],
+      "symbol": "🥞",
+      "color": "blue",
+      "calories": 360,
+      "dietaryTags": [
+        "Vegetariana",
+        "Sin frutos secos"
+      ],
+      "image": "/assets/recipes/banana-pancakes.webp",
+      "imageAlt": "Panqueques de banana y avena apilados en un plato"
+    },
+    {
+      "id": "scrambled-eggs-toast",
+      "name": "Huevos revueltos con tostadas",
+      "description": "Desayuno tibio y rápido con huevos cremosos.",
+      "category": "Desayuno",
+      "minutes": 12,
+      "portions": 1,
+      "difficulty": "Fácil",
+      "ingredients": [
+        {
+          "name": "Huevos",
+          "quantity": 2,
+          "unit": "u"
+        },
+        {
+          "name": "Pan integral",
+          "quantity": 2,
+          "unit": "u"
+        },
+        {
+          "name": "Leche",
+          "quantity": 30,
+          "unit": "ml"
+        }
+      ],
+      "steps": [
+        "Batí los huevos con la leche.",
+        "Cocinalos a fuego bajo revolviendo.",
+        "Tostá el pan y serví."
+      ],
+      "stepMeta": [
+        {
+          "tip": "Batí solo hasta integrar."
+        },
+        {
+          "minutes": 4,
+          "tip": "Retirá del fuego cuando todavía estén húmedos."
+        }
+      ],
+      "symbol": "🍳",
+      "color": "gold",
+      "calories": 330,
+      "dietaryTags": [
+        "Vegetariana",
+        "Sin frutos secos"
+      ],
+      "image": "/assets/recipes/scrambled-eggs-toast.webp",
+      "imageAlt": "Huevos revueltos cremosos con tostadas integrales"
+    },
+    {
+      "id": "overnight-oats",
+      "name": "Avena nocturna con manzana",
+      "description": "Avena fresca preparada con anticipación.",
+      "category": "Desayuno",
+      "minutes": 10,
+      "portions": 1,
+      "difficulty": "Fácil",
+      "ingredients": [
+        {
+          "name": "Avena",
+          "quantity": 60,
+          "unit": "g"
+        },
+        {
+          "name": "Leche",
+          "quantity": 180,
+          "unit": "ml"
+        },
+        {
+          "name": "Manzana",
+          "quantity": 1,
+          "unit": "u"
+        }
+      ],
+      "steps": [
+        "Mezclá la avena con la leche.",
+        "Refrigerá la preparación.",
+        "Sumá la manzana antes de servir."
+      ],
+      "stepMeta": [
+        {
+          "tip": "Usá un recipiente con tapa."
+        },
+        {
+          "minutes": 480,
+          "tip": "Dejala reposar durante la noche."
+        }
+      ],
+      "symbol": "🥣",
+      "color": "blue",
+      "calories": 350,
+      "dietaryTags": [
+        "Vegetariana",
+        "Sin frutos secos"
+      ],
+      "image": "/assets/recipes/overnight-oats.webp",
+      "imageAlt": "Avena nocturna con leche y manzana servida en un frasco de vidrio"
+    },
+    {
+      "id": "caprese-sandwich",
+      "name": "Sándwich caprese",
+      "description": "Pan tostado con tomate, queso y hojas frescas.",
+      "category": "Almuerzo",
+      "minutes": 15,
+      "portions": 1,
+      "difficulty": "Fácil",
+      "ingredients": [
+        {
+          "name": "Pan integral",
+          "quantity": 2,
+          "unit": "u"
+        },
+        {
+          "name": "Tomate",
+          "quantity": 1,
+          "unit": "u"
+        },
+        {
+          "name": "Queso",
+          "quantity": 80,
+          "unit": "g"
+        },
+        {
+          "name": "Hojas verdes",
+          "quantity": 30,
+          "unit": "g"
+        }
+      ],
+      "steps": [
+        "Cortá el tomate y el queso.",
+        "Armá el sándwich con las hojas.",
+        "Tostalo hasta fundir el queso."
+      ],
+      "stepMeta": [
+        {
+          "tip": "Secá el tomate para que el pan conserve su textura."
+        },
+        {
+          "minutes": 5
+        }
+      ],
+      "symbol": "🥪",
+      "color": "green",
+      "calories": 420,
+      "dietaryTags": [
+        "Vegetariana",
+        "Sin frutos secos"
+      ],
+      "image": "/assets/recipes/caprese-sandwich.webp",
+      "imageAlt": "Sándwich caprese tostado con tomate, queso y hojas verdes"
+    },
+    {
+      "id": "tuna-rice-salad",
+      "name": "Ensalada de arroz y atún",
+      "description": "Almuerzo fresco con arroz, atún y vegetales.",
+      "category": "Almuerzo",
+      "minutes": 25,
+      "portions": 2,
+      "difficulty": "Fácil",
+      "ingredients": [
+        {
+          "name": "Arroz",
+          "quantity": 160,
+          "unit": "g"
+        },
+        {
+          "name": "Atún",
+          "quantity": 160,
+          "unit": "g"
+        },
+        {
+          "name": "Tomate",
+          "quantity": 1,
+          "unit": "u"
+        },
+        {
+          "name": "Aceite de oliva",
+          "quantity": 20,
+          "unit": "ml"
+        }
+      ],
+      "steps": [
+        "Cociná el arroz.",
+        "Escurrí el atún y cortá el tomate.",
+        "Mezclá todo con aceite."
+      ],
+      "stepMeta": [
+        {
+          "minutes": 15,
+          "tip": "Enfriá el arroz extendido para que quede suelto."
+        }
+      ],
+      "symbol": "🐟",
+      "color": "blue",
+      "calories": 480,
+      "dietaryTags": [
+        "Sin TACC",
+        "Sin lactosa",
+        "Sin frutos secos"
+      ],
+      "crossContaminationNote": "Aunque los ingredientes no contienen gluten, verificá rótulos y evitá la contaminación cruzada en superficies y utensilios compartidos.",
+      "image": "/assets/recipes/tuna-rice-salad.webp",
+      "imageAlt": "Ensalada de arroz con atún y tomate servida en un bol"
+    },
+    {
+      "id": "vegetable-wrap",
+      "name": "Wrap de verduras y hummus",
+      "description": "Wrap liviano con verduras crocantes.",
+      "category": "Almuerzo",
+      "minutes": 18,
+      "portions": 2,
+      "difficulty": "Fácil",
+      "ingredients": [
+        {
+          "name": "Tortillas",
+          "quantity": 2,
+          "unit": "u"
+        },
+        {
+          "name": "Garbanzos",
+          "quantity": 180,
+          "unit": "g"
+        },
+        {
+          "name": "Zanahoria",
+          "quantity": 1,
+          "unit": "u"
+        },
+        {
+          "name": "Hojas verdes",
+          "quantity": 60,
+          "unit": "g"
+        }
+      ],
+      "steps": [
+        "Procesá los garbanzos hasta formar un hummus.",
+        "Cortá la zanahoria y lavá las hojas.",
+        "Rellená y enrollá las tortillas."
+      ],
+      "stepMeta": [
+        {
+          "minutes": 5,
+          "tip": "Agregá agua de a cucharadas para ajustar el hummus."
+        },
+        {
+          "tip": "Doblá los extremos antes de enrollar."
+        }
+      ],
+      "symbol": "🌯",
+      "color": "pink",
+      "calories": 390,
+      "dietaryTags": [
+        "Vegana",
+        "Vegetariana",
+        "Sin lactosa",
+        "Sin frutos secos"
+      ],
+      "image": "/assets/recipes/vegetable-wrap.webp",
+      "imageAlt": "Wrap cortado con hummus, zanahoria y hojas verdes"
+    },
+    {
+      "id": "tomato-risotto",
+      "name": "Risotto de tomate",
+      "description": "Arroz cremoso con tomate y queso.",
+      "category": "Cena",
+      "minutes": 38,
+      "portions": 3,
+      "difficulty": "Intermedia",
+      "ingredients": [
+        {
+          "name": "Arroz",
+          "quantity": 240,
+          "unit": "g"
+        },
+        {
+          "name": "Tomate",
+          "quantity": 3,
+          "unit": "u"
+        },
+        {
+          "name": "Queso rallado",
+          "quantity": 60,
+          "unit": "g"
+        }
+      ],
+      "steps": [
+        "Cociná el tomate hasta obtener una salsa.",
+        "Agregá el arroz y líquido de a poco.",
+        "Terminá con queso rallado."
+      ],
+      "stepMeta": [
+        {
+          "minutes": 10,
+          "tip": "Cociná el tomate hasta concentrar su sabor."
+        },
+        {
+          "minutes": 20,
+          "tip": "Revolvé con frecuencia para liberar el almidón."
+        }
+      ],
+      "symbol": "🍚",
+      "color": "pink",
+      "calories": 510,
+      "dietaryTags": [
+        "Sin TACC",
+        "Vegetariana",
+        "Sin frutos secos"
+      ],
+      "crossContaminationNote": "Aunque los ingredientes no contienen gluten, verificá rótulos y evitá la contaminación cruzada en superficies y utensilios compartidos.",
+      "image": "/assets/recipes/tomato-risotto.webp",
+      "imageAlt": "Risotto cremoso de tomate con queso rallado"
+    },
+    {
+      "id": "baked-fish-potatoes",
+      "name": "Pescado al horno con papas",
+      "description": "Cena completa de pescado, papas y limón.",
+      "category": "Cena",
+      "minutes": 45,
+      "portions": 2,
+      "difficulty": "Intermedia",
+      "ingredients": [
+        {
+          "name": "Filet de pescado",
+          "quantity": 400,
+          "unit": "g"
+        },
+        {
+          "name": "Papa",
+          "quantity": 500,
+          "unit": "g"
+        },
+        {
+          "name": "Limón",
+          "quantity": 1,
+          "unit": "u"
+        },
+        {
+          "name": "Aceite de oliva",
+          "quantity": 30,
+          "unit": "ml"
+        }
+      ],
+      "steps": [
+        "Cortá y condimentá las papas.",
+        "Horneá las papas hasta que empiecen a dorar.",
+        "Sumá el pescado y cociná hasta que esté tierno."
+      ],
+      "stepMeta": [
+        {
+          "durationMinutes": 8,
+          "stepIngredients": [
+            {
+              "name": "Papa",
+              "quantity": 500,
+              "unit": "g"
+            },
+            {
+              "name": "Aceite de oliva",
+              "quantity": 30,
+              "unit": "ml"
+            }
+          ],
+          "utensils": [
+            "Tabla",
+            "Cuchillo",
+            "Fuente para horno"
+          ],
+          "tip": "Cortá las papas del mismo grosor."
+        },
+        {
+          "durationMinutes": 25,
+          "utensils": [
+            "Horno",
+            "Fuente para horno"
+          ],
+          "temperature": "200 °C",
+          "warning": "Usá guantes térmicos al mover la fuente."
+        },
+        {
+          "durationMinutes": 15,
+          "stepIngredients": [
+            {
+              "name": "Filet de pescado",
+              "quantity": 400,
+              "unit": "g"
+            },
+            {
+              "name": "Limón",
+              "quantity": 1,
+              "unit": "u"
+            }
+          ],
+          "utensils": [
+            "Fuente para horno",
+            "Tenedor"
+          ],
+          "temperature": "200 °C",
+          "tip": "El pescado debe separarse fácilmente con un tenedor."
+        }
+      ],
+      "symbol": "🐟",
+      "color": "blue",
+      "calories": 530,
+      "dietaryTags": [
+        "Sin TACC",
+        "Sin lactosa",
+        "Sin frutos secos"
+      ],
+      "crossContaminationNote": "Aunque los ingredientes no contienen gluten, verificá rótulos y evitá la contaminación cruzada en superficies y utensilios compartidos.",
+      "image": "/assets/recipes/baked-fish-potatoes.webp",
+      "imageAlt": "Filet de pescado al horno con papas doradas y limón"
+    },
+    {
+      "id": "spinach-pie",
+      "name": "Tarta de espinaca",
+      "description": "Tarta casera de espinaca, huevo y queso.",
+      "category": "Cena",
+      "minutes": 55,
+      "portions": 4,
+      "difficulty": "Intermedia",
+      "ingredients": [
+        {
+          "name": "Espinaca",
+          "quantity": 400,
+          "unit": "g"
+        },
+        {
+          "name": "Huevos",
+          "quantity": 3,
+          "unit": "u"
+        },
+        {
+          "name": "Queso",
+          "quantity": 150,
+          "unit": "g"
+        },
+        {
+          "name": "Masa para tarta",
+          "quantity": 1,
+          "unit": "u"
+        }
+      ],
+      "steps": [
+        "Salteá y escurrí la espinaca.",
+        "Mezclá con huevos y queso.",
+        "Rellená la masa y horneá."
+      ],
+      "stepMeta": [
+        {
+          "minutes": 8,
+          "tip": "Escurrí muy bien la espinaca."
+        },
+        {
+          "tip": "Probá el relleno antes de sumar los huevos."
+        },
+        {
+          "minutes": 35
+        }
+      ],
+      "symbol": "🥧",
+      "color": "green",
+      "calories": 460,
+      "dietaryTags": [
+        "Vegetariana",
+        "Sin frutos secos"
+      ],
+      "image": "/assets/recipes/spinach-pie.webp",
+      "imageAlt": "Porción de tarta casera de espinaca, huevo y queso"
+    },
+    {
+      "id": "pear-yogurt-cup",
+      "name": "Copa de pera y yogur",
+      "description": "Merienda fresca con fruta y avena tostada.",
+      "category": "Merienda",
+      "minutes": 10,
+      "portions": 1,
+      "difficulty": "Fácil",
+      "ingredients": [
+        {
+          "name": "Pera",
+          "quantity": 1,
+          "unit": "u"
+        },
+        {
+          "name": "Yogur",
+          "quantity": 180,
+          "unit": "g"
+        },
+        {
+          "name": "Avena",
+          "quantity": 30,
+          "unit": "g"
+        }
+      ],
+      "steps": [
+        "Cortá la pera.",
+        "Alterná capas de yogur y fruta.",
+        "Terminá con avena."
+      ],
+      "stepMeta": [
+        {
+          "tip": "Conservá la cáscara si está firme y bien lavada."
+        }
+      ],
+      "symbol": "🍐",
+      "color": "green",
+      "calories": 270,
+      "dietaryTags": [
+        "Sin TACC",
+        "Vegetariana",
+        "Sin frutos secos"
+      ],
+      "crossContaminationNote": "Aunque los ingredientes no contienen gluten, verificá rótulos y evitá la contaminación cruzada en superficies y utensilios compartidos.",
+      "image": "/assets/recipes/pear-yogurt-cup.webp",
+      "imageAlt": "Copa de yogur con pera y avena tostada"
+    },
+    {
+      "id": "cheese-scones",
+      "name": "Scones de queso",
+      "description": "Bocados tibios para acompañar la merienda.",
+      "category": "Merienda",
+      "minutes": 32,
+      "portions": 6,
+      "difficulty": "Intermedia",
+      "ingredients": [
+        {
+          "name": "Harina",
+          "quantity": 250,
+          "unit": "g"
+        },
+        {
+          "name": "Queso rallado",
+          "quantity": 100,
+          "unit": "g"
+        },
+        {
+          "name": "Leche",
+          "quantity": 120,
+          "unit": "ml"
+        }
+      ],
+      "steps": [
+        "Mezclá harina y queso.",
+        "Agregá leche hasta unir.",
+        "Cortá los scones y horneá."
+      ],
+      "stepMeta": [
+        {
+          "tip": "No amases de más."
+        },
+        {
+          "tip": "La masa debe quedar apenas unida."
+        },
+        {
+          "minutes": 18
+        }
+      ],
+      "symbol": "🧀",
+      "color": "gold",
+      "calories": 240,
+      "dietaryTags": [
+        "Vegetariana",
+        "Sin frutos secos"
+      ],
+      "image": "/assets/recipes/cheese-scones.webp",
+      "imageAlt": "Scones de queso recién horneados servidos en un plato"
+    },
+    {
+      "id": "banana-smoothie",
+      "name": "Licuado de banana y avena",
+      "description": "Merienda cremosa lista en pocos minutos.",
+      "category": "Merienda",
+      "minutes": 6,
+      "portions": 1,
+      "difficulty": "Fácil",
+      "ingredients": [
+        {
+          "name": "Banana",
+          "quantity": 1,
+          "unit": "u"
+        },
+        {
+          "name": "Leche",
+          "quantity": 250,
+          "unit": "ml"
+        },
+        {
+          "name": "Avena",
+          "quantity": 25,
+          "unit": "g"
+        }
+      ],
+      "steps": [
+        "Colocá todos los ingredientes en la licuadora.",
+        "Procesá hasta obtener una textura lisa."
+      ],
+      "stepMeta": [
+        {
+          "tip": "Usá banana fría para un resultado más fresco."
+        },
+        {
+          "minutes": 2
+        }
+      ],
+      "symbol": "🥤",
+      "color": "pink",
+      "calories": 320,
+      "dietaryTags": [
+        "Vegetariana",
+        "Sin frutos secos"
+      ],
+      "image": "/assets/recipes/banana-smoothie.webp",
+      "imageAlt": "Licuado cremoso de banana y avena servido en un vaso"
+    },
+    {
+      "id": "roasted-vegetable-soup",
+      "name": "Sopa de verduras asadas",
+      "description": "Sopa suave de calabaza, zanahoria y tomate.",
+      "category": "Cena",
+      "minutes": 50,
+      "portions": 4,
+      "difficulty": "Fácil",
+      "ingredients": [
+        {
+          "name": "Calabaza",
+          "quantity": 500,
+          "unit": "g"
+        },
+        {
+          "name": "Zanahoria",
+          "quantity": 2,
+          "unit": "u"
+        },
+        {
+          "name": "Tomate",
+          "quantity": 2,
+          "unit": "u"
+        },
+        {
+          "name": "Aceite de oliva",
+          "quantity": 25,
+          "unit": "ml"
+        }
+      ],
+      "steps": [
+        "Cortá y condimentá las verduras.",
+        "Asalas hasta que estén tiernas.",
+        "Procesá con agua caliente hasta lograr la textura deseada."
+      ],
+      "stepMeta": [
+        {
+          "tip": "Cortá piezas similares para una cocción pareja."
+        },
+        {
+          "minutes": 35
+        },
+        {
+          "tip": "Agregá el líquido gradualmente."
+        }
+      ],
+      "symbol": "🥣",
+      "color": "gold",
+      "calories": 220,
+      "featured": true,
+      "dietaryTags": [
+        "Sin TACC",
+        "Vegana",
+        "Vegetariana",
+        "Sin lactosa",
+        "Sin frutos secos"
+      ],
+      "crossContaminationNote": "Aunque los ingredientes no contienen gluten, verificá rótulos y evitá la contaminación cruzada en superficies y utensilios compartidos.",
+      "image": "/assets/recipes/roasted-vegetable-soup.webp",
+      "imageAlt": "Sopa de calabaza, zanahoria y tomate asados en un cuenco"
+    }
+  ]
+}

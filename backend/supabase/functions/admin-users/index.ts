@@ -60,7 +60,7 @@ async function findUserByEmail(admin: SupabaseClient, email: string) {
 }
 
 async function recordAdminAction(admin: SupabaseClient, actorUserId: string, action: AdminAuditAction, targetUserId: string) {
-  return admin.from('admin_audit_log').insert({
+  return admin.from('registro_auditoria').insert({
     actor_user_id: actorUserId,
     action,
     target_user_id: targetUserId,
@@ -135,8 +135,23 @@ Deno.serve(async (request) => {
       const user = await findUserByEmail(admin, email)
       if (!user) return response({ error: 'No existe una cuenta con ese correo.' }, 404)
 
+      // Keep this rollout independently gated from the frontend repository.
+      // The relational RPC owns authorization, profile locking, versioning and
+      // audit in one transaction; do not mirror the name into Auth metadata.
+      if (Deno.env.get('COCINAPP_RELATIONAL_PROFILES') === 'true') {
+        const { error } = await caller.rpc('admin_set_profile_name', {
+          p_user_id: user.id,
+          p_display_name: name,
+        })
+        if (error) {
+          const status = error.code === '42501' ? 403 : error.code === 'P0002' ? 404 : 400
+          return response({ error: error.message }, status)
+        }
+        return response({ success: true })
+      }
+
       const { data: profileRow, error: profileReadError } = await admin
-        .from('personal_data')
+        .from('datos_personales')
         .select('value')
         .eq('user_id', user.id)
         .eq('data_key', 'profile')
@@ -150,7 +165,7 @@ Deno.serve(async (request) => {
       if (!await isCurrentAdministrator(caller)) {
         return response({ error: 'Se revocó tu permiso de administrador antes de actualizar el nombre.' }, 403)
       }
-      const { error: profileWriteError } = await admin.from('personal_data').upsert({
+      const { error: profileWriteError } = await admin.from('datos_personales').upsert({
         user_id: user.id,
         data_key: 'profile',
         value: { ...currentProfile, name },
