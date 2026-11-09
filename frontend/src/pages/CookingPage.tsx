@@ -11,6 +11,7 @@ import type { Recipe } from '../features/recipes/domain/Recipe'
 import { RecipeImage } from '../features/recipes/ui/RecipeImage'
 import { parseRecipePortions } from '../features/recipes/domain/recipeRules'
 import { useNotifications } from '../shared/notifications/NotificationProvider'
+import { isRelationalCookingEnabled } from '../shared/data/supabaseClient'
 
 function formatTime(milliseconds: number): string {
   const seconds = Math.ceil(milliseconds / 1000)
@@ -54,9 +55,11 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
   const [loading, setLoading] = useState(true)
   const [finishing, setFinishing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [reloadRequired, setReloadRequired] = useState(false)
   const [persistingProgress, setPersistingProgress] = useState(false)
   const [now, setNow] = useState(Date.now)
   const finishingRef = useRef(false)
+  const finishChoiceRef = useRef<boolean | null>(null)
   const progressWriteRef = useRef(false)
   const chimedRef = useRef('')
   const notifiedTimerRef = useRef('')
@@ -64,17 +67,24 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
 
   useEffect(() => {
     let current = true
-    void Promise.all([mockRecipeRepository.getById(id), mockCookingRepository.getSession(id)]).then(async ([found, saved]) => {
+    const load = isRelationalCookingEnabled
+      ? mockCookingRepository.getSession(id).then(async (saved) => [saved?.recipeSnapshot ?? await mockRecipeRepository.getById(id), saved] as const)
+      : Promise.all([mockRecipeRepository.getById(id), mockCookingRepository.getSession(id)] as const)
+    void load.then(async ([found, saved]) => {
       if (!current) return
-      setRecipe(found ?? null)
-      if (found) {
-        const activeSession = saved ? { ...saved, portions: requestedPortions ?? saved.portions } : { ...createSession(found), portions: requestedPortions ?? found.portions }
+      const selectedRecipe = isRelationalCookingEnabled ? (saved?.recipeSnapshot ?? found) : found
+      setRecipe(selectedRecipe ?? null)
+      if (selectedRecipe) {
+        const activeSession = saved ? { ...saved, portions: requestedPortions ?? saved.portions } : { ...createSession(selectedRecipe), portions: requestedPortions ?? selectedRecipe.portions }
         setSession(activeSession)
         setResumeMessage(saved ? requestedPortions && requestedPortions !== saved.portions ? `Retomaste el paso guardado; las porciones se ajustaron de ${saved.portions} a ${requestedPortions}.` : 'Retomaste una sesión interrumpida. Tu paso y temporizador quedaron guardados.' : '')
         if (!saved || activeSession.portions !== saved.portions) {
           progressWriteRef.current = true
           setPersistingProgress(true)
-          try { await mockCookingRepository.saveSession(activeSession) }
+          try {
+            await mockCookingRepository.saveSession(activeSession, saved ?? undefined)
+            if (current) { setSession({ ...activeSession }); if (activeSession.recipeSnapshot) setRecipe(activeSession.recipeSnapshot) }
+          }
           catch { if (current) void notify({ type: 'error', title: 'No se pudo guardar el progreso', message: 'Revisá el espacio disponible del navegador e intentá de nuevo.' }) }
           finally { progressWriteRef.current = false; if (current) setPersistingProgress(false) }
         }
@@ -129,8 +139,9 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
     progressWriteRef.current = true
     setPersistingProgress(true)
     try {
-      await mockCookingRepository.saveSession(next)
-      setSession(next)
+      await mockCookingRepository.saveSession(next, session!)
+      setSession({ ...next })
+      if (next.recipeSnapshot) setRecipe(next.recipeSnapshot)
       return true
     } catch { void notify({ type: 'error', title: 'No se pudo guardar el progreso', message: 'Revisá el espacio disponible del navegador e intentá de nuevo.' }); return false }
     finally { progressWriteRef.current = false; setPersistingProgress(false) }
@@ -160,7 +171,7 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
     const completed = { ...completeStep(session!, session!.stepIndex, stepCount), timer: undefined }
     if (await update(completed)) {
       setStockCheckError(false)
-      try { setStockCheck(await mockCookingRepository.checkStock(recipe!, completed.portions)); setStockVerified(true); setFinishing(true) }
+      try { setStockCheck(await mockCookingRepository.checkStock(recipe!, completed.portions, completed)); setStockVerified(true); setFinishing(true) }
       catch { void notify({ type: 'error', title: 'No se pudo verificar la despensa', message: 'Podés finalizar sin descontar ingredientes.' }); setStockCheckError(true); setStockVerified(false); setFinishing(true); setStockCheck([]) }
     }
   }
@@ -171,11 +182,13 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
 
   async function finish(discount: boolean) {
     if (finishingRef.current) return
+    if (finishChoiceRef.current !== null && finishChoiceRef.current !== discount) return
     finishingRef.current = true
+    finishChoiceRef.current = isRelationalCookingEnabled ? discount : null
     setSaving(true)
     try {
-      if (discount) {
-        const currentCheck = await mockCookingRepository.checkStock(recipe!, session!.portions)
+      if (discount && !isRelationalCookingEnabled) {
+        const currentCheck = await mockCookingRepository.checkStock(recipe!, session!.portions, session!)
         const missing = currentCheck.filter((item) => item.missing > 0)
         if (missing.length > 0) {
           setStockCheck(currentCheck)
@@ -187,11 +200,13 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
       const result = await mockCookingRepository.finalize(recipe!, session!, discount)
       const exhausted = discount && result.exhaustedIngredients.length > 0 ? ` Se agotó el stock de ${result.exhaustedIngredients.join(', ')}.` : ''
       navigate(cookingCompletionPath, { replace: true, state: { completionMessage: `Terminaste ${recipe!.name}. Se agregó a tu historial.${exhausted}` } })
-    } catch {
+    } catch (error) {
       finishingRef.current = false
       setSaving(false)
-      setFinishing(false)
-      void notify({ type: 'error', title: 'No se pudo finalizar', message: 'Revisá la despensa y el espacio disponible del navegador.' })
+      const failure = error as { code?: string }
+      if (failure?.code === '40001') setReloadRequired(true)
+      else if (failure?.code) finishChoiceRef.current = null
+      void notify({ type: 'error', title: 'No se pudo finalizar', message: isRelationalCookingEnabled ? 'No se confirmó la finalización. Reintentá la misma decisión; si la sesión cambió, recargá la cocina.' : 'Revisá la despensa y el espacio disponible del navegador.' })
     }
   }
 
@@ -220,6 +235,6 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
       <aside className="cooking-side"><RecipeImage className="cooking-recipe-image" recipe={recipe} /><div className="cooking-portions"><div><strong>Porciones</strong><small>Cantidades para esta preparación</small></div><div><button aria-label="Disminuir porciones" disabled={persistingProgress || session.portions <= 1} onClick={() => void updatePortions(session.portions - 1)} type="button"><Minus size={17} /></button><output aria-live="polite">{session.portions}</output><button aria-label="Aumentar porciones" disabled={persistingProgress || session.portions >= 20} onClick={() => void updatePortions(session.portions + 1)} type="button"><Plus size={17} /></button></div></div><details open><summary>Ingredientes necesarios</summary><ul>{ingredients.map((ingredient, index) => <li key={`${ingredient.name}-${ingredient.unit}-${index}`}><span>{ingredient.name}</span><strong>{formatPantryAmount(ingredient.quantity, ingredient.unit)}</strong></li>)}</ul></details></aside>
     </main>
     <footer className="cooking-footer"><button className="button button-quiet" disabled={persistingProgress || session.stepIndex === 0} onClick={() => void update(moveStep(session, -1, stepCount))} type="button"><ChevronLeft size={19} /> Anterior</button><span aria-live="polite">{persistingProgress ? 'Guardando progreso…' : `${completedCount} de ${stepCount} completados`}</span>{session.stepIndex === stepCount - 1 ? <button className="button button-primary" disabled={persistingProgress || saving} onClick={completeAndConfirm} type="button"><Check size={19} /> Finalizar</button> : <button className="button button-primary" disabled={persistingProgress || saving} onClick={() => void update(advanceStep(session, stepCount))} type="button">Siguiente <ChevronRight size={19} /></button>}</footer>
-    {finishing && <dialog aria-labelledby="finish-cooking-title" className="pantry-dialog cooking-finish-dialog" onCancel={(event) => { if (saving) event.preventDefault(); else setFinishing(false) }} ref={(node) => { if (node && !node.open) node.showModal() }}><h2 id="finish-cooking-title">Finalizar preparación</h2><p>Se guardarán {session.portions} porciones en tu historial. ¿Querés descontar los ingredientes usados de la despensa?</p>{stockCheckError && <div className="form-message error" role="alert"><strong>No se pudo verificar la despensa.</strong><p>Podés finalizar sin descontar ingredientes.</p></div>}{stockVerified && <section aria-labelledby="cooking-stock-check-title" className="cooking-stock-check"><h3 id="cooking-stock-check-title">Control de despensa antes del descuento</h3><ul>{stockCheck.map((item, index) => <li key={`${item.ingredient.name}-${item.ingredient.unit}-${index}`}><strong>{item.ingredient.name}</strong><dl><div><dt>Disponible</dt><dd>{formatPantryAmount(item.available, item.ingredient.unit)}</dd></div><div><dt>Requerido</dt><dd>{formatPantryAmount(item.required, item.ingredient.unit)}</dd></div><div><dt>Faltante</dt><dd>{formatPantryAmount(item.missing, item.ingredient.unit)}</dd></div></dl><span>{item.missing === 0 ? 'Stock suficiente' : 'Stock insuficiente'}</span></li>)}</ul></section>}{stockVerified && stockCheck.some((item) => item.missing > 0) && <div className="form-message error" role="alert"><strong>No se puede descontar porque falta stock.</strong><p>Podés actualizar la despensa o finalizar sin descuento.</p></div>}<div className="cooking-finish-actions"><button className="button button-quiet" disabled={saving} onClick={() => setFinishing(false)} type="button">Seguir cocinando</button><button className="button button-quiet" disabled={saving} onClick={() => void finish(false)} type="button">Sin descuento</button><button className="button button-primary" disabled={saving || !stockVerified || stockCheck.some((item) => item.missing > 0)} onClick={() => void finish(true)} type="button">Descontar y finalizar</button></div></dialog>}
+    {finishing && <dialog aria-labelledby="finish-cooking-title" className="pantry-dialog cooking-finish-dialog" onCancel={(event) => { if (saving || (finishChoiceRef.current !== null && !reloadRequired)) event.preventDefault(); else setFinishing(false) }} ref={(node) => { if (node && !node.open) node.showModal() }}><h2 id="finish-cooking-title">Finalizar preparación</h2><p>Se guardarán {session.portions} porciones en tu historial. ¿Querés descontar los ingredientes usados de la despensa?</p>{finishChoiceRef.current !== null && <p role="status">Si la conexión se interrumpió, reintentá la misma decisión para confirmar el resultado.</p>}{reloadRequired && <div className="form-message error" role="alert"><strong>La sesión cambió.</strong><p>Recargá la cocina antes de volver a intentarlo.</p><button className="button button-primary" onClick={() => window.location.reload()} type="button">Recargar cocina</button></div>}{stockCheckError && <div className="form-message error" role="alert"><strong>No se pudo verificar la despensa.</strong><p>Podés finalizar sin descontar ingredientes.</p></div>}{stockVerified && <section aria-labelledby="cooking-stock-check-title" className="cooking-stock-check"><h3 id="cooking-stock-check-title">Control de despensa antes del descuento</h3><ul>{stockCheck.map((item, index) => <li key={`${item.ingredient.name}-${item.ingredient.unit}-${index}`}><strong>{item.ingredient.name}</strong><dl><div><dt>Disponible</dt><dd>{formatPantryAmount(item.available, item.ingredient.unit)}</dd></div><div><dt>Requerido</dt><dd>{formatPantryAmount(item.required, item.ingredient.unit)}</dd></div><div><dt>Faltante</dt><dd>{formatPantryAmount(item.missing, item.ingredient.unit)}</dd></div></dl><span>{item.missing === 0 ? 'Stock suficiente' : 'Stock insuficiente'}</span></li>)}</ul></section>}{stockVerified && stockCheck.some((item) => item.missing > 0) && <div className="form-message error" role="alert"><strong>No se puede descontar porque falta stock.</strong><p>Podés actualizar la despensa o finalizar sin descuento.</p></div>}<div className="cooking-finish-actions"><button className="button button-quiet" disabled={saving || finishChoiceRef.current !== null} onClick={() => setFinishing(false)} type="button">Seguir cocinando</button><button className="button button-quiet" disabled={saving || reloadRequired || finishChoiceRef.current === true} onClick={() => void finish(false)} type="button">Sin descuento</button><button className="button button-primary" disabled={saving || reloadRequired || !stockVerified || stockCheck.some((item) => item.missing > 0) || finishChoiceRef.current === false} onClick={() => void finish(true)} type="button">Descontar y finalizar</button></div></dialog>}
   </div>
 }

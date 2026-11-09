@@ -15,7 +15,7 @@ type AdminAction =
   | { action: 'create'; name: string; email: string; password: string }
   | { action: 'update_name'; email: string; name: string }
 
-function setup(onBodyRead: () => Promise<void>) {
+function setup(onBodyRead: () => Promise<void>, options: { relational?: boolean; rejectRename?: boolean } = {}) {
   const calls: string[] = []
   let currentRole = 'ADMIN'
   let handler: ((request: Request) => Promise<Response>) | undefined
@@ -23,6 +23,11 @@ function setup(onBodyRead: () => Promise<void>) {
     auth: { getUser: async () => ({ data: { user: { id: 'actor' } }, error: null }) },
     rpc: async (name: string) => {
       calls.push(name)
+      if (name === 'admin_set_profile_name') {
+        return options.rejectRename || currentRole !== 'ADMIN'
+          ? { data: null, error: { code: '42501', message: 'Administrator permission revoked' } }
+          : { data: null, error: null }
+      }
       return name === 'current_app_role' ? { data: currentRole, error: null } : { data: null, error: null }
     },
   }
@@ -52,7 +57,7 @@ function setup(onBodyRead: () => Promise<void>) {
       return { createClient: () => ++clients === 1 ? caller : admin }
     },
     Deno: {
-      env: { get: (name: string) => ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY'].includes(name) ? 'test-value' : undefined },
+      env: { get: (name: string) => name === 'COCINAPP_RELATIONAL_PROFILES' ? String(options.relational ?? false) : ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY'].includes(name) ? 'test-value' : undefined },
       serve: (callback: typeof handler) => { handler = callback },
     },
   })
@@ -108,9 +113,9 @@ test('rejects name update when administrator permissions are revoked before the 
 
   const result = await pending
   assert.equal(result.status, 403)
-  assert.equal(app.calls.includes('personal_data.upsert'), false)
+  assert.equal(app.calls.includes('datos_personales.upsert'), false)
   assert.equal(app.calls.includes('updateUserById'), false)
-  assert.equal(app.calls.includes('admin_audit_log.insert'), false)
+  assert.equal(app.calls.includes('registro_auditoria.insert'), false)
 })
 
 test('admits create and name update while the administrator still has the role at the final check', async () => {
@@ -122,6 +127,25 @@ test('admits create and name update while the administrator still has the role a
   const update = setup(async () => {})
   const updateResult = await update.invoke({ action: 'update_name', email: 'target@example.com', name: 'Changed name' })
   assert.equal(updateResult.status, 200)
-  assert.equal(update.calls.includes('personal_data.upsert'), true)
+  assert.equal(update.calls.includes('datos_personales.upsert'), true)
   assert.equal(update.calls.includes('updateUserById'), true)
+})
+
+test('relational name update delegates to the atomic caller RPC without legacy or Auth writes', async () => {
+  const app = setup(async () => {}, { relational: true })
+  const result = await app.invoke({ action: 'update_name', email: 'target@example.com', name: 'Changed name' })
+  assert.equal(result.status, 200)
+  assert.equal(app.calls.includes('admin_set_profile_name'), true)
+  assert.equal(app.calls.includes('datos_personales.upsert'), false)
+  assert.equal(app.calls.includes('updateUserById'), false)
+  assert.equal(app.calls.includes('registro_auditoria.insert'), false)
+})
+
+test('atomic relational rename rejection never falls back to service-role name writes', async () => {
+  const app = setup(async () => {}, { relational: true, rejectRename: true })
+  const result = await app.invoke({ action: 'update_name', email: 'target@example.com', name: 'Changed name' })
+  assert.equal(result.status, 403)
+  assert.equal(app.calls.includes('admin_set_profile_name'), true)
+  assert.equal(app.calls.includes('datos_personales.upsert'), false)
+  assert.equal(app.calls.includes('updateUserById'), false)
 })

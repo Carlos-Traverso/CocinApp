@@ -2,7 +2,7 @@ import { LoadingScreen } from '../components/LoadingScreen'
 import { useEffect, useState } from 'react'
 import { Clock3, History, PackageCheck, SunMedium } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { mockDashboardRepository, type DashboardHomeData } from '../features/dashboard/data/DashboardRepository'
+import { dashboardRepository, type DashboardHomeData } from '../features/dashboard/data/DashboardRepository'
 import { buildCookingSuggestions, recentPreparations, recommendRecipeForTime } from '../features/dashboard/domain/dashboard'
 import type { Recipe } from '../features/recipes/domain/Recipe'
 import { RecipeImage } from '../features/recipes/ui/RecipeImage'
@@ -31,21 +31,27 @@ export function HomePage() {
   const [data, setData] = useState<DashboardHomeData | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
-  useEffect(() => { let current = true; void mockDashboardRepository.loadHome().then((loaded) => { if (current) setData(loaded) }).catch(() => { if (current) { setLoadFailed(true); void notify({ type: 'error', title: 'No se pudo cargar el panel', message: 'Probá de nuevo más tarde.' }) } }); return () => { current = false } }, [loadAttempt, notify])
+  useEffect(() => { let current = true; setData(null); setLoadFailed(false); void dashboardRepository.loadHome().then((loaded) => { if (current) setData(loaded) }).catch(() => { if (current) { setLoadFailed(true); void notify({ type: 'error', title: 'No se pudo cargar el panel', message: 'Probá de nuevo más tarde.' }) } }); return () => { current = false } }, [loadAttempt, notify])
   if (loadFailed) return <div className="page dashboard-page"><header className="dashboard-focus-heading"><div><p className="eyebrow">MI COCINA</p><h1>Panel</h1><p>No se pudo cargar tu cocina.</p><button className="button button-primary" onClick={() => { setLoadFailed(false); setLoadAttempt((attempt) => attempt + 1) }} type="button">Reintentar</button></div></header></div>
   if (!data) return <div className="page dashboard-page"><LoadingScreen message="Cargando tu cocina…" /></div>
   const preferences = data.profile.preferences ?? []
   const recipes = data.recipes.filter((recipe) => matchesDietaryPreferences(recipe, preferences))
   const history = data.history
   const now = new Date()
-  const suggestions = buildCookingSuggestions(recipes, data.pantry, now, 4, data.units)
-  const timeSuggestion = recommendRecipeForTime(recipes, now.getHours(), { pantry: data.pantry, favoriteIds: data.favoriteIds, history, today: now, units: data.units })
-  const recent = recentPreparations(history, recipes.map((recipe) => recipe.id))
-  const recommendations = buildRecipeRecommendations(data.recipes, data.knownRecipes, data.pantry, data.favoriteIds, history, now, preferences, data.units)
-  const plannedMeals = getPlannedMealsForDate(data.plannedMeals, now)
+  const date = data.summary ? new Date(`${data.summary.asOf}T12:00:00`) : now
+  const suggestions = buildCookingSuggestions(recipes, data.pantry, date, 4, data.units)
+  const timeSuggestion = recommendRecipeForTime(recipes, now.getHours(), { pantry: data.pantry, favoriteIds: data.favoriteIds, history, today: date, units: data.units })
+  const recent = data.summary ? [...history].sort((a, b) => b.cookedAt.localeCompare(a.cookedAt)).slice(0, 4) : recentPreparations(history, recipes.map((recipe) => recipe.id))
+  const recommendations = buildRecipeRecommendations(data.recipes, data.knownRecipes, data.pantry, data.favoriteIds, history, date, preferences, data.units)
+  const plannedMeals = getPlannedMealsForDate(data.plannedMeals, date)
 
   return <div className="page dashboard-page dashboard-focus-page">
     <header className="dashboard-focus-heading"><div><p className="eyebrow">MI COCINA</p><h1>Panel</h1><p>Ideas basadas en tu despensa, tu horario y tus preparaciones.</p></div></header>
+
+    {data.summary && <section aria-label="Resumen de tu cocina" className="dashboard-summary-counts">
+      <p>Despensa: {data.summary.pantry.total} productos · {data.summary.pantry.low} bajos · {data.summary.pantry.expired} vencidos · {data.summary.pantry.soon} por vencer</p>
+      <p>Favoritos: {data.summary.favorites.total} ({data.summary.favorites.available} disponibles) · Compras: {data.summary.shopping.pending} pendientes, {data.summary.shopping.checked} marcados, {data.summary.shopping.transferred} transferidos · Plan de hoy: {data.summary.todayPlanCount}</p>
+    </section>}
 
     {preferences.length > 0 && <p className="form-message" role="status">Sugerencias filtradas según tus {preferences.length} preferencias dietéticas activas. <Link to="/profile">Editar preferencias</Link></p>}
     <div className="dashboard-highlight-layout">
@@ -68,8 +74,8 @@ export function HomePage() {
     </section>
 
     <section aria-labelledby="recent-title" className="dashboard-panel-section">
-      <div className="section-header"><div><p className="dashboard-recommendation-kicker"><History aria-hidden="true" size={17} /> Historial local</p><h2 id="recent-title">Cocinaste hace poco</h2></div></div>
-      {recent.length === 0 ? <div className="recipe-rail-empty"><History aria-hidden="true" size={20} /><span>Todavía no completaste ninguna receta.</span></div> : <div className="dashboard-recent-list">{recent.map((event) => { const recipe = data.knownRecipes.find((item) => item.id === event.recipeId); if (!recipe) return null; const active = recipes.some((item) => item.id === recipe.id); return <article className="history-row" key={event.id}><Artwork compact recipe={recipe} /><div className="history-copy"><h3>{recipe.name}</h3><DietaryTags recipe={recipe} /><p>{new Date(event.cookedAt).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' })} · {event.portions} {event.portions === 1 ? 'porción' : 'porciones'}</p></div><div className="history-actions"><Link className="button button-quiet" to={`/recipes/${recipe.id}`}>Ver detalle</Link>{active && <Link className="button button-primary" to={`/recipes/${recipe.id}/cook`}>Volver a cocinar</Link>}</div></article> })}</div>}
+      <div className="section-header"><div><p className="dashboard-recommendation-kicker"><History aria-hidden="true" size={17} /> {data.summary ? 'Historial de tu cuenta' : 'Historial local'}</p><h2 id="recent-title">Cocinaste hace poco</h2></div></div>
+      {recent.length === 0 ? <div className="recipe-rail-empty"><History aria-hidden="true" size={20} /><span>Todavía no completaste ninguna receta.</span></div> : <div className="dashboard-recent-list">{recent.map((event) => { const recipe = event.recipeSnapshot ?? data.knownRecipes.find((item) => item.id === event.recipeId); if (!recipe) return null; const active = recipes.some((item) => item.id === recipe.id); return <article className="history-row" key={event.id}><Artwork compact recipe={recipe} /><div className="history-copy"><h3>{recipe.name}</h3><DietaryTags recipe={recipe} /><p>{new Date(event.cookedAt).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' })} · {event.portions} {event.portions === 1 ? 'porción' : 'porciones'}</p></div><div className="history-actions"><Link className="button button-quiet" to={`/recipes/${recipe.id}`}>Ver detalle</Link>{active && <Link className="button button-primary" to={`/recipes/${recipe.id}/cook`}>Volver a cocinar</Link>}</div></article> })}</div>}
     </section>
 
   </div>

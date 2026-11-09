@@ -212,6 +212,7 @@ describe('admin navigation', () => {
       '/admin/categories',
       '/admin/units',
       '/admin/users',
+      '/admin/nutrition',
       '/admin/history',
     ])
   })

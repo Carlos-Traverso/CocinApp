@@ -10,6 +10,8 @@ import { isSupabaseConfigured } from '../../../shared/data/supabaseClient'
 import { loadPersonalData, savePersonalData } from '../../../shared/data/personalDataRepository'
 import type { ShoppingItem } from '../domain/shopping'
 import { assertPersonalDataSessionCurrent, capturePersonalDataSession, type PersonalDataSession } from '../../../shared/data/personalDataSession'
+import { isRelationalShoppingEnabled } from '../../../shared/data/supabaseClient'
+import { supabaseShoppingRepository } from './supabaseShoppingRepository'
 
 async function loadShoppingItems(session: PersonalDataSession): Promise<ShoppingItem[]> {
   if (!isSupabaseConfigured) return readShoppingItems()
@@ -31,7 +33,7 @@ async function saveShoppingItems(items: ShoppingItem[], session: PersonalDataSes
   writeShoppingItems(items)
 }
 
-export const mockShoppingRepository: ShoppingRepository = {
+const legacyShoppingRepository: ShoppingRepository = {
   async list() { return loadShoppingItems(capturePersonalDataSession()) },
   async save(items) { const session = capturePersonalDataSession(); await saveShoppingItems(items, session) },
   async append(suggestions) { const session = capturePersonalDataSession(); const items = appendShoppingSuggestions(suggestions); await saveShoppingItems(items, session); return items },
@@ -53,4 +55,17 @@ export const mockShoppingRepository: ShoppingRepository = {
     return suggestForRecipes(scheduled.map((entry) => entry.recipe), readPantryItems(), 'plan', new Date(), getAdminData().units, new Map(scheduled.map((entry) => [entry.recipe.id, entry.portions])))
   },
   async suggestionsForRestock() { return suggestPantryRestock(readPantryItems(), new Date(), getAdminData().units) },
+}
+
+export const mockShoppingRepository: ShoppingRepository = {
+  list: () => (isRelationalShoppingEnabled ? supabaseShoppingRepository.list() : legacyShoppingRepository.list()),
+  save: (items) => (isRelationalShoppingEnabled ? supabaseShoppingRepository.save(items) : legacyShoppingRepository.save(items)),
+  append: (suggestions) => (isRelationalShoppingEnabled ? supabaseShoppingRepository.append(suggestions) : legacyShoppingRepository.append(suggestions)),
+  setPurchased: (id, checked) => (isRelationalShoppingEnabled ? supabaseShoppingRepository.setPurchased(id, checked) : legacyShoppingRepository.setPurchased(id, checked)),
+  markAllPurchased: () => (isRelationalShoppingEnabled ? supabaseShoppingRepository.markAllPurchased() : legacyShoppingRepository.markAllPurchased()),
+  transferPurchased: () => (isRelationalShoppingEnabled ? supabaseShoppingRepository.transferPurchased() : legacyShoppingRepository.transferPurchased()),
+  load: () => (isRelationalShoppingEnabled ? supabaseShoppingRepository.load() : legacyShoppingRepository.load()),
+  suggestionsFromFavorites: () => (isRelationalShoppingEnabled ? supabaseShoppingRepository.suggestionsFromFavorites() : legacyShoppingRepository.suggestionsFromFavorites()),
+  suggestionsFromWeek: (dates) => (isRelationalShoppingEnabled ? supabaseShoppingRepository.suggestionsFromWeek(dates) : legacyShoppingRepository.suggestionsFromWeek(dates)),
+  suggestionsForRestock: () => (isRelationalShoppingEnabled ? supabaseShoppingRepository.suggestionsForRestock() : legacyShoppingRepository.suggestionsForRestock()),
 }

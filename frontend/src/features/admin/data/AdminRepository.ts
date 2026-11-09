@@ -8,7 +8,10 @@ import type { AdminRecipe } from '../domain/adminModels'
 import type { Recipe } from '../../recipes/domain/Recipe'
 import type { DeleteResult } from './deleteResult'
 import { readSupabaseCatalogCore, writeSupabaseCatalogCore } from './supabaseCatalogCore'
-import { supabase } from '../../../shared/data/supabaseClient'
+import { isRelationalAdminEnabled, supabase } from '../../../shared/data/supabaseClient'
+import { relationalAdminCatalog } from './relationalAdminCatalog'
+import { relationalAdminRecipes } from './relationalAdminRecipes'
+import { capturePersonalDataSession, assertPersonalDataSessionCurrent } from '../../../shared/data/personalDataSession'
 import { readSupabaseRecipes, writeSupabaseRecipes } from './supabaseRecipes'
 
 export type { DeleteResult } from './deleteResult'
@@ -110,7 +113,7 @@ export interface AdminRepository {
 }
 
 // Delayed local mock keeps the async boundary identical to a future HTTP repository.
-export const adminRepository: AdminRepository = {
+const legacyAdminRepository: AdminRepository = {
   async getCatalog() { return loadCatalog() },
   async createCategory(...args) { return mutateCore(() => createCategory(...args)) },
   async updateCategory(...args) { return mutateCore(() => updateCategory(...args)) },
@@ -132,3 +135,19 @@ export const adminRepository: AdminRepository = {
   async setRecipeFeatured(...args) { return mutateRecipes(() => setRecipeFeatured(...args)) },
   async createSeedRecipeOverride(...args) { return mutateRecipes(() => createSeedRecipeOverride(...args)) },
 }
+
+const relationalAdminRepository: AdminRepository = {
+  ...relationalAdminCatalog,
+  ...relationalAdminRecipes,
+  async getCatalog() {
+    const session = capturePersonalDataSession()
+    const [core, recipes] = await Promise.all([
+      relationalAdminCatalog.getCatalogCore(), relationalAdminRecipes.listRecipes(),
+    ])
+    assertPersonalDataSessionCurrent(session)
+    return { ...core, recipes }
+  },
+}
+
+export const adminRepository: AdminRepository = isRelationalAdminEnabled
+  ? relationalAdminRepository : legacyAdminRepository

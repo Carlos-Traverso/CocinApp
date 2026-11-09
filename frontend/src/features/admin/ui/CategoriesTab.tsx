@@ -40,11 +40,12 @@ export function CategoriesTab() {
       } else {
         await adminRepository.createCategory(editor.name.trim(), active)
       }
+      await reload()
       setEditor(null)
       setError('')
       void notify({ type: 'success', title: editor.id ? 'Categoría actualizada' : 'Categoría creada', message: editor.id ? 'Categoría actualizada.' : 'Categoría creada.' })
-      await reload()
     } catch (err: any) {
+      setError(err instanceof Error ? err.message : 'No se pudo guardar la categoría. Probá nuevamente.')
       void notify({ type: 'error', title: 'No se pudo guardar la categoría', message: err.message })
     } finally {
       setPending(false)
@@ -145,6 +146,7 @@ export function CategoriesTab() {
         ))}
         {debouncedSearch.status !== 'waiting' && visibleCategories.length === 0 && <p className="empty">No hay categorías que coincidan con los filtros.</p>}
       </div>}
+      {error && !editor && <p className="form-message error" role="alert">{error} <button className="button button-quiet" disabled={pending} onClick={() => void reload().catch(() => undefined)} type="button">Volver a cargar</button></p>}
 
       {editor && (
         <dialog aria-labelledby="category-editor-title" className="shopping-editor surface" onCancel={(event) => { event.preventDefault(); setEditor(null) }} ref={(node) => { if (node && !node.open) node.showModal() }}>

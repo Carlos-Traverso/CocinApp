@@ -4,6 +4,8 @@ import { isSupabaseConfigured } from '../../../shared/data/supabaseClient'
 import { loadPersonalData, savePersonalData } from '../../../shared/data/personalDataRepository'
 import type { CookingSession, PreparationEvent } from '../domain/cooking'
 import { assertPersonalDataSessionCurrent, capturePersonalDataSession, type PersonalDataSession } from '../../../shared/data/personalDataSession'
+import { isRelationalCookingEnabled } from '../../../shared/data/supabaseClient'
+import { supabaseCookingRepository } from './supabaseCookingRepository'
 
 async function loadCookingData(key: 'cooking_progress' | 'cooking_history', session: PersonalDataSession): Promise<unknown | null> {
   if (!isSupabaseConfigured) return null
@@ -58,19 +60,21 @@ async function saveHistory(history: PreparationEvent[], sessionContext: Personal
 }
 
 export const mockCookingRepository: CookingRepository = {
-  async getSession(recipeId) { const context = capturePersonalDataSession(); return isSupabaseConfigured ? loadSession(recipeId, context) : getCookingSession(recipeId) },
-  async saveSession(session) { const context = capturePersonalDataSession(); if (!isSupabaseConfigured) return persistCookingSession(session); await saveSession(session, context) },
-  async getHistory() { const context = capturePersonalDataSession(); return isSupabaseConfigured ? loadHistory(context) : getCookingHistory() },
+  async getSession(recipeId) { if (isRelationalCookingEnabled) return supabaseCookingRepository.getSession(recipeId); const context = capturePersonalDataSession(); return isSupabaseConfigured ? loadSession(recipeId, context) : getCookingSession(recipeId) },
+  async saveSession(session) { if (isRelationalCookingEnabled) return supabaseCookingRepository.saveSession(session); const context = capturePersonalDataSession(); if (!isSupabaseConfigured) return persistCookingSession(session); await saveSession(session, context) },
+  async getHistory() { if (isRelationalCookingEnabled) return supabaseCookingRepository.getHistory(); const context = capturePersonalDataSession(); return isSupabaseConfigured ? loadHistory(context) : getCookingHistory() },
   async removeHistoryEntry(eventId) {
+    if (isRelationalCookingEnabled) return supabaseCookingRepository.removeHistoryEntry(eventId)
     if (!isSupabaseConfigured) return removeCookingHistoryEntry(eventId)
     const context = capturePersonalDataSession()
     const history = await loadHistory(context)
     assertPersonalDataSessionCurrent(context)
     await saveHistory(history.filter((event) => event.id !== eventId), context)
   },
-  async clearHistory() { if (!isSupabaseConfigured) return clearCookingHistory(); await saveHistory([], capturePersonalDataSession()) },
-  checkStock: checkCookingStock,
+  async clearHistory() { if (isRelationalCookingEnabled) return supabaseCookingRepository.clearHistory(); if (!isSupabaseConfigured) return clearCookingHistory(); await saveHistory([], capturePersonalDataSession()) },
+  async checkStock(recipe, portions, session) { return isRelationalCookingEnabled ? supabaseCookingRepository.checkStock(recipe, portions, session) : checkCookingStock(recipe, portions) },
   async finalize(recipe, session, discount) {
+    if (isRelationalCookingEnabled) return supabaseCookingRepository.finalize(recipe, session, discount)
     const context = capturePersonalDataSession()
     const result = await finishCookingSession(recipe, session, discount, new Date(), () => assertPersonalDataSessionCurrent(context))
     assertPersonalDataSessionCurrent(context)

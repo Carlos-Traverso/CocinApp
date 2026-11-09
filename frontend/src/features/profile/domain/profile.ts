@@ -13,6 +13,16 @@ export interface ProfileDraft {
   activityLevel?: ActivityLevel
   goal?: Goal
   preferences?: DietaryPreference[]
+  /** Active published configuration, read separately from the profile row. */
+  nutritionConfig?: NutritionConfig | null
+}
+
+export interface NutritionConfig {
+  configVersion: number
+  activityFactors: Record<ActivityLevel, number>
+  goalAdjustments: Record<Goal, { minimum: number; maximum: number }>
+  sourceNote: string
+  effectiveAt: string
 }
 
 export interface EnergyEstimate {
@@ -60,24 +70,25 @@ export function calculateEnergyEstimate(input: {
   metabolicSex: MetabolicSex
   activityLevel: ActivityLevel
   goal: Goal
-}): EnergyEstimate {
+}, config?: Pick<NutritionConfig, 'activityFactors' | 'goalAdjustments'>): EnergyEstimate {
   const sexAdjustment = input.metabolicSex === 'male' ? 5 : -161
   const basalCaloriesExact = 10 * input.weightKg + 6.25 * input.heightCm - 5 * input.age + sexAdjustment
   const basalCalories = Math.round(basalCaloriesExact)
-  const dailyCalories = Math.round(basalCaloriesExact * activityFactors[input.activityLevel])
-  const adjustment = goalAdjustments[input.goal]
+  const dailyCalories = Math.round(basalCaloriesExact * (config?.activityFactors ?? activityFactors)[input.activityLevel])
+  const adjustment = (config?.goalAdjustments ?? goalAdjustments)[input.goal]
   const goalRange = { minimum: dailyCalories + adjustment.minimum, maximum: dailyCalories + adjustment.maximum }
 
   return { basalCalories, dailyCalories, goalRange }
 }
 
 export function estimateForProfile(profile: ProfileDraft, today = new Date()): EnergyEstimate | undefined {
+  if (profile.nutritionConfig === null) return undefined
   const age = profile.birthDate ? calculateAge(profile.birthDate, today) : undefined
   if (!profileIsComplete(profile, today) || age === undefined || age < 18 || age > 100) return undefined
   return calculateEnergyEstimate({
     weightKg: profile.weightKg!, heightCm: profile.heightCm!, age,
     metabolicSex: profile.metabolicSex!, activityLevel: profile.activityLevel!, goal: profile.goal!,
-  })
+  }, profile.nutritionConfig)
 }
 
 export function recipeGoalPercentageRange(caloriesPerPortion: number, estimate: EnergyEstimate): { minimum: number; maximum: number } | undefined {

@@ -1,8 +1,9 @@
 import { personalStorage } from '../../auth/data/personalStorage'
 import { daysUntilExpiry, defaultPantryCategories, defaultPantryUnits, type PantryItem } from '../domain/pantry'
 import { getKnownCategories, getKnownUnits } from '../../admin/data/localAdminStore'
-import { supabase } from '../../../shared/data/supabaseClient'
+import { isRelationalPantryEnabled, supabase } from '../../../shared/data/supabaseClient'
 import { supabasePantryRepository } from './supabasePantryRepository'
+import { legacySupabasePantryRepository } from './legacySupabasePantryRepository'
 
 const pantryKey = 'cocinapp.pantry.v1'
 const legacyPantryKey = 'cocinapp-demo-pantry-v1'
@@ -77,7 +78,7 @@ const localPantryRepository: PantryRepository = {
   async save(items) { await Promise.resolve(); writePantryItems(items) },
 }
 
-export const pantryRepository: PantryRepository = supabase ? supabasePantryRepository : localPantryRepository
+export const pantryRepository: PantryRepository = supabase ? (isRelationalPantryEnabled ? supabasePantryRepository : legacySupabasePantryRepository) : localPantryRepository
 
 export async function getPantryItems(): Promise<PantryItem[]> { return pantryRepository.list() }
 export async function savePantryItems(items: PantryItem[]): Promise<void> { return pantryRepository.save(items) }

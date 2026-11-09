@@ -13,6 +13,9 @@ export interface CookingSession {
   portions: number
   startedAt: string
   timer?: { stepIndex: number; remainingMs: number; deadlineAt?: number }
+  relationalId?: string
+  version?: number
+  recipeSnapshot?: Recipe
 }
 
 export interface PreparationEvent {
@@ -21,6 +24,8 @@ export interface PreparationEvent {
   cookedAt: string
   portions: number
   sessionStartedAt?: string
+  recipeSnapshot?: Recipe
+  deductStock?: boolean
 }
 
 export function createSession(recipe: Recipe, now = new Date()): CookingSession {

@@ -3,7 +3,7 @@ import test from 'node:test'
 import { calculateAge, calculateEnergyEstimate, estimateForProfile, profileIsComplete, recipeGoalPercentageRange } from '../src/features/profile/domain/profile'
 import { readLocalProfile, saveLocalProfile } from '../src/features/profile/data/localProfileStore'
 import { createProfileRepository } from '../src/features/profile/data/ProfileRepository'
-import { endSession, startSupabaseUserSession } from '../src/features/auth/data/localAuthStore'
+import { endSession, getSession, startSupabaseUserSession } from '../src/features/auth/data/localAuthStore'
 import type { PersonalDataSession } from '../src/shared/data/personalDataSession'
 
 test('calculates age from the birth date without adding a year before the birthday', () => {
@@ -183,4 +183,164 @@ test('keeps a pending profile save bound to account A and skips its cache write 
   await assert.rejects(pendingSave, /La sesión cambió/)
   assert.equal(localStorage.getItem('cocinapp.user.luis%40example.com.cocinapp.profile.v1')?.includes('Dato privado de Ana'), false)
   localStorage.clear()
+})
+
+test('maps relational rows and stable preference keys without importing browser profile data', async () => {
+  localStorage.clear()
+  startSupabaseUserSession('relational-user', 'rel@example.com', 'Metadata name')
+  saveLocalProfile({ name: 'Legacy local profile', goal: 'lose' })
+  const repository = createProfileRepository({
+    isSupabaseConfigured: true, relationalProfiles: true,
+    loadPersonalData: async () => { throw new Error('legacy profile path used') },
+    savePersonalData: async () => { throw new Error('legacy profile path used') },
+    getMyProfile: async () => ({
+      profile: { user_id: 'relational-user', display_name: 'Perfil oficial', birth_date: '1992-04-03', weight_kg: '72.50', height_cm: '171.00', metabolic_sex: 'female', activity_level: 'very-active', goal: 'gain-muscle', version: '9007199254740993' },
+      preference_keys: ['gluten-free', 'vegetarian', 'vegan', 'lactose-free', 'nut-free'],
+    }),
+    saveMyProfile: async () => null,
+  })
+
+  assert.deepEqual(await repository.getProfile(), {
+    nutritionConfig: null, name: 'Perfil oficial', email: 'rel@example.com', birthDate: '1992-04-03', weightKg: 72.5, heightCm: 171,
+    metabolicSex: 'female', activityLevel: 'very-active', goal: 'gain-muscle',
+    preferences: ['gluten-free', 'vegetarian', 'vegan', 'lactose-free', 'nut-free'],
+  })
+  assert.match(localStorage.getItem('cocinapp.user.rel%40example.com.cocinapp.profile.v1') ?? '', /Legacy local profile/)
+  localStorage.clear()
+})
+
+test('relational read returns an empty draft when profile row is missing', async () => {
+  startSupabaseUserSession('empty-profile-user', 'empty@example.com', 'Auth name')
+  const repository = createProfileRepository({
+    isSupabaseConfigured: true, relationalProfiles: true,
+    loadPersonalData: async () => null, savePersonalData: async () => {},
+    getMyProfile: async () => ({ profile: null, preference_keys: [] }),
+    saveMyProfile: async () => null,
+  })
+  assert.deepEqual(await repository.getProfile(), { email: 'empty@example.com', nutritionConfig: null })
+})
+
+test('sends a full relational snapshot with string version and stable keys', async () => {
+  startSupabaseUserSession('profile-save-user', 'save@example.com', 'Metadata')
+  const writes: { profile: Record<string, unknown>; preferences: string[]; version: string }[] = []
+  const repository = createProfileRepository({
+    isSupabaseConfigured: true, relationalProfiles: true,
+    loadPersonalData: async () => null, savePersonalData: async () => {},
+    getMyProfile: async () => ({ profile: { version: '7' }, preference_keys: [] }),
+    saveMyProfile: async (profile, preferences, version) => {
+      writes.push({ profile, preferences, version })
+      return { version: '8' }
+    },
+  })
+  await repository.getProfile()
+  await repository.saveProfile({ name: 'Nombre', birthDate: '2000-01-02', weightKg: 65, heightCm: 166, metabolicSex: 'male', activityLevel: 'light', goal: 'lose', preferences: ['vegan', 'nut-free'] })
+  assert.deepEqual(writes, [{
+    profile: { display_name: 'Nombre', birth_date: '2000-01-02', weight_kg: 65, height_cm: 166, metabolic_sex: 'male', activity_level: 'light', goal: 'lose' },
+    preferences: ['vegan', 'nut-free'], version: '7',
+  }])
+})
+
+test('refreshes after a relational version conflict and blocks another save until a user reloads', async () => {
+  let reads = 0
+  let writes = 0
+  const repository = createProfileRepository({
+    isSupabaseConfigured: true, relationalProfiles: true,
+    loadPersonalData: async () => null, savePersonalData: async () => {},
+    getMyProfile: async () => { reads += 1; return { profile: { version: String(reads) }, preference_keys: [] } },
+    saveMyProfile: async () => { writes += 1; throw Object.assign(new Error('serialization failure'), { code: '40001' }) },
+  })
+  await repository.getProfile()
+  await assert.rejects(repository.saveProfile({ name: 'Mi borrador' }), /Recargá el perfil/)
+  assert.equal(reads, 2)
+  assert.equal(writes, 1)
+  await assert.rejects(repository.saveProfile({ name: 'Mi borrador' }), /Recargá el perfil/)
+  assert.equal(writes, 1)
+  await repository.getProfile()
+  await assert.rejects(repository.saveProfile({ name: 'Mi borrador' }), /Recargá el perfil/)
+  assert.equal(writes, 2)
+})
+
+test('does not send a relational read result across accounts', async () => {
+  let resolveRead!: (value: unknown) => void
+  const repository = createProfileRepository({
+    isSupabaseConfigured: true, relationalProfiles: true,
+    loadPersonalData: async () => null, savePersonalData: async () => {},
+    getMyProfile: async () => new Promise((resolve) => { resolveRead = resolve }),
+    saveMyProfile: async () => null,
+  })
+  startSupabaseUserSession('read-account-a', 'read-a@example.com', 'A')
+  const pending = repository.getProfile()
+  startSupabaseUserSession('read-account-b', 'read-b@example.com', 'B')
+  resolveRead({ profile: { display_name: 'Private A', version: '2' }, preference_keys: [] })
+  await assert.rejects(pending, /La sesión cambió/)
+})
+
+test('does not permit repeated saves from a stale draft without explicitly loading an existing profile', async () => {
+  let saves = 0
+  const repository = createProfileRepository({
+    isSupabaseConfigured: true, relationalProfiles: true,
+    loadPersonalData: async () => null, savePersonalData: async () => {},
+    getMyProfile: async () => ({ profile: { display_name: 'Server value', version: '9' }, preference_keys: [] }),
+    saveMyProfile: async () => { saves += 1; return { version: '10' } },
+  })
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await assert.rejects(repository.saveProfile({ name: 'Possibly stale value' }), /Recargá el perfil/)
+  }
+  assert.equal(saves, 0)
+})
+
+test('rejects an existing relational profile without a valid bigint version', async () => {
+  const repository = createProfileRepository({
+    isSupabaseConfigured: true, relationalProfiles: true,
+    loadPersonalData: async () => null, savePersonalData: async () => {},
+    getMyProfile: async () => ({ profile: { display_name: 'Existing', version: null }, preference_keys: [] }),
+    saveMyProfile: async () => null,
+  })
+  await assert.rejects(repository.getProfile(), /versión de perfil inválida/)
+})
+
+test('clears conflict and inactive preference state when changing accounts', async () => {
+  let readsA = 0
+  const writes: { preferences: string[]; version: string }[] = []
+  const repository = createProfileRepository({
+    isSupabaseConfigured: true, relationalProfiles: true,
+    loadPersonalData: async () => null, savePersonalData: async () => {},
+    getMyProfile: async (session) => {
+      if (session.token === 'supabase-user:conflict-a') {
+        readsA += 1
+        return { profile: { user_id: 'conflict-a', version: String(readsA) }, preference_keys: readsA > 1 ? ['inactive-a'] : [] }
+      }
+      return { profile: null, preference_keys: [] }
+    },
+    saveMyProfile: async (_profile, preferences, version, session) => {
+      writes.push({ preferences, version })
+      if (session.token === 'supabase-user:conflict-a') throw Object.assign(new Error('version mismatch'), { code: '40001' })
+      return { version: '1' }
+    },
+  })
+  startSupabaseUserSession('conflict-a', 'a@example.com', 'A')
+  await repository.getProfile()
+  await assert.rejects(repository.saveProfile({ name: 'A' }), /Recargá el perfil/)
+  startSupabaseUserSession('conflict-b', 'b@example.com', 'B')
+  await repository.saveProfile({ name: 'B' })
+  assert.deepEqual(writes, [{ preferences: [], version: '1' }, { preferences: [], version: '0' }])
+})
+
+test('keeps a loaded version usable after updating the canonical displayed name', async () => {
+  startSupabaseUserSession('name-update-user', 'name@example.com', 'Old metadata name')
+  const expectedVersions: string[] = []
+  const repository = createProfileRepository({
+    isSupabaseConfigured: true, relationalProfiles: true,
+    loadPersonalData: async () => null, savePersonalData: async () => {},
+    getMyProfile: async () => ({ profile: { user_id: 'name-update-user', display_name: 'Old name', version: '1' }, preference_keys: [] }),
+    saveMyProfile: async (profile, _preferences, version) => {
+      expectedVersions.push(version)
+      return { ...profile, user_id: 'name-update-user', version: String(BigInt(version) + 1n) }
+    },
+  })
+  await repository.getProfile()
+  await repository.saveProfile({ name: 'Canonical new name' })
+  assert.equal(getSession()?.name, 'Canonical new name')
+  await repository.saveProfile({ name: 'Next edit' })
+  assert.deepEqual(expectedVersions, ['1', '2'])
 })

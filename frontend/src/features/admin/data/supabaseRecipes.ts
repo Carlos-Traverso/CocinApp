@@ -34,7 +34,7 @@ export async function readSupabaseRecipes(): Promise<SupabaseRecipesResult> {
   if (!supabase) return { status: 'unavailable', recipes: [] }
 
   const { data, error } = await supabase
-    .from('shared_recipes')
+    .from('recetas_compartidas')
     .select('recipes, version')
     .eq('catalog_key', 'main')
     .maybeSingle()

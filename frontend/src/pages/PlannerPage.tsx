@@ -26,13 +26,14 @@ export function PlannerPage() {
   const [picker, setPicker] = useState<{ date: string; meal: Meal; label: string } | null>(null)
   const target = new Date()
   target.setDate(target.getDate() + weekOffset * 7)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const dates = weekDates(target)
   const recipesById = new Map(knownRecipes.map((recipe) => [recipe.id, recipe]))
 
-  useEffect(() => { let active = true; Promise.all([mockPlannerRepository.list(), mockPlannerRepository.loadRecipes()]).then(([value, recipes]) => { if (active) { setPlan(value); setKnownRecipes(recipes.known); setAvailableRecipes(recipes.available) } }).catch(() => { if (active) void notify({ type: 'error', title: 'No se pudo cargar el plan', message: 'No se pudo cargar el plan semanal y las recetas.' }) }).finally(() => { if (active) setLoading(false) }); return () => { active = false } }, [notify])
+  useEffect(() => { let active = true; setLoading(true); Promise.all([mockPlannerRepository.list(dates[0]), mockPlannerRepository.loadRecipes()]).then(([value, recipes]) => { if (active) { setPlan(value); setKnownRecipes(recipes.known); setAvailableRecipes(recipes.available) } }).catch(() => { if (active) void notify({ type: 'error', title: 'No se pudo cargar el plan', message: 'No se pudo cargar el plan semanal y las recetas.' }) }).finally(() => { if (active) setLoading(false) }); return () => { active = false } }, [weekOffset, loadAttempt, notify])
 
   async function assign(date: string, meal: Meal, recipeId: string, portions?: number): Promise<boolean> {
-    if (savingRef.current) return false
+    if (savingRef.current || loading) return false
     if (recipeId && !availableRecipes.some((recipe) => recipe.id === recipeId)) {
       void notify({ type: 'warning', title: 'Receta no disponible', message: 'Esa receta ya no está disponible para nuevas asignaciones.' })
       return false
@@ -46,7 +47,7 @@ export function PlannerPage() {
       void notify({ type: 'success', title: 'Plan actualizado', message: recipeName ? `${meal}: ${recipeName} quedó planificada.` : `${meal}: se quitó la receta planificada.` })
       return true
     }
-    catch { void notify({ type: 'error', title: 'No se pudo guardar el plan', message: 'Intentá nuevamente.' }); return false }
+    catch (error) { void notify({ type: 'error', title: 'No se pudo guardar el plan', message: error instanceof Error ? error.message : 'No se confirmó el guardado. Recargá la semana para revisar los datos actuales.' }); return false }
     finally { savingRef.current = false; setSaving(false) }
   }
 
@@ -58,9 +59,22 @@ export function PlannerPage() {
     finally { savingRef.current = false; setSaving(false) }
   }
 
+  async function removeUnavailable() {
+    if (savingRef.current || loading) return
+    const unavailable = plan.filter((item) => item.available === false)
+    if (!unavailable.length) return
+    if (!await notify({ type: 'warning', title: 'Quitar recetas no disponibles', message: `Se quitarán ${unavailable.length} entradas de esta semana.`, confirmLabel: 'Quitar', cancelLabel: 'Cancelar' })) return
+    savingRef.current = true; setSaving(true)
+    try { await mockPlannerRepository.save(plan.filter((item) => item.available !== false)); setPlan(await mockPlannerRepository.list(dates[0])); void notify({ type: 'success', title: 'Plan actualizado', message: 'Se quitaron las recetas no disponibles.' }) }
+    catch (error) { void notify({ type: 'error', title: 'No se pudo actualizar el plan', message: error instanceof Error ? error.message : 'Recargá la semana e intentá nuevamente.' }) }
+    finally { savingRef.current = false; setSaving(false) }
+  }
+
   return <div className="page planner-page">
     <header className="page-heading"><div><p className="eyebrow">ORGANIZÁ TUS COMIDAS</p><h1>Planificación semanal</h1><p className="page-lead">Asigná recetas de lunes a domingo para desayuno, almuerzo, merienda y cena. Cada semana se guarda por separado.</p></div><div className="planner-head-actions"><Link className="button button-quiet" to="/recipes">Explorar recetas</Link><button className="button button-primary" disabled={loading || saving} onClick={sendWeekToShopping} type="button">Generar compras de esta semana</button></div></header>
-    <div className="planner-toolbar"><h2>Semana del {new Date(`${dates[0]}T12:00:00`).toLocaleDateString('es-AR')} al {new Date(`${dates[6]}T12:00:00`).toLocaleDateString('es-AR')}</h2><div><button aria-label="Semana anterior" className="button button-quiet" onClick={() => setWeekOffset(weekOffset - 1)} type="button"><ChevronLeft size={18} /></button><button className="button button-quiet" onClick={() => setWeekOffset(0)} type="button">Esta semana</button><button aria-label="Semana siguiente" className="button button-quiet" onClick={() => setWeekOffset(weekOffset + 1)} type="button"><ChevronRight size={18} /></button></div></div>
+    <div className="planner-toolbar"><h2>Semana del {new Date(`${dates[0]}T12:00:00`).toLocaleDateString('es-AR')} al {new Date(`${dates[6]}T12:00:00`).toLocaleDateString('es-AR')}</h2><div><button aria-label="Semana anterior" disabled={saving} className="button button-quiet" onClick={() => setWeekOffset(weekOffset - 1)} type="button"><ChevronLeft size={18} /></button><button className="button button-quiet" disabled={saving} onClick={() => setWeekOffset(0)} type="button">Esta semana</button><button aria-label="Semana siguiente" disabled={saving} className="button button-quiet" onClick={() => setWeekOffset(weekOffset + 1)} type="button"><ChevronRight size={18} /></button></div></div>
+    <button className="button button-quiet" disabled={saving || loading} onClick={() => { setPicker(null); setLoadAttempt((value) => value + 1) }} type="button">Recargar semana</button>
+    {plan.some((item) => item.available === false) && <p role="status">Hay recetas que ya no están disponibles. Para editar la semana, quitá explícitamente esas entradas. <button className="text-link" disabled={saving || loading} onClick={() => void removeUnavailable()} type="button">Quitar recetas no disponibles</button></p>}
     {loading && <LoadingScreen message="Cargando plan semanal…" variant="section" />}{saving && <p role="status">Guardando cambio…</p>}
     <section aria-label="Calendario de comidas de la semana" className="planner-grid">
       {dates.map((date) => {
