@@ -30,6 +30,15 @@ function dispatchAuthChange() {
 
 export function getSessionRevision(): number { return sessionRevision }
 
+/** Update the displayed name for the same active Supabase identity without touching legacy profile storage. */
+export function updateSupabaseSessionName(userId: string, name: string): void {
+  const current = getSession()
+  if (!current || current.token !== `supabase-user:${userId}` || !name.trim() || current.name === name.trim()) return
+  localStorage.setItem(authKey, JSON.stringify({ ...current, name: name.trim() }))
+  // The identity did not change, so keep in-flight account-bound reads valid.
+  window.dispatchEvent(new Event('auth-change'))
+}
+
 export function getAccounts(): LocalAccount[] {
   try {
     const value: unknown = JSON.parse(localStorage.getItem(accountsKey) ?? '[]')

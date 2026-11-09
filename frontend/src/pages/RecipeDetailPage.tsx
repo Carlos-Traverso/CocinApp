@@ -7,6 +7,8 @@ import { formatPantryAmount } from '../features/pantry/domain/pantry'
 import { estimateForProfile, recipeGoalPercentageRange } from '../features/profile/domain/profile'
 import { mockFavoriteRepository } from '../features/recipes/data/localFavoritesStore'
 import { mockRecipeRepository } from '../features/recipes/data/MockRecipeRepository'
+import { supabaseRecipeRepository, isRelationalRecipeRepositoryEnabled } from '../features/recipes/data/SupabaseRecipeRepository'
+import { supabaseFavoriteRepository } from '../features/recipes/data/supabaseFavoriteRepository'
 import { matchesDietaryPreferences, parseRecipePortions, recipeMealShifts } from '../features/recipes/domain/recipeRules'
 import type { IngredientDeficit } from '../features/recipes/domain/recipeRules'
 import type { Recipe } from '../features/recipes/domain/Recipe'
@@ -18,6 +20,8 @@ import { useNotifications } from '../shared/notifications/NotificationProvider'
 const preferenceLabels: Record<DietaryPreference, string> = {
   'gluten-free': 'Sin TACC', vegetarian: 'Vegetariana', vegan: 'Vegana', 'lactose-free': 'Sin lactosa', 'nut-free': 'Sin frutos secos',
 }
+const recipeRepository = isRelationalRecipeRepositoryEnabled() ? supabaseRecipeRepository : mockRecipeRepository
+const favoriteRepository = isRelationalRecipeRepositoryEnabled() ? supabaseFavoriteRepository : mockFavoriteRepository
 
 export function RecipeDetailPage() {
   const { id = '' } = useParams()
@@ -39,7 +43,7 @@ export function RecipeDetailPage() {
 
   useEffect(() => {
     let current = true
-    void Promise.all([mockRecipeRepository.getById(id, true), mockRecipeRepository.list(), getPantryItems(), mockFavoriteRepository.listIds(), mockRecipeRepository.getDietaryPreferences(), mockRecipeRepository.getProfile()])
+    void Promise.all([recipeRepository.getById(id, true), recipeRepository.list(), getPantryItems(), favoriteRepository.listIds(), recipeRepository.getDietaryPreferences(), recipeRepository.getProfile()])
       .then(([found, activeRecipes, stock, favorites, selectedPreferences, profileData]) => {
         if (!current) return
         setRecipe(found ?? null)
@@ -58,7 +62,7 @@ export function RecipeDetailPage() {
   useEffect(() => {
     if (!recipe) return
     let current = true
-    void mockRecipeRepository.getReadiness(recipe.id, pantry, portions, true)
+    void recipeRepository.getReadiness(recipe.id, pantry, portions, true)
       .then((value) => { if (current) setReadiness(value) })
       .catch(() => { if (current) void notify({ type: 'error', title: 'No se pudo consultar el stock', message: 'No se pudo actualizar la disponibilidad para esta cantidad.' }) })
     return () => { current = false }
@@ -77,8 +81,13 @@ export function RecipeDetailPage() {
   const ingredientRows = readiness?.ingredients ?? []
 
   async function toggleFavorite() {
-    const next = favorite ? favoriteIds.filter((item) => item !== recipe!.id) : [...favoriteIds, recipe!.id]
-    try { await mockFavoriteRepository.saveIds(next); setFavoriteIds(next) }
+    const targetRecipe = recipe!
+    const next = favorite ? favoriteIds.filter((item) => item !== targetRecipe.id) : [...favoriteIds, targetRecipe.id]
+    try {
+      if (favoriteRepository.setFavorite) await favoriteRepository.setFavorite(targetRecipe.id, !favorite)
+      else await favoriteRepository.saveIds(next)
+      setFavoriteIds(next)
+    }
     catch { await notify({ type: 'error', title: 'No se pudo guardar el favorito', message: 'Revisá el espacio disponible del navegador e intentá de nuevo.' }) }
   }
 

@@ -12,7 +12,7 @@ export async function loadPersonalData(key: PersonalDataKey, session = capturePe
   assertPersonalDataOwner(session, user.id)
 
   const { data, error } = await supabase
-    .from('personal_data')
+    .from('datos_personales')
     .select('value')
     .eq('user_id', user.id)
     .eq('data_key', key)
@@ -31,7 +31,7 @@ export async function savePersonalData(key: PersonalDataKey, value: unknown, ses
   assertPersonalDataOwner(session, user.id)
 
   const { error } = await supabase
-    .from('personal_data')
+    .from('datos_personales')
     .upsert({ user_id: user.id, data_key: key, value, updated_at: new Date().toISOString() }, { onConflict: 'user_id,data_key' })
   if (error) throw error
   assertPersonalDataOwner(session, user.id)

@@ -1,3 +1,5 @@
+import { isRelationalAdminEnabled } from '../shared/data/supabaseClient'
+import { mockRecipeRepository } from '../features/recipes/data/MockRecipeRepository'
 import { LoadingScreen } from '../components/LoadingScreen'
 import { useEffect, useState, type ReactNode } from 'react'
 import { AlertTriangle, ArrowRight, BookOpen, Boxes, CircleCheck, FolderTree, Ruler, Sparkles } from 'lucide-react'
@@ -10,7 +12,7 @@ import { IngredientsTab } from '../features/admin/ui/IngredientsTab'
 import { RecipesTab } from '../features/admin/ui/RecipesTab'
 import { UsersTab } from '../features/admin/ui/UsersTab'
 import { AdminAuditTab } from '../features/admin/ui/AdminAuditTab'
-import { mockRecipeRepository } from '../features/recipes/data/MockRecipeRepository'
+import { NutritionTab } from '../features/admin/ui/NutritionTab'
 import { useNotifications } from '../shared/notifications/NotificationProvider'
 
 export function AdminPage() {
@@ -59,6 +61,10 @@ export function AdminAuditPage() {
   return <AdminSection eyebrow="SEGURIDAD" title="Historial administrativo" description="Consultá quién realizó cambios importantes y cuándo."><AdminAuditTab /></AdminSection>
 }
 
+export function AdminNutritionPage() {
+  return <AdminSection eyebrow="CONFIGURACIÓN" title="Nutrición" description="Ajustá los parámetros usados para estimar necesidades nutricionales."><NutritionTab /></AdminSection>
+}
+
 function OverviewTab() {
   const { notify } = useNotifications()
   const [dashboard, setDashboard] = useState<ReturnType<typeof createAdminDashboard> | null>(null)
@@ -66,8 +72,10 @@ function OverviewTab() {
   const [retry, setRetry] = useState(0)
   useEffect(() => {
     let current = true
-    void Promise.all([adminRepository.getCatalog(), mockRecipeRepository.listKnown(), mockRecipeRepository.list()])
-      .then(([catalog, known, available]) => { if (current) setDashboard(createAdminDashboard(catalog, known, available)) })
+    const load = isRelationalAdminEnabled
+      ? adminRepository.getCatalog().then((catalog) => createAdminDashboard(catalog))
+      : Promise.all([adminRepository.getCatalog(), mockRecipeRepository.listKnown(), mockRecipeRepository.list()]).then(([catalog, known, available]) => createAdminDashboard(catalog, known, available))
+    void load.then((summary) => { if (current) { setDashboard(summary); setLoadFailed(false) } })
       .catch(() => { if (current) { setLoadFailed(true); void notify({ type: 'error', title: 'No se pudo cargar el resumen', message: 'No se pudo cargar el resumen del catálogo.' }) } })
     return () => { current = false }
   }, [notify, retry])

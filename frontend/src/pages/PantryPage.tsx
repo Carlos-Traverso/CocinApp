@@ -17,15 +17,19 @@ import { useDebouncedSearch } from '../shared/search/useDebouncedSearch'
 import { compatibleUnitAbbreviations } from '../shared/domain/units'
 import { isValidReceiptImage, mockReceiptScanner } from '../features/pantry/data/mockReceiptScanner'
 import { useNotifications } from '../shared/notifications/NotificationProvider'
+import { isRelationalPantryEnabled, supabase } from '../shared/data/supabaseClient'
+import { supabasePantryRepository } from '../features/pantry/data/supabasePantryRepository'
 
 type ReceiptLine = { id: string; name: string; quantity: number; unit: string; ingredientName: string }
 
 type SortOrder = 'name' | 'expiry' | 'quantity'
 
 const emptyFilters: PantryFilters = { search: '', category: '', status: '' }
+const useRelationalPantry = isRelationalPantryEnabled && Boolean(supabase)
 
 function activeCategories(catalog: AdminStorageData) {
   const custom = catalog.categories.filter((item) => item.active && !item.isDeleted).map((item) => item.name)
+  if (useRelationalPantry) return [...new Set(custom)].sort((a, b) => a.localeCompare(b, 'es'))
   const defaults = defaultPantryCategories.filter((name) => {
     const record = catalog.categories.find((item) => normalizePantryName(item.name) === normalizePantryName(name))
     return !record || record.active && !record.isDeleted
@@ -35,6 +39,7 @@ function activeCategories(catalog: AdminStorageData) {
 
 function activeUnits(catalog: AdminStorageData) {
   const custom = catalog.units.filter((item) => item.active && !item.isDeleted).map((item) => item.abbreviation)
+  if (useRelationalPantry) return [...new Set(custom)]
   const defaults = defaultPantryUnits.filter((abbreviation) => {
     const record = catalog.units.find((item) => item.abbreviation.toLocaleLowerCase('es') === abbreviation.toLocaleLowerCase('es'))
     return !record || record.active && !record.isDeleted
@@ -129,7 +134,7 @@ function PantryEditor({ item, items, catalog, categories, onClose, onSave }: {
     <div className="pantry-dialog-header"><div><p className="eyebrow">DESPENSA</p><h2 id="pantry-editor-title">{editing ? 'Editar ingrediente' : 'Añadir ingrediente'}</h2></div><button aria-label="Cerrar formulario" className="pantry-icon-button" onClick={onClose} title="Cerrar" type="button"><X size={19} /></button></div>
     <p className="pantry-dialog-intro">Registrá el stock disponible y, si querés, un mínimo y un vencimiento.</p>
     <form className="pantry-form" noValidate onSubmit={submit}>
-      <label className="field"><span>Ingrediente</span><input autoComplete="off" list="admin-ingredient-catalog" maxLength={70} name="name" onChange={(event) => { const name = event.currentTarget.value; const catalogItem = findCatalogIngredient(catalog, name); const category = catalog.categories.find((entry) => entry.id === catalogItem?.categoryId)?.name; const baseUnit = catalog.units.find((entry) => entry.id === catalogItem?.baseUnitId)?.abbreviation; setDraft({ ...draft, name, ingredientId: catalogItem?.id, ...(category ? { category } : {}), ...(baseUnit ? { unit: baseUnit } : {}) }); setError('') }} placeholder="Ej.: arroz integral" required value={draft.name} /><datalist id="admin-ingredient-catalog">{catalog.ingredients.filter((entry) => entry.active && !entry.isDeleted).map((entry) => <option key={entry.id} value={entry.name} />)}</datalist></label>
+      <label className="field"><span>Ingrediente</span><input autoComplete="off" list="admin-ingredient-catalog" maxLength={70} name="name" onChange={(event) => { const name = event.currentTarget.value; const catalogItem = findCatalogIngredient(catalog, name); const category = catalog.categories.find((entry) => entry.id === catalogItem?.categoryId)?.name; const baseUnit = catalog.units.find((entry) => entry.id === catalogItem?.baseUnitId)?.abbreviation; setDraft({ ...draft, name, ingredientId: catalogItem?.id, ingredientRef: useRelationalPantry ? (catalogItem as (typeof catalogItem & { relationalId?: string }))?.relationalId : undefined, ...(category ? { category } : {}), ...(baseUnit ? { unit: baseUnit } : {}) }); setError('') }} placeholder="Ej.: arroz integral" required value={draft.name} /><datalist id="admin-ingredient-catalog">{catalog.ingredients.filter((entry) => entry.active && !entry.isDeleted).map((entry) => <option key={entry.id} value={entry.name} />)}</datalist></label>
       <label className="field"><span>Categoría</span><select onChange={(event) => setDraft({ ...draft, category: event.currentTarget.value as PantryCategory })} value={draft.category}>{categories.map((category) => <option key={category}>{category}</option>)}</select></label>
       <div className="pantry-form-grid">
         <label className="field"><span>Cantidad disponible</span><input inputMode="decimal" max="1000000" min="0" name="quantity" onChange={(event) => setDraft({ ...draft, quantity: event.currentTarget.value === '' ? Number.NaN : event.currentTarget.valueAsNumber })} required step="any" type="number" value={Number.isNaN(draft.quantity) ? '' : draft.quantity} /></label>
@@ -178,13 +183,14 @@ export function PantryPage() {
   const [receiptLines, setReceiptLines] = useState<ReceiptLine[] | null>(null)
   const [receiptBusy, setReceiptBusy] = useState(false)
   const [pantryLoading, setPantryLoading] = useState(true)
+  const [mustReloadPantry, setMustReloadPantry] = useState(false)
   const receiptAbort = useRef<AbortController | null>(null)
   const addButtonRef = useRef<HTMLButtonElement>(null)
   const receiptInputRef = useRef<HTMLInputElement>(null)
   const focusBeforeDialog = useRef<HTMLElement | null>(null)
   const search = useDebouncedSearch(filters.search)
 
-  useEffect(() => { void Promise.all([getPantryItems(), adminRepository.getCatalog()]).then(([pantry, admin]) => { setItems(pantry); setCatalog(admin) }).catch(() => { void notify({ type: 'error', title: 'No se pudo cargar la despensa', message: 'No se pudo cargar la despensa y su catálogo.' }) }).finally(() => setPantryLoading(false)) }, [notify])
+  useEffect(() => { let current = true; void Promise.all([getPantryItems(), useRelationalPantry ? supabasePantryRepository.getCatalog() : adminRepository.getCatalog()]).then(([pantry, admin]) => { if (current) { setItems(pantry); setCatalog(admin) } }).catch(() => { if (current) void notify({ type: 'error', title: 'No se pudo cargar la despensa', message: 'No se pudo cargar la despensa y su catálogo.' }) }).finally(() => { if (current) setPantryLoading(false) }); return () => { current = false } }, [notify])
   const categories = useMemo(() => activeCategories(catalog), [catalog])
 
   function closeDialog() {
@@ -210,8 +216,12 @@ export function PantryPage() {
       await savePantryItems(next)
       setItems(next)
       return true
-    } catch {
-      void notify({ type: 'error', title: 'No se pudieron guardar los cambios', message: 'Revisá el espacio disponible del navegador e intentá de nuevo.' })
+    } catch (error) {
+      const remoteError = error && typeof error === 'object' ? error as { code?: string; message?: string } : {}
+      const conflict = remoteError.code === '40001' || /otra sesión|recargá la despensa/i.test(remoteError.message ?? '')
+      const invalid = remoteError.code === '22023' || remoteError.code === '42501'
+      if (useRelationalPantry) { setMustReloadPantry(true); setEditor(null); setDeleting(null); setConfirmExamples(false) }
+      void notify({ type: 'error', title: conflict ? 'La despensa cambió en otra sesión' : 'No se pudieron guardar los cambios', message: conflict ? 'Recargá la despensa para ver la versión actual antes de continuar.' : invalid ? 'La solicitud no fue aceptada. Recargá la despensa y revisá que categoría, unidad e ingrediente estén disponibles.' : 'No se confirmó el guardado. Recargá la despensa antes de volver a intentar.' })
       return false
     }
   }
@@ -283,7 +293,7 @@ export function PantryPage() {
     const additions = receiptLines.map((line): PantryItem => {
       const ingredient = catalog.ingredients.find((item) => item.active && !item.isDeleted && item.name === line.ingredientName)
       const category = catalog.categories.find((item) => item.id === ingredient?.categoryId)?.name ?? 'Otros'
-      return { id: crypto.randomUUID(), ...(ingredient ? { ingredientId: ingredient.id } : {}), name: ingredient?.name ?? line.name, category, quantity: line.quantity, unit: line.unit, minimum: 0, expiry: null }
+      return { id: crypto.randomUUID(), ...(ingredient ? { ingredientId: ingredient.id, ...(useRelationalPantry ? { ingredientRef: (ingredient as typeof ingredient & { relationalId?: string }).relationalId } : {}) } : {}), name: ingredient?.name ?? line.name, category, quantity: line.quantity, unit: line.unit, minimum: 0, expiry: null }
     })
     const next = [...items]
     for (const addition of additions) {
@@ -301,7 +311,7 @@ export function PantryPage() {
   return <div className="page pantry-page">
     <header className="page-heading pantry-heading">
       <div><p className="eyebrow">TUS INGREDIENTES</p><h1>Mi despensa</h1><p className="page-lead">Registrá cantidades y vencimientos para saber qué tenés disponible.</p></div>
-      <div className="pantry-head-actions"><button className="button button-quiet" disabled={receiptBusy} onClick={() => receiptInputRef.current?.click()} type="button"><ImagePlus size={17} /> {receiptBusy ? 'Leyendo…' : 'Escanear factura'}</button><input accept="image/jpeg,image/png,image/webp,image/heic,image/heif" aria-label="Seleccionar imagen de factura" capture="environment" disabled={receiptBusy} onChange={(event) => { void processReceipt(event.currentTarget.files?.[0]); event.currentTarget.value = '' }} ref={receiptInputRef} style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }} tabIndex={-1} type="file" /><button className="button button-quiet" onClick={() => void sendRestockToShopping()} type="button"><ShoppingCart size={17} /> Reponer</button><button className="button button-quiet" onClick={(event) => { focusBeforeDialog.current = event.currentTarget; setConfirmExamples(true) }} type="button"><ClipboardList size={17} /> Kit de ejemplo</button><button className="button button-primary" onClick={(event) => { focusBeforeDialog.current = event.currentTarget; setEditor({ id: crypto.randomUUID(), name: '', category: categories[0] ?? 'Otros', quantity: Number.NaN, unit: activeUnits(catalog)[0] ?? 'g', minimum: 0, expiry: '' }) }} ref={addButtonRef} type="button"><Plus size={18} /> Añadir ingrediente</button></div>
+      <div className="pantry-head-actions">{mustReloadPantry && <button className="button button-quiet" onClick={() => window.location.reload()} type="button">Recargar despensa</button>}<button className="button button-quiet" disabled={receiptBusy} onClick={() => receiptInputRef.current?.click()} type="button"><ImagePlus size={17} /> {receiptBusy ? 'Leyendo…' : 'Escanear factura'}</button><input accept="image/jpeg,image/png,image/webp,image/heic,image/heif" aria-label="Seleccionar imagen de factura" capture="environment" disabled={receiptBusy} onChange={(event) => { void processReceipt(event.currentTarget.files?.[0]); event.currentTarget.value = '' }} ref={receiptInputRef} style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }} tabIndex={-1} type="file" /><button className="button button-quiet" onClick={() => void sendRestockToShopping()} type="button"><ShoppingCart size={17} /> Reponer</button><button className="button button-quiet" onClick={(event) => { focusBeforeDialog.current = event.currentTarget; setConfirmExamples(true) }} type="button"><ClipboardList size={17} /> Kit de ejemplo</button><button className="button button-primary" onClick={(event) => { focusBeforeDialog.current = event.currentTarget; setEditor({ id: crypto.randomUUID(), name: '', category: categories[0] ?? 'Otros', quantity: Number.NaN, unit: activeUnits(catalog)[0] ?? 'g', minimum: 0, expiry: '' }) }} ref={addButtonRef} type="button"><Plus size={18} /> Añadir ingrediente</button></div>
     </header>
 
     <section aria-label="Resumen de la despensa" className="pantry-summary">
@@ -347,5 +357,3 @@ export function PantryPage() {
     {confirmExamples && <PantryConfirmation actionLabel="Cargar ejemplos" message="Se añadirán productos de muestra sin reemplazar tus ingredientes actuales ni duplicar productos del mismo nombre y unidad." onClose={closeDialog} onConfirm={addExamples} title="Cargar kit de ejemplo" />}
   </div>
 }
-
-

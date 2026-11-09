@@ -29,19 +29,18 @@ export function TodayPlanSection({ activeRecipeIds, knownRecipes, plannedMeals }
         </div>
       : <div className="dashboard-today-grid">
           {plannedMeals.map((entry) => {
-            const recipe = knownRecipes.find((item) => item.id === entry.recipeId)
-            if (!recipe) return null
-            const isActive = activeRecipeIds.has(recipe.id)
-            return <article className="dashboard-today-card" key={`${entry.date}:${entry.meal}`}>
-              <RecipeImage className="dashboard-today-image" recipe={recipe} />
+            const recipe = knownRecipes.find((item) => item.id === entry.recipeId || item.relationalId === entry.relationalId)
+            const isActive = !!recipe && activeRecipeIds.has(recipe.id)
+            return <article className="dashboard-today-card" key={`${entry.date}:${entry.meal}:${entry.position ?? 1}`}>
+              {recipe && <RecipeImage className="dashboard-today-image" recipe={recipe} />}
               <div className="dashboard-today-copy">
                 <MealBadge meal={entry.meal} />
-                <h3>{recipe.name}</h3>
-                <p><Clock3 aria-hidden="true" size={15} /> {recipe.minutes} min · {recipe.difficulty}</p>
-                {!isActive && <span className="dashboard-today-inactive">Receta inactiva</span>}
+                <h3>{recipe?.name ?? 'Receta no disponible'}</h3>
+                {recipe && <p><Clock3 aria-hidden="true" size={15} /> {recipe.minutes} min · {recipe.difficulty}</p>}
+                {(!recipe || !isActive || entry.available === false) && <span className="dashboard-today-inactive">{recipe ? 'Receta inactiva' : 'Conservamos la referencia del plan'}</span>}
                 <div className="dashboard-today-actions">
-                  <Link className="button button-quiet" to={`/recipes/${recipe.id}?portions=${entry.portions}`}>Ver detalle</Link>
-                  {isActive && <Link className="button button-primary" to={`/recipes/${recipe.id}/cook?portions=${entry.portions}`}>Cocinar</Link>}
+                  {recipe && <Link className="button button-quiet" to={`/recipes/${recipe.id}?portions=${entry.portions}`}>Ver detalle</Link>}
+                  {recipe && isActive && entry.available !== false && <Link className="button button-primary" to={`/recipes/${recipe.id}/cook?portions=${entry.portions}`}>Cocinar</Link>}
                 </div>
               </div>
             </article>

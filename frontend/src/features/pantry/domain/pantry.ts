@@ -11,7 +11,10 @@ export type PantryStatus = 'ok' | 'low' | 'empty' | 'soon' | 'expired'
 
 export interface PantryItem {
   id: string
+  /** Optimistic-lock version returned by the relational pantry API. */
+  version?: number
   ingredientId?: string
+  ingredientRef?: string
   name: string
   category: PantryCategory
   quantity: number
