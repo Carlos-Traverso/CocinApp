@@ -43,8 +43,16 @@ foreach ($entry in [System.Environment]::GetEnvironmentVariables().GetEnumerator
 
 function Invoke-LocalPsql {
   param([string[]]$Arguments, [switch]$ExpectFailure)
-  $output = & $psql @Arguments 2>&1
-  $code = $LASTEXITCODE
+  # Windows PowerShell wraps native stderr (including NOTICE) in error records.
+  # SQL success is determined by psql's exit code and ON_ERROR_STOP instead.
+  $previousErrorAction = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = 'Continue'
+    $output = & $psql @Arguments 2>&1
+    $code = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previousErrorAction
+  }
   $message = ($output | Out-String).Trim()
   if ($ExpectFailure) {
     if ($code -eq 0) { throw "Expected local SQL to fail, but it succeeded. Output: $message" }
