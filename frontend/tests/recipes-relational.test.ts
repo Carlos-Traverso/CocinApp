@@ -49,6 +49,14 @@ test('uses the explicit legacy argument before UUID lookup, preserving UUID-shap
   assert.equal(harness.calls[0]?.args.p_recipe_id, null)
 })
 
+test('missing calorie estimates stay absent while explicit calorie values are preserved', async () => {
+  for (const value of [null, undefined, '', 0, 240, '240']) {
+    const harness = createHarness(() => ({ recipe: { ...baseRecipe, calories_per_portion: value } }))
+    const recipe = await harness.repository.getById(legacyUuid, true)
+    assert.equal(recipe?.calories, value === null || value === undefined || value === '' ? undefined : Number(value))
+  }
+})
+
 test('falls back to UUID identity only when the explicit legacy lookup is empty', async () => {
   const harness = createHarness((name, args) => name === 'get_my_recipe_detail' && args.p_recipe_id === relationalId ? { recipe: { ...baseRecipe, legacy_id: null } } : null)
   const recipe = await harness.repository.getById(relationalId, true)

@@ -59,7 +59,9 @@ export function mapRecipe(raw: unknown): Recipe {
   const mealShifts = strings(row.meal_shifts).map((item) => shifts[item] ?? item)
   const minutes = Number(row.total_minutes)
   const portions = Number(row.portions)
-  const calories = Number(row.calories_per_portion)
+  const calories = typeof row.calories_per_portion === 'number'
+    || typeof row.calories_per_portion === 'string' && row.calories_per_portion.trim() !== ''
+    ? Number(row.calories_per_portion) : Number.NaN
   const recipe: Recipe = {
     id: legacyId ?? relationalId,
     relationalId,
