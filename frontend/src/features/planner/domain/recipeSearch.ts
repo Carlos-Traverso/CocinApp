@@ -14,11 +14,15 @@ export function recipesForMeal(recipes: Recipe[], meal: Meal): Recipe[] {
   return recipes.filter((recipe) => recipeMealShifts(recipe).some((shift) => normalizePantryName(shift) === normalizePantryName(meal)))
 }
 
-export function suggestedPlanRecipes(recipes: Recipe[], meal: Meal): Recipe[] {
-  return recipesForMeal(recipes, meal)
-    .slice()
-    .sort((left, right) => left.name.localeCompare(right.name, 'es') || left.id.localeCompare(right.id))
-    .slice(0, 4)
+export function suggestedPlanRecipes(recipes: Recipe[], meal: Meal, seed = 0): Recipe[] {
+  const candidates = recipesForMeal(recipes, meal)
+  let state = Math.floor(seed * 0xffffffff) >>> 0
+  for (let index = candidates.length - 1; index > 0; index--) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0
+    const selected = Math.floor(state / 0x100000000 * (index + 1))
+    ;[candidates[index], candidates[selected]] = [candidates[selected]!, candidates[index]!]
+  }
+  return candidates.slice(0, 6)
 }
 
 export function nextPlanRecipeIndex(current: number, resultCount: number, direction: 'next' | 'previous'): number {

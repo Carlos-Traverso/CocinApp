@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Search, X } from 'lucide-react'
 import type { Recipe } from '../../recipes/domain/Recipe'
 import { recipeMealShifts } from '../../recipes/domain/recipeRules'
-import { nextPlanRecipeIndex, planRecipeKeyAction, recipesForMeal, searchPlanRecipes, suggestedPlanRecipes } from '../domain/recipeSearch'
+import { nextPlanRecipeIndex, planRecipeKeyAction, searchPlanRecipes, suggestedPlanRecipes } from '../domain/recipeSearch'
 import { meals, type Meal } from '../domain/planner'
 import { RecipeImage } from '../../recipes/ui/RecipeImage'
 import { searchFeedback } from '../../../shared/search/debouncedSearch'
@@ -30,10 +30,10 @@ export function RecipePicker({ title, meal, recipes, onSelect, onClose, selected
   const [portions, setPortions] = useState(String(selectedPortions ?? recipes.find((recipe) => recipe.id === selectedId)?.portions ?? 2))
   const [portionInvalid, setPortionInvalid] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [suggestionSeed] = useState(() => Math.random())
   const search = useDebouncedSearch(query)
-  const compatibleRecipes = recipesForMeal(recipes, filterMeal)
-  const suggestions = suggestedPlanRecipes(recipes, filterMeal)
-  const results = search.status === 'empty' ? suggestions : search.status === 'ready' ? searchPlanRecipes(compatibleRecipes, search.query) : []
+  const suggestions = suggestedPlanRecipes(recipes, filterMeal, suggestionSeed)
+  const results = search.status === 'empty' ? suggestions : search.status === 'ready' ? searchPlanRecipes(recipes, search.query) : []
   const candidate = recipes.find((recipe) => recipe.id === candidateId)
 
   useEffect(() => {
@@ -107,7 +107,7 @@ export function RecipePicker({ title, meal, recipes, onSelect, onClose, selected
         {search.status !== 'waiting' && results.length ? results.map((recipe, index) => {
           const isCurrent = recipe.id === selectedId
           return <button aria-selected={recipe.id === candidateId} className={`recipe-picker-option${active === index ? ' active' : ''}${isCurrent ? ' current' : ''}`} id={`${listId}-option-${index}`} key={recipe.id} onClick={() => choose(index)} onMouseEnter={() => setActive(index)} role="option" type="button"><RecipeImage className="recipe-picker-thumb" recipe={recipe} /><span><strong>{recipe.name}</strong><small>{recipeMealShifts(recipe).join(' · ')} · {recipe.minutes} min · {recipe.difficulty}</small>{isCurrent && <em className="recipe-picker-current">Planificada actualmente</em>}</span></button>
-        }) : search.status !== 'waiting' && (search.query ? <p className="recipe-picker-empty">No encontramos recetas con ese nombre para {filterMeal.toLocaleLowerCase('es-AR')}. Probá otra búsqueda o elegí otro turno.</p> : <p className="recipe-picker-empty">No hay recetas disponibles para {filterMeal.toLocaleLowerCase('es-AR')}.</p>)}
+        }) : search.status !== 'waiting' && (search.query ? <p className="recipe-picker-empty">No encontramos recetas con ese nombre. Probá otra búsqueda.</p> : <p className="recipe-picker-empty">No hay recetas disponibles para {filterMeal.toLocaleLowerCase('es-AR')}.</p>)}
       </div>
     </>}
     {candidate && <>

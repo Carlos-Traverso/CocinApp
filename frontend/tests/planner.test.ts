@@ -82,7 +82,12 @@ test('planner suggestions and search stay within the chosen meal and normalize a
   const breakfast = recipesForMeal(sampleRecipes, 'Desayuno')
   assert.ok(breakfast.length >= 4)
   assert.deepEqual(suggestedPlanRecipes(sampleRecipes, 'Desayuno'), suggestedPlanRecipes(sampleRecipes, 'Desayuno'))
-  assert.equal(suggestedPlanRecipes(sampleRecipes, 'Desayuno').length, 4)
+  assert.equal(suggestedPlanRecipes(sampleRecipes, 'Desayuno').length, 6)
+  const firstSuggestions = suggestedPlanRecipes(sampleRecipes, 'Desayuno', 0.1)
+  const nextSuggestions = suggestedPlanRecipes(sampleRecipes, 'Desayuno', 0.8)
+  assert.notDeepEqual(firstSuggestions.map((recipe) => recipe.id), nextSuggestions.map((recipe) => recipe.id))
+  assert.equal(new Set(firstSuggestions.map((recipe) => recipe.id)).size, 6)
+  assert.ok(firstSuggestions.every((recipe) => breakfast.some((entry) => entry.id === recipe.id)))
   assert.ok(searchPlanRecipes(breakfast, 'AVENA').every((recipe) => recipesForMeal([recipe], 'Desayuno').length === 1))
 
   const shifted = { ...sampleRecipes[0], id: 'shifted-breakfast', category: 'otra', mealShift: 'DESAYÚNO' }
