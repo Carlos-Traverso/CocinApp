@@ -65,7 +65,3 @@ export interface AdminRecipe {
   createdAt?: string
   updatedAt?: string
 }
-
-export function isAdminEntityActive(entity: { active: boolean; isDeleted: boolean }): boolean {
-  return entity.active && !entity.isDeleted
-}

@@ -1,6 +1,6 @@
 # CocinAPP frontend
 
-CocinAPP is a React, TypeScript, and Vite single page app. It uses plain CSS in `src/index.css`, `src/App.css`, and feature styles; Tailwind is not installed. Supabase provides authentication and remote persistence. Local demo adapters remain available during development without Supabase configuration; production requires Supabase.
+CocinAPP is a React, TypeScript, and Vite single page app. It uses plain CSS in `src/index.css`, `src/styles/tokens.css`, and feature styles; Tailwind is not installed. Supabase provides authentication and remote persistence. Local demo adapters remain available during development without Supabase configuration; production requires Supabase.
 
 ## Run it
 

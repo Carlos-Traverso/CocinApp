@@ -54,4 +54,3 @@ function activeFavoriteRepository(): FavoriteRepository {
 }
 
 export async function getFavoriteIds(): Promise<string[]> { return activeFavoriteRepository().listIds() }
-export async function saveFavoriteIds(ids: string[]): Promise<void> { return activeFavoriteRepository().saveIds(ids) }

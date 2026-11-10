@@ -8,7 +8,3 @@ export function canAccessPath(role: UserRole, pathname: string): boolean {
   const isAdminPath = pathname === '/admin' || pathname.startsWith('/admin/')
   return role === 'ADMIN' ? isAdminPath : !isAdminPath
 }
-
-export function unknownPathDestination(role: UserRole): '/admin' | '/panel' {
-  return roleHome(role)
-}

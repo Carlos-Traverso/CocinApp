@@ -31,4 +31,4 @@ When a backend is introduced, replace each mock adapter behind its existing cont
 
 ## CSS and build
 
-The frontend uses standard CSS files (`src/index.css`, `src/App.css`, and feature styles). Vite and TypeScript scripts live in `frontend/package.json`; no Tailwind build plugin or CSS framework is configured.
+The frontend uses standard CSS files (`src/index.css`, `src/styles/tokens.css`, and feature styles). Vite and TypeScript scripts live in `frontend/package.json`; no Tailwind build plugin or CSS framework is configured.

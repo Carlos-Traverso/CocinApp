@@ -142,4 +142,3 @@ export function createRelationalAdminCatalog(options: RelationalAdminOptions = {
 }
 
 export const relationalAdminCatalog = createRelationalAdminCatalog()
-export const getCatalogCore = () => relationalAdminCatalog.getCatalogCore()
