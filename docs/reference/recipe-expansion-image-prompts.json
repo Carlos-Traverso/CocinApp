@@ -1,0 +1,107 @@
+{
+  "tool": "Built-in image_gen.imagegen",
+  "assetDirectory": "frontend/public/assets/recipes",
+  "sharedPrompt": "Use case: photorealistic-natural. Asset: single food photograph for CocinAPP recipe card. Warm beige tabletop, soft natural window light, light ceramic dishes, overhead three-quarter angle, centered entire dish, landscape 3:2, appetizing realistic home cooking. No text, logos, collage or extra ingredients. One image only.",
+  "subjects": [
+    {
+      "id": "quinoa-apple-porridge",
+      "promptSubject": "Breakfast bowl of cooked quinoa with apple, cinnamon and water, without dairy or nuts",
+      "file": "quinoa-apple-porridge.webp"
+    },
+    {
+      "id": "banana-rice-crepes",
+      "promptSubject": "Thin golden banana and rice flour crepes made with eggs, folded on a plate, banana slices, no dairy or nuts",
+      "file": "banana-rice-crepes.webp"
+    },
+    {
+      "id": "chickpea-spinach-scramble",
+      "promptSubject": "Golden crumbled chickpeas scrambled with spinach and small tomato pieces, rustic breakfast in a ceramic bowl, no eggs or dairy",
+      "file": "chickpea-spinach-scramble.webp"
+    },
+    {
+      "id": "ricotta-tomato-toast",
+      "promptSubject": "Two whole grain toasts with fresh white ricotta, red tomato slices and olive oil, on a ceramic plate",
+      "file": "ricotta-tomato-toast.webp"
+    },
+    {
+      "id": "strawberry-chia-pudding",
+      "promptSubject": "Glass jar of thick chia seed pudding made with soy milk, topped with sliced strawberries, no nuts or dairy",
+      "file": "strawberry-chia-pudding.webp"
+    },
+    {
+      "id": "lentil-burgers",
+      "promptSubject": "Two baked brown lentil patties made with grated carrot and rice flour, on a ceramic plate, no buns, no egg or dairy",
+      "file": "lentil-burgers.webp"
+    },
+    {
+      "id": "chicken-lettuce-wraps",
+      "promptSubject": "Fresh lettuce leaf wraps filled with cooked sliced chicken, white rice and carrot sticks, no tortillas or sauce",
+      "file": "chicken-lettuce-wraps.webp"
+    },
+    {
+      "id": "tuna-stuffed-potatoes",
+      "promptSubject": "Baked potato halves filled with tuna flakes and small chopped tomato, olive oil, no cheese or mayonnaise",
+      "file": "tuna-stuffed-potatoes.webp"
+    },
+    {
+      "id": "vegetable-polenta",
+      "promptSubject": "Soft yellow polenta topped with sauteed zucchini half moons and tomato, no cheese",
+      "file": "vegetable-polenta.webp"
+    },
+    {
+      "id": "white-bean-salad",
+      "promptSubject": "White bean salad with diced red tomatoes, grated carrot, lemon and olive oil in a light ceramic bowl",
+      "file": "white-bean-salad.webp"
+    },
+    {
+      "id": "baked-cinnamon-apples",
+      "promptSubject": "Baked red apple halves softened and sprinkled with ground cinnamon, no filling, no nuts or cream",
+      "file": "baked-cinnamon-apples.webp"
+    },
+    {
+      "id": "cocoa-banana-icecream",
+      "promptSubject": "Chocolate banana nice cream, two dark cocoa scoops in a small ceramic bowl, made only with frozen banana and unsweetened cocoa, no toppings",
+      "file": "cocoa-banana-icecream.webp"
+    },
+    {
+      "id": "orange-rice-muffins",
+      "promptSubject": "Small golden rice flour orange muffins with delicate orange zest, eggs and oil, no dairy, no nuts",
+      "file": "orange-rice-muffins.webp"
+    },
+    {
+      "id": "hummus-carrot-sticks",
+      "promptSubject": "Smooth beige chickpea hummus with olive oil and lemon in a shallow bowl, fresh raw carrot sticks beside it, no tahini or bread",
+      "file": "hummus-carrot-sticks.webp"
+    },
+    {
+      "id": "pear-ricotta-cup",
+      "promptSubject": "Glass cup layered with fresh diced pear, white ricotta and a dusting of cinnamon, no oats or nuts",
+      "file": "pear-ricotta-cup.webp"
+    },
+    {
+      "id": "stuffed-zucchini-rice",
+      "promptSubject": "Two baked zucchini halves filled with rice, diced tomato and onion, no cheese or meat",
+      "file": "stuffed-zucchini-rice.webp"
+    },
+    {
+      "id": "red-lentil-carrot-soup",
+      "promptSubject": "Thick orange red lentil and carrot soup with onion, in a ceramic bowl, no dairy or garnish",
+      "file": "red-lentil-carrot-soup.webp"
+    },
+    {
+      "id": "chicken-pumpkin-traybake",
+      "promptSubject": "Roasted chicken breast chunks with golden roasted pumpkin cubes and onion wedges in a small baking dish, olive oil, no potatoes",
+      "file": "chicken-pumpkin-traybake.webp"
+    },
+    {
+      "id": "spinach-potato-frittata",
+      "promptSubject": "Thick round golden egg frittata with visible spinach leaves and potato slices, one wedge cut, no cheese",
+      "file": "spinach-potato-frittata.webp"
+    },
+    {
+      "id": "fish-tomato-stew",
+      "promptSubject": "White fish pieces in a rustic red tomato stew with onion and potato chunks, in a ceramic bowl",
+      "file": "fish-tomato-stew.webp"
+    }
+  ]
+}
