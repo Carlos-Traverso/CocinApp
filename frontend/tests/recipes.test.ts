@@ -3,6 +3,7 @@ import test from 'node:test'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { sampleRecipes } from '../src/mocks/recipes'
+import { expandedRecipes } from '../src/mocks/expandedRecipes'
 import { filterRecipes, getIngredientAvailability, getIngredientDeficits, getRecipeReadiness, matchesDietaryPreferences, parseRecipePortions } from '../src/features/recipes/domain/recipeRules'
 import { readFavoriteIds, writeFavoriteIds } from '../src/features/recipes/data/localFavoritesStore'
 import { discoverRecipes } from '../src/features/recipes/domain/recipeDiscovery'
@@ -12,6 +13,7 @@ import { buildRecipeRecommendations } from '../src/features/recipes/domain/recip
 import { adminSeedId, createInitialAdminData } from '../src/features/admin/data/adminSeed'
 import { saveAdminData } from '../src/features/admin/data/localAdminStore'
 import { getAvailableRecipes, getKnownRecipes } from '../src/features/recipes/data/availableRecipes'
+import { createSeedRecipeOverride } from '../src/features/admin/data/recipesStore'
 import { buildCookingSuggestions } from '../src/features/dashboard/domain/dashboard'
 
 const testLocalStorage = new Map<string, string>()
@@ -38,12 +40,12 @@ test('ingredient availability checks quantity, unit and expiry', () => {
 })
 
 test('the versioned seed provides a complete varied catalog and remains idempotent', () => {
-  assert.equal(recipeSeedVersion, 3)
-  assert.equal(recipeSeed.length, 22)
+  assert.equal(recipeSeedVersion, 4)
+  assert.equal(recipeSeed.length, 42)
   assert.deepEqual(new Set(recipeSeed.map((recipe) => recipe.category)), new Set(['Almuerzo', 'Cena', 'Desayuno', 'Merienda']))
   assert.equal(recipeSeed.every((recipe) => recipe.steps.length > 0 && recipe.ingredients.length > 0 && recipe.symbol), true)
-  assert.equal(mergeRecipeSeed(recipeSeed, []).length, 22)
-  assert.equal(mergeRecipeSeed(mergeRecipeSeed(recipeSeed, []), []).length, 22)
+  assert.equal(mergeRecipeSeed(recipeSeed, []).length, 42)
+  assert.equal(mergeRecipeSeed(mergeRecipeSeed(recipeSeed, []), []).length, 42)
 })
 
 test('every seeded recipe has a unique local WebP photograph and useful alternative text', () => {
@@ -56,17 +58,51 @@ test('every seeded recipe has a unique local WebP photograph and useful alternat
   }
 })
 
+test('catalog expansion adds five dishes per turn with combined dietary options', () => {
+  assert.equal(expandedRecipes.length, 20)
+  assert.equal(new Set(recipeSeed.map((recipe) => recipe.id)).size, 42)
+  for (const category of ['Desayuno', 'Almuerzo', 'Merienda', 'Cena']) {
+    assert.equal(expandedRecipes.filter((recipe) => recipe.category === category).length, 5, category)
+    const compatible = filterRecipes(expandedRecipes, {
+      search: '', category, maxMinutes: null, difficulty: '', pantryOnly: false,
+      preferences: ['vegan', 'vegetarian', 'gluten-free', 'lactose-free', 'nut-free'],
+    }, [])
+    assert.ok(compatible.length >= 2, `Faltan opciones combinadas en ${category}`)
+  }
+  for (const recipe of expandedRecipes) {
+    assert.ok(recipe.ingredients.every((ingredient) => ingredient.quantity > 0 && ['g', 'ml', 'u'].includes(ingredient.unit)), recipe.id)
+    assert.equal(recipe.stepMeta?.length, recipe.steps.length, recipe.id)
+    assert.ok(recipe.steps.length >= 3, recipe.id)
+    assert.ok(recipe.minutes >= (recipe.stepMeta ?? []).reduce((sum, step) => sum + (step.durationMinutes ?? 0), 0), recipe.id)
+    if (recipe.dietaryTags?.includes('Sin TACC')) assert.ok(recipe.crossContaminationNote, recipe.id)
+  }
+})
+
 test('administrator records override a seed recipe without duplicating or losing new seed entries', () => {
   const override = { ...recipeSeed[0], name: 'Bowl personalizado' }
   const merged = mergeRecipeSeed(recipeSeed, [override])
-  assert.equal(merged.length, 22)
+  assert.equal(merged.length, 42)
   assert.equal(merged.find((recipe) => recipe.id === override.id)?.name, 'Bowl personalizado')
   assert.equal(merged.some((recipe) => recipe.id === 'roasted-vegetable-soup'), true)
 })
 
+test('expanded recipes remain available when adopted into the administrator catalog', () => {
+  testLocalStorage.clear()
+  try {
+    saveAdminData(createInitialAdminData())
+    for (const recipe of expandedRecipes) createSeedRecipeOverride(recipe)
+    const availableIds = new Set(getAvailableRecipes().map((recipe) => recipe.id))
+    for (const recipe of expandedRecipes) assert.ok(availableIds.has(recipe.id), recipe.id)
+  } finally {
+    testLocalStorage.clear()
+  }
+})
+
 test('recipe filters combine text, category, time, difficulty and pantry availability', () => {
-  assert.deepEqual(filterRecipes(sampleRecipes, { search: 'CALABAZA', category: '', maxMinutes: null, difficulty: '', pantryOnly: false }, pantry, today).map((item) => item.id), ['pumpkin-pasta', 'roasted-vegetable-soup'])
-  assert.deepEqual(filterRecipes(sampleRecipes, { search: '', category: 'Almuerzo', maxMinutes: 25, difficulty: 'Fácil', pantryOnly: false }, pantry, today).map((item) => item.id), ['chickpea-salad', 'caprese-sandwich', 'tuna-rice-salad', 'vegetable-wrap'])
+  assert.deepEqual(filterRecipes(sampleRecipes, { search: 'CALABAZA', category: '', maxMinutes: null, difficulty: '', pantryOnly: false }, pantry, today).map((item) => item.id), ['pumpkin-pasta', 'roasted-vegetable-soup', 'chicken-pumpkin-traybake'])
+  const quickLunches = filterRecipes(sampleRecipes, { search: '', category: 'Almuerzo', maxMinutes: 25, difficulty: 'Fácil', pantryOnly: false }, pantry, today)
+  for (const id of ['chickpea-salad', 'caprese-sandwich', 'tuna-rice-salad', 'vegetable-wrap', 'white-bean-salad']) assert.ok(quickLunches.some((recipe) => recipe.id === id), id)
+  assert.ok(quickLunches.every((recipe) => recipe.minutes <= 25 && recipe.difficulty === 'Fácil'))
   assert.deepEqual(filterRecipes(sampleRecipes, { search: '', category: '', maxMinutes: null, difficulty: '', pantryOnly: true }, pantry, today), [])
 })
 
