@@ -4,16 +4,6 @@ import { useAuth } from '../features/auth/data/AuthRepository'
 import { canAccessPath, roleHome } from '../features/auth/domain/routeAccess'
 import { SessionError } from './SessionError'
 
-export function RequireAuth() {
-  const { session, loading, error, retry } = useAuth()
-  if (error) return <SessionError message={error} retry={retry} retrying={loading} />
-  if (loading) return <LoadingScreen message="Comprobando sesión…" variant="fullscreen" />
-  if (!session) {
-    return <Navigate to="/" replace />
-  }
-  return <Outlet />
-}
-
 export function RequireUser() {
   const auth = useAuth()
   const location = useLocation()

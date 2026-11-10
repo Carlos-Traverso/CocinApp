@@ -4,7 +4,6 @@ import { normalizePantryName } from '../../pantry/domain/pantry'
 import { adminCatalogVersion, createInitialAdminData, migrateUneditedSeedDietaryTags } from './adminSeed'
 import { adminSeedId } from './adminSeed'
 import { inferIngredientCategory } from '../domain/ingredientCategory'
-import { compatibleUnitAbbreviations } from '../../../shared/domain/units'
 
 const ADMIN_KEY = 'cocinapp.admin.v1'
 
@@ -168,14 +167,6 @@ export function resolveIngredientCategory(name: string): string {
   const category = data.categories.find((item) => item.id === ingredient?.categoryId)
   if (category && category.name !== 'Otros') return category.name
   return inferIngredientCategory(name) ?? category?.name ?? 'Otros'
-}
-
-export function getUnitsForIngredient(name: string): string[] {
-  const data = getAdminData()
-  const ingredient = findActiveIngredient(name)
-  const base = data.units.find((unit) => unit.id === ingredient?.baseUnitId && unit.active && !unit.isDeleted)
-  if (!base) return getActiveUnits()
-  return compatibleUnitAbbreviations(base.id, data.units)
 }
 
 export { getAdminData }
