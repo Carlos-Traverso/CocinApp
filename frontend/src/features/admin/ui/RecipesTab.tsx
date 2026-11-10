@@ -1,6 +1,6 @@
 import { LoadingScreen } from '../../../components/LoadingScreen'
-import { useState, type FormEvent } from 'react'
-import { ArrowDown, ArrowUp, Copy, Eye, Pencil, Plus, Power, Star, Trash2, X } from 'lucide-react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { ArrowDown, ArrowUp, Copy, Eye, Pencil, Plus, Power, RefreshCw, Star, Trash2, X } from 'lucide-react'
 import { adminRepository } from '../data/AdminRepository'
 import type { AdminRecipe } from '../domain/adminModels'
 import { RecipeImage } from '../../recipes/ui/RecipeImage'
@@ -9,6 +9,9 @@ import { SearchFeedback } from '../../../shared/search/SearchFeedback'
 import { useDebouncedSearch } from '../../../shared/search/useDebouncedSearch'
 import { useAdminCatalog } from './useAdminCatalog'
 import { useNotifications } from '../../../shared/notifications/NotificationProvider'
+import { isRelationalAdminEnabled } from '../../../shared/data/supabaseClient'
+import type { Recipe } from '../../recipes/domain/Recipe'
+import { listRelationalDietaryTags, type RelationalDietaryTag } from '../data/relationalDietaryTags'
 
 const pageSize = 8
 
@@ -43,9 +46,19 @@ export function RecipesTab() {
   const [page, setPage] = useState(1)
   const [preview, setPreview] = useState<ManagedAdminRecipe | null>(null)
   const [editorBaseline, setEditorBaseline] = useState('')
+  const [dietaryTags, setDietaryTags] = useState<RelationalDietaryTag[]>([])
   const debouncedSearch = useDebouncedSearch(search)
   const referencedIngredientIds = new Set(editor?.ingredients?.map((ingredient) => ingredient.ingredientId) ?? [])
   const availableIngredients = data.ingredients.filter((ingredient) => ingredient.active && !ingredient.isDeleted || referencedIngredientIds.has(ingredient.id))
+
+  useEffect(() => {
+    if (!isRelationalAdminEnabled) return
+    let current = true
+    void listRelationalDietaryTags().then((tags) => { if (current) setDietaryTags(tags) }).catch((cause: unknown) => {
+      if (current) setError(cause instanceof Error ? `No se pudieron cargar las etiquetas dietéticas: ${cause.message}` : 'No se pudieron cargar las etiquetas dietéticas.')
+    })
+    return () => { current = false }
+  }, [setError])
 
   function cloneRecipe(recipe: AdminRecipe): Partial<AdminRecipe> {
     return { ...recipe, mealShifts: recipe.mealShifts ? [...recipe.mealShifts] : [recipe.mealShift], dietaryTags: [...recipe.dietaryTags], ingredients: recipe.ingredients.map((item) => ({ ...item })), steps: [...recipe.steps], stepMeta: recipe.stepMeta?.map((item) => ({ ...item, ingredientIds: item.ingredientIds ? [...item.ingredientIds] : undefined, utensils: item.utensils ? [...item.utensils] : undefined })) ?? [] }
@@ -90,6 +103,7 @@ export function RecipesTab() {
       setError('Elegí una dificultad, disponibilidad, estado y color antes de guardar la receta.')
       return
     }
+    if (isRelationalAdminEnabled && (editor.dietaryTags ?? []).some((key) => !dietaryTags.some((tag) => tag.tagKey === key && tag.active))) { setError('Quitá las etiquetas inactivas o desconocidas antes de guardar. Se conservarán hasta que las retires explícitamente.'); return }
     const mealShifts = editor.mealShifts
     try {
       setPending(true)
@@ -173,7 +187,32 @@ export function RecipesTab() {
     setEditor({ ...editor, steps: (editor.steps ?? []).filter((_, stepIndex) => stepIndex !== index), stepMeta: (editor.steps ?? []).map((_, stepIndex) => editor.stepMeta?.[stepIndex] ?? {}).filter((_, stepIndex) => stepIndex !== index) })
   }
 
-  const managedRecipes = getManagedRecipes(data, knownRecipes)
+  const relationalRecipes: Recipe[] = data.recipes.map((record): Recipe => ({
+    id: record.id, relationalId: record.id, name: record.title, description: record.description,
+    category: record.mealShifts?.[0] ?? record.mealShift, mealShift: record.mealShifts?.[0] ?? record.mealShift,
+    mealShifts: record.mealShifts ?? [record.mealShift], minutes: record.minutes, portions: record.portions,
+    difficulty: record.difficulty, calories: record.calories, dietaryTags: record.dietaryTags, featured: record.featured,
+    symbol: record.symbol, color: record.color, image: record.image, imageAlt: record.imageAlt,
+    ingredients: record.ingredients.map((item) => ({
+      name: data.ingredients.find((ingredient) => ingredient.id === item.ingredientId)?.name ?? item.ingredientId,
+      quantity: item.quantity, unit: data.units.find((unit) => unit.id === item.unitId)?.abbreviation ?? item.unitId,
+    })),
+    steps: record.steps, stepMeta: record.stepMeta?.map((meta) => ({
+      durationMinutes: meta.durationMinutes ?? meta.minutes,
+      temperature: meta.temperature, utensils: meta.utensils, tip: meta.tip, warning: meta.warning,
+      specialInstructions: meta.specialInstructions,
+      stepIngredients: meta.ingredientIds?.flatMap((id) => {
+        const ingredient = record.ingredients.find((entry) => entry.ingredientId === id)
+        if (!ingredient) return []
+        return [{
+          name: data.ingredients.find((entry) => entry.id === id)?.name ?? id,
+          quantity: ingredient.quantity,
+          unit: data.units.find((entry) => entry.id === ingredient.unitId)?.abbreviation ?? ingredient.unitId,
+        }]
+      }),
+    })),
+  }))
+  const managedRecipes = getManagedRecipes(data, isRelationalAdminEnabled ? relationalRecipes : knownRecipes)
   const filteredRecipes = debouncedSearch.status === 'waiting' ? [] : filterAdminRecipes(managedRecipes, { search: debouncedSearch.query, category, status, difficulty, maxMinutes, featured, sort })
   const recipeCategories = [...new Set(managedRecipes.flatMap((recipe) => recipe.mealShifts ?? [recipe.category]))].sort((first, second) => first.localeCompare(second, 'es'))
   const pageCount = Math.max(1, Math.ceil(filteredRecipes.length / pageSize))
@@ -182,13 +221,18 @@ export function RecipesTab() {
 
   async function quickAction(action: () => Promise<unknown>, message: string) {
     setPending(true); setError('')
-    try { await action(); await reload(); void notify({ type: 'success', title: 'Cambios guardados', message }) }
-    catch (cause) { void notify({ type: 'error', title: 'No se pudo guardar el cambio', message: cause instanceof Error ? cause.message : 'No se pudo guardar el cambio.' }) }
+    try { await action(); await reload(); setError(''); void notify({ type: 'success', title: 'Cambios guardados', message }) }
+    catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'No se pudo guardar el cambio.'
+      setError(message)
+      void notify({ type: 'error', title: 'No se pudo guardar el cambio', message })
+    }
     finally { setPending(false) }
   }
 
   return <div className="panel">
-    <div className="section-header"><div><h2>Recetas oficiales</h2><p className="panel-intro"><SearchFeedback resultCount={filteredRecipes.length} status={debouncedSearch.status} /> · {managedRecipes.length} recetas totales</p></div><button className="button button-primary" disabled={loading || pending} onClick={() => void openEditor()} type="button"><Plus size={16} /> Nueva receta</button></div>
+    <div className="section-header"><div><h2>Recetas oficiales</h2><p className="panel-intro"><SearchFeedback resultCount={filteredRecipes.length} status={debouncedSearch.status} /> · {managedRecipes.length} recetas totales</p></div><div className="section-header-actions"><button aria-label="Actualizar recetas" className="button button-quiet" disabled={loading || pending} onClick={() => { setError(''); void reload().catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'No se pudo actualizar el catálogo de recetas.')) }} type="button"><RefreshCw size={16} /> Actualizar</button><button className="button button-primary" disabled={loading || pending} onClick={() => void openEditor()} type="button"><Plus size={16} /> Nueva receta</button></div></div>
+    {!editor && error && <p className="form-message error" role="alert">{error}</p>}
     <div className="admin-filter-bar">
       <label className="field admin-filter-search"><span>Buscar</span><input onChange={(event) => { setSearch(event.currentTarget.value); setPage(1) }} placeholder="Título o categoría" type="search" value={search} /></label>
       <label className="field"><span>Categoría</span><select onChange={(event) => { setCategory(event.currentTarget.value); setPage(1) }} value={category}><option value="">Todas</option>{recipeCategories.map((item) => <option key={item}>{item}</option>)}</select></label>
@@ -221,7 +265,7 @@ export function RecipesTab() {
           <label className="field"><span>Preparación (minutos)</span><input min="0" onChange={(event) => setEditor({ ...editor, preparationMinutes: event.currentTarget.value ? event.currentTarget.valueAsNumber : undefined })} type="number" value={editor.preparationMinutes ?? ''} /></label>
           <label className="field"><span>Cocción (minutos)</span><input min="0" onChange={(event) => setEditor({ ...editor, cookingMinutes: event.currentTarget.value ? event.currentTarget.valueAsNumber : undefined })} type="number" value={editor.cookingMinutes ?? ''} /></label>
           <label className="field"><span>Dificultad</span><select onChange={(event) => setEditor({ ...editor, difficulty: event.currentTarget.value ? event.currentTarget.value as AdminRecipe['difficulty'] : undefined })} required value={editor.difficulty ?? ''}><option value="">Seleccionar…</option><option>Fácil</option><option>Intermedia</option><option>Avanzada</option></select></label>
-          <label className="field"><span>Calorías de referencia por porción</span><input min="0" step="any" onChange={(event) => setEditor({ ...editor, calories: event.currentTarget.valueAsNumber })} required type="number" value={editor.calories ?? ''} /></label>
+          <label className="field"><span>Calorías de referencia por porción</span><input min="0" max="9999999.99" step="0.01" onChange={(event) => setEditor({ ...editor, calories: event.currentTarget.valueAsNumber })} required type="number" value={editor.calories ?? ''} /></label>
           <fieldset className="admin-meal-shifts" tabIndex={-1}><legend>Turnos de comida</legend><p className="field-help">Elegí uno o más turnos donde se puede encontrar esta receta.</p><div>{(['Desayuno', 'Almuerzo', 'Merienda', 'Cena'] as const).map((shift) => <label key={shift}><input checked={(editor.mealShifts ?? (editor.mealShift ? [editor.mealShift] : [])).includes(shift)} onChange={(event) => { const current = editor.mealShifts ?? (editor.mealShift ? [editor.mealShift] : []); const next = event.currentTarget.checked ? [...current, shift] : current.filter((item) => item !== shift); setEditor({ ...editor, mealShifts: next, mealShift: next[0], category: next[0] }) }} type="checkbox" />{shift}</label>)}</div></fieldset>
         </div>
         <label className="field"><span>Descripción</span><textarea maxLength={280} onChange={(event) => setEditor({ ...editor, description: event.currentTarget.value })} value={editor.description ?? ''} /></label>
@@ -233,7 +277,7 @@ export function RecipesTab() {
             <fieldset className="admin-color-picker"><legend>Color de la tarjeta</legend>{recipeColors.map((color, index) => <label key={color.value}><input checked={editor.color === color.value} name="recipe-color" onChange={() => setEditor({ ...editor, color: color.value })} required={index === 0} type="radio" /><span className={color.value} aria-hidden="true" />{color.label}</label>)}</fieldset>
           </div>
         </section>
-        <label className="field"><span>Etiquetas dietéticas (separadas por coma)</span><input onChange={(event) => setEditor({ ...editor, dietaryTags: event.currentTarget.value.split(',').map((tag) => tag.trim()).filter(Boolean) })} placeholder="Vegana, Sin TACC, Vegetariana" value={(editor.dietaryTags ?? []).join(', ')} /></label>
+        {isRelationalAdminEnabled ? <fieldset className="field"><legend>Etiquetas dietéticas</legend><div>{dietaryTags.filter((tag) => tag.active || (editor.dietaryTags ?? []).includes(tag.tagKey)).map((tag) => <label key={tag.tagKey}><input checked={(editor.dietaryTags ?? []).includes(tag.tagKey)} onChange={(event) => { const current = editor.dietaryTags ?? []; setEditor({ ...editor, dietaryTags: event.currentTarget.checked ? [...current, tag.tagKey] : current.filter((key) => key !== tag.tagKey) }) }} type="checkbox" />{tag.label}{!tag.active && <small> (inactiva)</small>}</label>)}</div>{(editor.dietaryTags ?? []).filter((key) => !dietaryTags.some((tag) => tag.tagKey === key)).map((key) => <p key={key} className="field-help">Etiqueta desconocida conservada: {key} <button type="button" onClick={() => setEditor({ ...editor, dietaryTags: (editor.dietaryTags ?? []).filter((entry) => entry !== key) })}>Quitar etiqueta</button></p>)}</fieldset> : <label className="field"><span>Etiquetas dietéticas (separadas por coma)</span><input onChange={(event) => setEditor({ ...editor, dietaryTags: event.currentTarget.value.split(',').map((tag) => tag.trim()).filter(Boolean) })} placeholder="Vegana, Sin TACC, Vegetariana" value={(editor.dietaryTags ?? []).join(', ')} /></label>}
         <label className="field"><span>Disponibilidad en el catálogo</span><select onChange={(event) => setEditor({ ...editor, status: event.currentTarget.value ? event.currentTarget.value as AdminRecipe['status'] : undefined })} required value={editor.status ?? ''}><option value="">Seleccionar…</option><option value="draft">Borrador: no visible para usuarios</option><option value="published">Publicada</option></select></label>
         <label className="field"><span>Estado</span><select onChange={(event) => setEditor({ ...editor, active: event.currentTarget.value ? event.currentTarget.value === 'active' : undefined })} required value={editor.active === undefined ? '' : editor.active ? 'active' : 'inactive'}><option value="">Seleccionar…</option><option value="active">Activo · disponible para usuarios si está publicada</option><option value="inactive">Inactivo · no disponible para nuevas acciones</option></select></label>
         <label className="recipe-pantry-toggle"><input checked={editor.featured ?? false} onChange={(event) => setEditor({ ...editor, featured: event.currentTarget.checked })} type="checkbox" /> Destacar en Explorar recetas</label>
@@ -245,7 +289,7 @@ export function RecipesTab() {
             const compatibleUnits = baseUnit ? data.units.filter((unit) => !unit.isDeleted && unit.dimension === baseUnit.dimension && (unit.active || unit.id === entry.unitId)) : []
             return <div className="admin-recipe-row" key={`${index}-${entry.ingredientId}`}>
               <label className="field"><span>Ingrediente {index + 1}</span><select onChange={(event) => updateIngredient(index, { ingredientId: event.currentTarget.value, unitId: '' })} required value={entry.ingredientId}><option value="">Seleccionar…</option>{availableIngredients.map((item) => <option key={item.id} value={item.id}>{item.name}{item.active ? '' : ' (Inactivo)'}</option>)}</select></label>
-              <label className="field"><span>Cantidad</span><input min="0.000001" onChange={(event) => updateIngredient(index, { quantity: event.currentTarget.valueAsNumber })} required step="any" type="number" value={entry.quantity ?? ''} /></label>
+              <label className="field"><span>Cantidad</span><input min="0.0001" max="1000000" onChange={(event) => updateIngredient(index, { quantity: event.currentTarget.valueAsNumber })} required step="0.0001" type="number" value={entry.quantity ?? ''} /></label>
               <label className="field"><span>Unidad</span><select onChange={(event) => updateIngredient(index, { unitId: event.currentTarget.value })} required value={entry.unitId}><option value="">Seleccionar…</option>{compatibleUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.name} ({unit.abbreviation})</option>)}</select></label>
               <div className="admin-recipe-row-actions"><button aria-label={`Mover ingrediente ${index + 1} arriba`} className="pantry-icon-button" disabled={index === 0} onClick={() => setEditor({ ...editor, ingredients: moveItem(editor.ingredients ?? [], index, -1) })} type="button"><ArrowUp size={17} /></button><button aria-label={`Mover ingrediente ${index + 1} abajo`} className="pantry-icon-button" disabled={index === (editor.ingredients?.length ?? 0) - 1} onClick={() => setEditor({ ...editor, ingredients: moveItem(editor.ingredients ?? [], index, 1) })} type="button"><ArrowDown size={17} /></button><button aria-label={`Quitar ingrediente ${index + 1}`} className="pantry-icon-button" onClick={() => setEditor({ ...editor, ingredients: (editor.ingredients ?? []).filter((_, itemIndex) => itemIndex !== index) })} type="button"><X size={17} /></button></div>
             </div>

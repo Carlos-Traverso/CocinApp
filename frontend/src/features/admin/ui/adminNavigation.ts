@@ -1,4 +1,4 @@
-export type AdminNavigationKey = 'dashboard' | 'recipes' | 'ingredients' | 'categories' | 'units' | 'users' | 'audit'
+export type AdminNavigationKey = 'dashboard' | 'recipes' | 'ingredients' | 'categories' | 'units' | 'users' | 'audit' | 'nutrition'
 
 export type AdminNavigationItem = {
   key: AdminNavigationKey
@@ -14,6 +14,7 @@ export const adminNavigation: AdminNavigationItem[] = [
   { key: 'categories', label: 'Categorías', path: '/admin/categories' },
   { key: 'units', label: 'Unidades', path: '/admin/units' },
   { key: 'users', label: 'Usuarios', path: '/admin/users' },
+  { key: 'nutrition', label: 'Nutrición', path: '/admin/nutrition' },
   { key: 'audit', label: 'Historial', path: '/admin/history' },
 ]
 

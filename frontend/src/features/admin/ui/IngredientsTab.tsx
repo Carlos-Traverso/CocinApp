@@ -52,11 +52,12 @@ export function IngredientsTab() {
       } else {
         await adminRepository.createIngredient(editor.name.trim(), editor.categoryId, editor.baseUnitId, active)
       }
+      await reload()
       setEditor(null)
       setError('')
       void notify({ type: 'success', title: editor.id ? 'Ingrediente actualizado' : 'Ingrediente creado', message: editor.id ? 'Ingrediente actualizado.' : 'Ingrediente creado.' })
-      await reload()
     } catch (err: any) {
+      setError(err instanceof Error ? err.message : 'No se pudo guardar el ingrediente. Probá nuevamente.')
       void notify({ type: 'error', title: 'No se pudo guardar el ingrediente', message: err.message })
     } finally {
       setPending(false)
@@ -141,6 +142,7 @@ export function IngredientsTab() {
         })}
         {debouncedSearch.status !== 'waiting' && visibleIngredients.length === 0 && <p className="empty">No hay ingredientes que coincidan con los filtros.</p>}
       </div>}
+      {error && !editor && <p className="form-message error" role="alert">{error} <button className="button button-quiet" disabled={pending} onClick={() => void reload().catch(() => undefined)} type="button">Volver a cargar</button></p>}
 
       {editor && (
         <dialog aria-labelledby="ingredient-editor-title" className="shopping-editor surface" onCancel={(event) => { event.preventDefault(); setEditor(null) }} ref={(node) => { if (node && !node.open) node.showModal() }}>

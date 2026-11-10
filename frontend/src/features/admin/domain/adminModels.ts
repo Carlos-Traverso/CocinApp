@@ -42,6 +42,8 @@ export interface AdminRecipe {
   ingredients: { ingredientId: string; quantity: number; unitId: string; note?: string }[]
   steps: string[]
   stepMeta?: {
+    /** Keeps server-only ingredient quantities attached while steps are reordered. */
+    relationalStepKey?: string
     minutes?: number
     durationMinutes?: number
     ingredientIds?: string[]

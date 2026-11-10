@@ -6,6 +6,7 @@ import { mockShoppingRepository } from '../../shopping/data/MockShoppingReposito
 import { isSupabaseConfigured } from '../../../shared/data/supabaseClient'
 import { loadPersonalData, savePersonalData } from '../../../shared/data/personalDataRepository'
 import { assertPersonalDataSessionCurrent, capturePersonalDataSession, type PersonalDataSession } from '../../../shared/data/personalDataSession'
+import { isRelationalPlannerRepositoryEnabled, supabasePlannerRepository } from './SupabasePlannerRepository'
 
 async function loadPlan(session: PersonalDataSession) {
   if (!isSupabaseConfigured) return readMealPlan()
@@ -28,10 +29,11 @@ async function savePlan(plan: Awaited<ReturnType<typeof readMealPlan>>, session:
 }
 
 export const mockPlannerRepository: PlannerRepository = {
-  async list() { return loadPlan(capturePersonalDataSession()) },
-  async loadRecipes() { return { known: getKnownRecipes(), available: getAvailableRecipes() } },
-  async save(plan) { const session = capturePersonalDataSession(); await savePlan(plan, session) },
+  async list(weekStart) { return isRelationalPlannerRepositoryEnabled() ? supabasePlannerRepository.list(weekStart) : loadPlan(capturePersonalDataSession()) },
+  async loadRecipes() { return isRelationalPlannerRepositoryEnabled() ? supabasePlannerRepository.loadRecipes() : { known: getKnownRecipes(), available: getAvailableRecipes() } },
+  async save(plan) { if (isRelationalPlannerRepositoryEnabled()) return supabasePlannerRepository.save(plan); const session = capturePersonalDataSession(); await savePlan(plan, session) },
   async assign(date: string, meal: Meal, recipeId: string, portions: number) {
+    if (isRelationalPlannerRepositoryEnabled()) return supabasePlannerRepository.assign(date, meal, recipeId, portions)
     const session = capturePersonalDataSession()
     const next = setPlannedMeal(await loadPlan(session), date, meal, recipeId, portions)
     assertPersonalDataSessionCurrent(session)
@@ -39,6 +41,7 @@ export const mockPlannerRepository: PlannerRepository = {
     return next
   },
   async generateShopping(dates: string[]) {
+    if (isRelationalPlannerRepositoryEnabled()) return supabasePlannerRepository.generateShopping(dates)
     const suggestions = await mockShoppingRepository.suggestionsFromWeek(dates)
     return (await mockShoppingRepository.append(suggestions)).length
   },

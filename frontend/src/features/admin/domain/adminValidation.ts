@@ -2,6 +2,11 @@ import { normalizePantryName } from '../../pantry/domain/pantry'
 import type { AdminCategory, AdminIngredient, AdminRecipe, AdminUnit } from './adminModels'
 import { normalizeQuantity } from '../../../shared/domain/units'
 
+function hasAtMostDecimalPlaces(value: number, places: number): boolean {
+  const scaled = value * 10 ** places
+  return Number.isFinite(scaled) && Math.abs(scaled - Math.round(scaled)) < 1e-7
+}
+
 export function validateCategoryName(name: string, categories: AdminCategory[], exceptId?: string) {
   const clean = name.trim()
   if (!clean) throw new Error('Ingresá un nombre para la categoría.')
@@ -60,7 +65,7 @@ export function validateRecipe(input: Omit<AdminRecipe, 'id' | 'isDeleted'>, rec
   const imageAlt = input.imageAlt?.trim() || undefined
   if (!title || !Number.isFinite(input.portions) || input.portions <= 0 || !Number.isInteger(input.portions)) throw new Error('Ingresá un título y una cantidad de porciones válida.')
   if (!Number.isFinite(input.minutes) || input.minutes <= 0 || !Number.isInteger(input.minutes)) throw new Error('El tiempo debe ser un número entero positivo.')
-  if (!Number.isFinite(input.calories) || input.calories < 0) throw new Error('Las calorías de referencia deben ser cero o más.')
+  if (!Number.isFinite(input.calories) || input.calories < 0 || input.calories > 9_999_999.99 || !hasAtMostDecimalPlaces(input.calories, 2)) throw new Error('Las calorías deben estar entre 0 y 9.999.999,99 y tener como máximo dos decimales.')
   if (!['Fácil', 'Intermedia', 'Avanzada'].includes(input.difficulty)) throw new Error('Elegí una dificultad válida.')
   const allowedMealShifts = ['Desayuno', 'Almuerzo', 'Merienda', 'Cena']
   const mealShifts = [...new Set(input.mealShifts ?? [input.mealShift])]
@@ -99,7 +104,7 @@ export function validateRecipe(input: Omit<AdminRecipe, 'id' | 'isDeleted'>, rec
   if (recipes.some((item) => item.id !== exceptId && !item.isDeleted && normalizePantryName(item.title) === normalizePantryName(title))) throw new Error('Ya existe una receta con ese título.')
   const previousRecipe = recipes.find((item) => item.id === exceptId)
   for (const entry of input.ingredients) {
-    if (!Number.isFinite(entry.quantity) || entry.quantity <= 0) throw new Error('Cada ingrediente debe tener una cantidad positiva.')
+    if (!Number.isFinite(entry.quantity) || entry.quantity <= 0 || entry.quantity > 1_000_000 || !hasAtMostDecimalPlaces(entry.quantity, 4)) throw new Error('Cada ingrediente debe tener una cantidad positiva, hasta 1.000.000 y con como máximo cuatro decimales.')
     const retainedReference = previousRecipe?.ingredients.some((previous) => previous.ingredientId === entry.ingredientId && previous.unitId === entry.unitId) ?? false
     const ingredient = ingredients.find((item) => item.id === entry.ingredientId && !item.isDeleted)
     const unit = units.find((item) => item.id === entry.unitId && !item.isDeleted)

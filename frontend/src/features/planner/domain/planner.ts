@@ -1,6 +1,6 @@
 export const meals = ['Desayuno', 'Almuerzo', 'Merienda', 'Cena'] as const
 export type Meal = typeof meals[number]
-export interface PlannedMeal { date: string; meal: Meal; recipeId: string; portions: number }
+export interface PlannedMeal { date: string; meal: Meal; recipeId: string; portions: number; relationalId?: string; position?: number; available?: boolean }
 
 export function localDateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`

@@ -1,11 +1,13 @@
 import type { RecipeRepository } from './RecipeRepository'
+import { isRelationalRecipesEnabled } from '../../../shared/data/supabaseClient'
+import { supabaseRecipeRepository } from './SupabaseRecipeRepository'
 import { getAvailableRecipes, getKnownRecipes, getRecipeById } from './availableRecipes'
 import { filterRecipes, getRecipeReadiness, type RecipeFilters } from '../domain/recipeRules'
 import type { PantryItem } from '../../pantry/domain/pantry'
 import { profileRepository } from '../../profile/data/ProfileRepository'
 import { getAdminData } from '../../admin/data/localAdminStore'
 
-export const mockRecipeRepository: RecipeRepository = {
+const legacyRecipeRepository: RecipeRepository = {
   async list() { return getAvailableRecipes() },
   async listKnown() { return getKnownRecipes() },
   async getById(id: string, includeInactive = false) { return getRecipeById(id, includeInactive) },
@@ -27,3 +29,6 @@ export const mockRecipeRepository: RecipeRepository = {
   async getDietaryPreferences() { return (await profileRepository.getProfile()).preferences ?? [] },
   async getProfile() { return profileRepository.getProfile() },
 }
+
+// Preserve the shared entry point used by dashboard, planning and cooking.
+export const mockRecipeRepository: RecipeRepository = isRelationalRecipesEnabled ? supabaseRecipeRepository : legacyRecipeRepository

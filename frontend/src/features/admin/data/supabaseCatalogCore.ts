@@ -91,7 +91,7 @@ function parseCatalog(value: unknown): CatalogCore {
 export async function readSupabaseCatalogCore(): Promise<RemoteCatalogRead> {
   if (!isSupabaseConfigured || !supabase) return { status: 'unavailable' }
   const { data, error } = await supabase
-    .from('catalog_core')
+    .from('catalogo_base')
     .select('payload, version')
     .eq('catalog_key', 'main')
     .maybeSingle()

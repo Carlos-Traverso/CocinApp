@@ -16,6 +16,9 @@ export interface ShoppingItem {
   transferredAt: string | null
   sources: ShoppingSource[]
   ingredientId?: string | null
+  ingredientRef?: string
+  unitRef?: string
+  sourceLinks?: Array<{ source: ShoppingSource; recipe_id?: string; plan_id?: string }>
 }
 
 export function isShoppingItemTransferable(item: ShoppingItem, catalog: { ingredients: AdminIngredient[]; units: AdminUnit[]; categories: AdminCategory[] }): boolean {
@@ -56,6 +59,10 @@ export interface ShoppingSuggestion {
   quantity: number
   unit: PantryUnit
   source: ShoppingSource
+  /** Relational adapter metadata, when the proposal came from an RPC. */
+  ingredientRef?: string | null
+  unitRef?: string
+  sourceLinks?: Array<{ source: ShoppingSource; recipe_id?: string; plan_id?: string }>
 }
 
 export type ShoppingStatusFilter = 'all' | 'pending' | 'checked'

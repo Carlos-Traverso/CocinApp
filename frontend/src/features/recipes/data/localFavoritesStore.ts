@@ -4,6 +4,8 @@ import type { FavoriteRepository } from './FavoriteRepository'
 import { isSupabaseConfigured } from '../../../shared/data/supabaseClient'
 import { loadPersonalData, savePersonalData } from '../../../shared/data/personalDataRepository'
 import { assertPersonalDataSessionCurrent, capturePersonalDataSession } from '../../../shared/data/personalDataSession'
+import { isRelationalRecipesEnabled, supabase } from '../../../shared/data/supabaseClient'
+import { supabaseFavoriteRepository } from './supabaseFavoriteRepository'
 
 const key = 'cocinapp.favorites.v1'
 interface StorageLike { getItem(key: string): string | null; setItem(key: string, value: string): void }
@@ -47,5 +49,9 @@ export const mockFavoriteRepository: FavoriteRepository = {
 }
 
 // Backward-compatible async methods delegate to the repository contract.
-export async function getFavoriteIds(): Promise<string[]> { return mockFavoriteRepository.listIds() }
-export async function saveFavoriteIds(ids: string[]): Promise<void> { return mockFavoriteRepository.saveIds(ids) }
+function activeFavoriteRepository(): FavoriteRepository {
+  return isRelationalRecipesEnabled && supabase ? supabaseFavoriteRepository : mockFavoriteRepository
+}
+
+export async function getFavoriteIds(): Promise<string[]> { return activeFavoriteRepository().listIds() }
+export async function saveFavoriteIds(ids: string[]): Promise<void> { return activeFavoriteRepository().saveIds(ids) }

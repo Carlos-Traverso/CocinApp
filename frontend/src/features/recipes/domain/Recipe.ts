@@ -14,6 +14,10 @@ export interface RecipeStepMeta {
 
 export interface Recipe {
   id: string
+  /** Relational UUID when the recipe came from the normalized catalog. */
+  relationalId?: string
+  /** Historical route/storage key when one exists. */
+  legacyId?: string
   name: string
   description: string
   category: string

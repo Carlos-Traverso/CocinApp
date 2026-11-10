@@ -60,11 +60,12 @@ export function UnitsTab() {
       } else {
         await adminRepository.createUnit(editor.name.trim(), editor.abbreviation.trim(), dimension, baseUnitId || undefined, multiplier, active)
       }
+      await reload()
       setEditor(null)
       setError('')
       void notify({ type: 'success', title: editor.id ? 'Unidad actualizada' : 'Unidad creada', message: editor.id ? 'Unidad actualizada.' : 'Unidad creada.' })
-      await reload()
     } catch (err: any) {
+      setError(err instanceof Error ? err.message : 'No se pudo guardar la unidad. Probá nuevamente.')
       void notify({ type: 'error', title: 'No se pudo guardar la unidad', message: err.message })
     } finally {
       setPending(false)
@@ -167,6 +168,7 @@ export function UnitsTab() {
         })}
         {debouncedSearch.status !== 'waiting' && visibleUnits.length === 0 && <p className="empty">No hay unidades que coincidan con los filtros.</p>}
       </div>}
+      {error && !editor && <p className="form-message error" role="alert">{error} <button className="button button-quiet" disabled={pending} onClick={() => void reload().catch(() => undefined)} type="button">Volver a cargar</button></p>}
 
       {editor && (
         <dialog aria-labelledby="unit-editor-title" className="shopping-editor surface" onCancel={(event) => { event.preventDefault(); setEditor(null) }} ref={(node) => { if (node && !node.open) node.showModal() }}>

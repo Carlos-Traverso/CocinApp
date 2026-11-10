@@ -10,6 +10,18 @@ const hasPlaceholder = /your-project|your-publishable-key|your-public-anon-key/i
 
 export const isSupabaseConfigured = Boolean(projectUrl && publishableKey && !hasPlaceholder)
 
+// Keep relational profile storage opt-in until the remote backfill is complete.
+export const isRelationalProfilesEnabled = import.meta.env.VITE_RELATIONAL_PROFILES === 'true'
+
+// Enable with the coordinated relational inventory migration.
+export const isRelationalPantryEnabled = import.meta.env.VITE_RELATIONAL_PANTRY === 'true'
+export const isRelationalShoppingEnabled = import.meta.env.VITE_RELATIONAL_SHOPPING === 'true'
+export const isRelationalCookingEnabled = import.meta.env.VITE_RELATIONAL_COOKING === 'true'
+export const isRelationalRecipesEnabled = import.meta.env.VITE_RELATIONAL_RECIPES === 'true'
+export const isRelationalPlanningEnabled = import.meta.env.VITE_RELATIONAL_PLANNING === 'true'
+export const isRelationalAdminEnabled = import.meta.env.VITE_RELATIONAL_ADMIN === 'true'
+export const isRelationalDashboardEnabled = import.meta.env.VITE_RELATIONAL_DASHBOARD === 'true'
+
 export const supabase = isSupabaseConfigured
   ? createClient(projectUrl!, publishableKey!)
   : null

@@ -14,6 +14,7 @@ const icons = {
   units: Ruler,
   users: UsersRound,
   audit: History,
+  nutrition: ShieldCheck,
 } satisfies Record<AdminNavigationKey, typeof LayoutDashboard>
 
 export function AdminShell() {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { authenticateUser, clearStoredUserSession, endSession, getSession, registerAccount, startDemoAdminSession, startSupabaseUserSession, startUserSession, type SessionInfo } from './localAuthStore'
-import { supabase } from '../../../shared/data/supabaseClient'
+import { isRelationalProfilesEnabled, supabase } from '../../../shared/data/supabaseClient'
 import type { UserRole } from './localAuthStore'
 import { adminRepository } from '../../admin/data/AdminRepository'
 import { assertAuthenticationConfigured } from '../domain/security'
@@ -66,6 +66,20 @@ async function getRemoteRole(): Promise<UserRole> {
   return data
 }
 
+async function getCanonicalProfileName(fallback: string, expectedUserId: string): Promise<string> {
+  if (!supabase || !isRelationalProfilesEnabled) return fallback
+  const { data, error } = await supabase.rpc('get_my_profile')
+  if (error) throw new Error('No se pudo consultar el nombre del perfil.', { cause: error })
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (user?.id !== expectedUserId) throw new Error('La cuenta cambió mientras se cargaba el perfil. Volvé a intentarlo.')
+  if (!data || typeof data !== 'object') return fallback
+  const profile = (data as Record<string, unknown>).profile
+  if (!profile || typeof profile !== 'object') return fallback
+  const name = (profile as Record<string, unknown>).display_name
+  return typeof name === 'string' && name.trim() ? name.trim() : fallback
+}
+
 export interface AuthRepository {
   session(): Promise<SessionInfo | null>
   login(email: string, password: string): Promise<void>
@@ -106,8 +120,9 @@ export const authRepository: AuthRepository = {
     const metadataName = user.user_metadata.name ?? user.user_metadata.full_name
     const name = typeof metadataName === 'string' && metadataName.trim() ? metadataName : user.email.split('@')[0]
     const remoteRole = await getRemoteRole()
+    const canonicalName = await getCanonicalProfileName(name, user.id)
     if (revision !== sessionRevision) return null
-    startSupabaseUserSession(user.id, user.email, name, remoteRole)
+    startSupabaseUserSession(user.id, user.email, canonicalName, remoteRole)
     await preloadCatalog()
     if (revision !== sessionRevision) return null
     return getSession()
@@ -120,7 +135,9 @@ export const authRepository: AuthRepository = {
     if (!data.user?.email) throw new Error('Supabase no devolvió los datos de la cuenta.')
     const metadataName = data.user.user_metadata.name ?? data.user.user_metadata.full_name
     const name = typeof metadataName === 'string' && metadataName.trim() ? metadataName : data.user.email.split('@')[0]
-    beginSessionPolicy(startSupabaseUserSession(data.user.id, data.user.email, name, await getRemoteRole()))
+    const remoteRole = await getRemoteRole()
+    const canonicalName = await getCanonicalProfileName(name, data.user.id)
+    beginSessionPolicy(startSupabaseUserSession(data.user.id, data.user.email, canonicalName, remoteRole))
     await preloadCatalog()
   },
   async register(name, email, password) {
@@ -141,7 +158,9 @@ export const authRepository: AuthRepository = {
     if (!data.session || !data.user?.email) {
       throw new Error('La cuenta se creó. Confirmá tu correo desde el mensaje de Supabase y después iniciá sesión.')
     }
-    beginSessionPolicy(startSupabaseUserSession(data.user.id, data.user.email, cleanName, await getRemoteRole()))
+    const remoteRole = await getRemoteRole()
+    const canonicalName = await getCanonicalProfileName(cleanName, data.user.id)
+    beginSessionPolicy(startSupabaseUserSession(data.user.id, data.user.email, canonicalName, remoteRole))
     await preloadCatalog()
   },
   async loginAsDemoAdmin() {

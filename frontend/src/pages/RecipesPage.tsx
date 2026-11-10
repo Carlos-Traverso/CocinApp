@@ -4,6 +4,8 @@ import { ArrowRight, Clock3, Heart, Search, UsersRound } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { getPantryItems } from '../features/pantry/data/localPantryStore'
 import { mockFavoriteRepository } from '../features/recipes/data/localFavoritesStore'
+import { supabaseFavoriteRepository } from '../features/recipes/data/supabaseFavoriteRepository'
+import { isRelationalRecipeRepositoryEnabled, supabaseRecipeRepository } from '../features/recipes/data/SupabaseRecipeRepository'
 import { recipeMealShifts, type RecipeFilters } from '../features/recipes/domain/recipeRules'
 import { mockRecipeRepository } from '../features/recipes/data/MockRecipeRepository'
 import { meals } from '../features/planner/domain/planner'
@@ -19,6 +21,8 @@ const dietOptions: Array<{ id: DietaryPreference; label: string }> = [
   { id: 'gluten-free', label: 'Sin TACC' }, { id: 'vegetarian', label: 'Vegetariana' }, { id: 'vegan', label: 'Vegana' },
   { id: 'lactose-free', label: 'Sin lactosa' }, { id: 'nut-free', label: 'Sin frutos secos' },
 ]
+const recipeRepository = isRelationalRecipeRepositoryEnabled() ? supabaseRecipeRepository : mockRecipeRepository
+const favoriteRepository = isRelationalRecipeRepositoryEnabled() ? supabaseFavoriteRepository : mockFavoriteRepository
 
 function RecipeArtwork({ recipe, size = 'card' }: { recipe: Recipe; size?: 'hero' | 'card' | 'mini' }) {
   return <RecipeImage className={`recipe-artwork recipe-artwork-${size}`} loading={size === 'hero' ? 'eager' : 'lazy'} recipe={recipe} />
@@ -51,7 +55,7 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
 
   useEffect(() => {
     let current = true
-    void Promise.all([mockRecipeRepository.list(), getPantryItems(), mockFavoriteRepository.listIds(), mockRecipeRepository.getDietaryPreferences()])
+    void Promise.all([recipeRepository.list(), getPantryItems(), favoriteRepository.listIds(), recipeRepository.getDietaryPreferences()])
       .then(([catalog, stock, favorites, preferences]) => { if (current) { setCatalogCount(catalog.length); setPantry(stock); setFavoriteIds(favorites); setActivePreferences(preferences) } })
       .catch(() => { if (current) { setLoadFailed(true); void notify({ type: 'error', title: 'No se pudieron cargar las recetas', message: 'Intentá de nuevo.' }) } })
       .finally(() => { if (current) setLoading(false) })
@@ -61,7 +65,7 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
   useEffect(() => {
     if (loading || loadFailed) return
     let current = true
-    void mockRecipeRepository.match(pantry, { ...filters, search: search.query, preferences: effectivePreferences })
+    void recipeRepository.match(pantry, { ...filters, search: search.query, preferences: effectivePreferences })
       .then((result) => { if (current) setMatches(result) })
       .catch(() => { if (current) void notify({ type: 'error', title: 'No se pudieron filtrar las recetas', message: 'Intentá de nuevo.' }) })
     return () => { current = false }
@@ -84,8 +88,10 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
   }, [completionNotice, location.hash, location.pathname, navigate, notify])
 
   function toggleFavorite(id: string) {
-    const next = favoriteIds.includes(id) ? favoriteIds.filter((item) => item !== id) : [...favoriteIds, id]
-    void mockFavoriteRepository.saveIds(next).then(() => setFavoriteIds(next)).catch(() => { void notify({ type: 'error', title: 'No se pudo guardar el favorito', message: 'Revisá el espacio disponible del navegador e intentá de nuevo.' }) })
+    const favorite = !favoriteIds.includes(id)
+    const next = favorite ? [...favoriteIds, id] : favoriteIds.filter((item) => item !== id)
+    const save = favoriteRepository.setFavorite ? favoriteRepository.setFavorite(id, favorite) : favoriteRepository.saveIds(next)
+    void save.then(() => setFavoriteIds(next)).catch(() => { void notify({ type: 'error', title: 'No se pudo guardar el favorito', message: 'Intentá de nuevo.' }) })
   }
 
   return <div className="page recipes-page">
