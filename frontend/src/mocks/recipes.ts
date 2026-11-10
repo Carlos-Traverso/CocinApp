@@ -1,4 +1,5 @@
 import type { Recipe } from '../features/recipes/domain/Recipe'
+import { expandedRecipes } from './expandedRecipes'
 
 const recipeDrafts = [
   {
@@ -268,13 +269,13 @@ const seedDietaryTags = {
   'banana-smoothie': ['Vegetariana', 'Sin frutos secos'],
 } satisfies Record<(typeof recipeDrafts)[number]['id'], string[]>
 
-export const sampleRecipes = recipeDrafts.map((recipe) => {
+export const sampleRecipes = [...recipeDrafts.map((recipe) => {
   const dietaryTags = Object.entries(seedDietaryTags).find(([id]) => id === recipe.id)?.[1] ?? []
   return {
-  ...recipe,
-  dietaryTags,
-  crossContaminationNote: dietaryTags.includes('Sin TACC') ? 'Aunque los ingredientes no contienen gluten, verificá rótulos y evitá la contaminación cruzada en superficies y utensilios compartidos.' : undefined,
-  image: `/assets/recipes/${recipe.id}.webp`,
-  imageAlt: recipeImageAlts[recipe.id],
+    ...recipe,
+    dietaryTags,
+    crossContaminationNote: dietaryTags.includes('Sin TACC') ? 'Aunque los ingredientes no contienen gluten, verificá rótulos y evitá la contaminación cruzada en superficies y utensilios compartidos.' : undefined,
+    image: `/assets/recipes/${recipe.id}.webp`,
+    imageAlt: recipeImageAlts[recipe.id],
   }
-}) satisfies Recipe[]
+}), ...expandedRecipes] satisfies Recipe[]

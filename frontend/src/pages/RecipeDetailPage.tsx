@@ -43,15 +43,17 @@ export function RecipeDetailPage() {
 
   useEffect(() => {
     let current = true
-    void Promise.all([recipeRepository.getById(id, true), recipeRepository.list(), getPantryItems(), favoriteRepository.listIds(), recipeRepository.getDietaryPreferences(), recipeRepository.getProfile()])
-      .then(([found, activeRecipes, stock, favorites, selectedPreferences, profileData]) => {
+    // Preferences belong to the same profile snapshot; parallel profile reads
+    // invalidate each other in the versioned profile repository.
+    void Promise.all([recipeRepository.getById(id, true), recipeRepository.list(), getPantryItems(), favoriteRepository.listIds(), recipeRepository.getProfile()])
+      .then(([found, activeRecipes, stock, favorites, profileData]) => {
         if (!current) return
         setRecipe(found ?? null)
         setActive(Boolean(found && activeRecipes.some((item) => item.id === found.id)))
         setPortions(found ? parseRecipePortions(searchParams.get('portions')) ?? found.portions : 1)
         setPantry(stock)
         setFavoriteIds(favorites)
-        setPreferences(selectedPreferences)
+        setPreferences(profileData.preferences ?? [])
         setProfile(profileData)
         setLoadOutcome({ key: loadKey, status: 'success' })
       })
