@@ -5,6 +5,7 @@ import { useNotifications } from '../../../shared/notifications/NotificationProv
 
 const activities = [['sedentary', 'Sedentaria'], ['light', 'Ligera'], ['moderate', 'Moderada'], ['active', 'Activa'], ['very-active', 'Muy activa']] as const
 const goals = [['lose', 'Perder peso'], ['maintain', 'Mantener'], ['gain', 'Ganar peso'], ['gain-muscle', 'Ganar masa muscular']] as const
+const versionDate = new Intl.DateTimeFormat('es-AR', { dateStyle: 'medium', timeStyle: 'short' })
 type Draft = { factors: Record<string, string>; goals: Record<string, { minimum: string; maximum: string }>; source: string; effectiveAt: string }
 const emptyDraft = (): Draft => ({ factors: {}, goals: {}, source: '', effectiveAt: '' })
 const toDraft = (config: NutritionConfig): Draft => ({
@@ -70,9 +71,13 @@ export function NutritionTab() {
   return <section className="admin-form-stack" aria-label="Configuración nutricional">
     <div className="section-heading"><div><h2>Configuración nutricional</h2><p>Las estimaciones son informativas y usan únicamente una versión vigente publicada.</p></div><button className="button button-quiet" disabled={loading} onClick={() => void reload()} type="button">Actualizar versiones</button></div>
     {error && <p className="form-message error" role="alert">{error}</p>}
-    {!loading && (currentlyEffective ? <p>Configuración vigente: versión {currentlyEffective.configVersion} desde {new Date(currentlyEffective.effectiveAt).toLocaleString()}.</p> : <p>No hay configuración vigente; la estimación nutricional está desactivada.</p>)}
+    {!loading && (currentlyEffective ? <p>Configuración vigente: versión {currentlyEffective.configVersion} desde {versionDate.format(new Date(currentlyEffective.effectiveAt))}</p> : <p>No hay configuración vigente; la estimación nutricional está desactivada.</p>)}
     {!loading && versions[0] && Date.parse(versions[0].effectiveAt) > Date.now() && <p>La versión más reciente ({versions[0].configVersion}) todavía es futura; continúa vigente la versión anterior indicada arriba.</p>}
-    {loading ? <p>Cargando versiones…</p> : versions.length === 0 ? <p>No hay ninguna configuración publicada. No se aplicará una estimación hasta que publiques una.</p> : <ol>{versions.map((item) => <li key={item.configVersion}>Versión {item.configVersion} · vigente desde {new Date(item.effectiveAt).toLocaleString()} · {item.sourceNote}</li>)}</ol>}
+    {loading ? <p>Cargando versiones…</p> : versions.length === 0 ? <p>No hay ninguna configuración publicada. No se aplicará una estimación hasta que publiques una.</p> : <ol className="admin-nutrition-versions">{versions.map((item) => <li key={item.configVersion}>
+      <strong>Versión {item.configVersion}</strong>
+      <time dateTime={item.effectiveAt}>Vigente desde {versionDate.format(new Date(item.effectiveAt))}</time>
+      <span>{item.sourceNote}</span>
+    </li>)}</ol>}
     <form className="surface admin-form-stack" onSubmit={(event) => { event.preventDefault(); if (pending) void publish(pending); else { try { const request = prepare(); setPending(request); void publish(request) } catch (cause) { setError(cause instanceof Error ? cause.message : 'Revisá la configuración.') } } }}>
       <h3>{pending ? 'Reintentar publicación' : 'Nueva versión'}</h3>
       <fieldset disabled={publishing || Boolean(pending)}><legend>Factores de actividad</legend>{activities.map(([key, label]) => <label className="field" key={key}><span>{label}</span><input inputMode="decimal" onChange={(e) => setDraft({ ...draft, factors: { ...draft.factors, [key]: e.target.value } })} required value={draft.factors[key] ?? ''} /></label>)}</fieldset>

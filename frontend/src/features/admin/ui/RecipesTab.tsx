@@ -50,6 +50,9 @@ export function RecipesTab() {
   const debouncedSearch = useDebouncedSearch(search)
   const referencedIngredientIds = new Set(editor?.ingredients?.map((ingredient) => ingredient.ingredientId) ?? [])
   const availableIngredients = data.ingredients.filter((ingredient) => ingredient.active && !ingredient.isDeleted || referencedIngredientIds.has(ingredient.id))
+  const stepIngredients = [...referencedIngredientIds]
+    .map((id) => availableIngredients.find((ingredient) => ingredient.id === id))
+    .filter((ingredient) => ingredient !== undefined)
 
   useEffect(() => {
     if (!isRelationalAdminEnabled) return
@@ -277,7 +280,23 @@ export function RecipesTab() {
             <fieldset className="admin-color-picker"><legend>Color de la tarjeta</legend>{recipeColors.map((color, index) => <label key={color.value}><input checked={editor.color === color.value} name="recipe-color" onChange={() => setEditor({ ...editor, color: color.value })} required={index === 0} type="radio" /><span className={color.value} aria-hidden="true" />{color.label}</label>)}</fieldset>
           </div>
         </section>
-        {isRelationalAdminEnabled ? <fieldset className="field"><legend>Etiquetas dietéticas</legend><div>{dietaryTags.filter((tag) => tag.active || (editor.dietaryTags ?? []).includes(tag.tagKey)).map((tag) => <label key={tag.tagKey}><input checked={(editor.dietaryTags ?? []).includes(tag.tagKey)} onChange={(event) => { const current = editor.dietaryTags ?? []; setEditor({ ...editor, dietaryTags: event.currentTarget.checked ? [...current, tag.tagKey] : current.filter((key) => key !== tag.tagKey) }) }} type="checkbox" />{tag.label}{!tag.active && <small> (inactiva)</small>}</label>)}</div>{(editor.dietaryTags ?? []).filter((key) => !dietaryTags.some((tag) => tag.tagKey === key)).map((key) => <p key={key} className="field-help">Etiqueta desconocida conservada: {key} <button type="button" onClick={() => setEditor({ ...editor, dietaryTags: (editor.dietaryTags ?? []).filter((entry) => entry !== key) })}>Quitar etiqueta</button></p>)}</fieldset> : <label className="field"><span>Etiquetas dietéticas (separadas por coma)</span><input onChange={(event) => setEditor({ ...editor, dietaryTags: event.currentTarget.value.split(',').map((tag) => tag.trim()).filter(Boolean) })} placeholder="Vegana, Sin TACC, Vegetariana" value={(editor.dietaryTags ?? []).join(', ')} /></label>}
+        {isRelationalAdminEnabled ? <fieldset className="admin-checkbox-group">
+          <legend>Etiquetas dietéticas</legend>
+          <div className="admin-checkbox-options">
+            {dietaryTags.filter((tag) => tag.active || editor.dietaryTags?.includes(tag.tagKey)).map((tag) => <label key={tag.tagKey}>
+              <input checked={editor.dietaryTags?.includes(tag.tagKey) ?? false} onChange={(event) => {
+                const current = editor.dietaryTags ?? []
+                const next = event.currentTarget.checked ? [...current, tag.tagKey] : current.filter((key) => key !== tag.tagKey)
+                setEditor({ ...editor, dietaryTags: next })
+              }} type="checkbox" />
+              <span>{tag.label}{!tag.active && <small> (inactiva)</small>}</span>
+            </label>)}
+          </div>
+          {(editor.dietaryTags ?? []).filter((key) => !dietaryTags.some((tag) => tag.tagKey === key)).map((key) => <p key={key} className="field-help">
+            Etiqueta desconocida conservada: {key}{' '}
+            <button className="button button-quiet" type="button" onClick={() => setEditor({ ...editor, dietaryTags: (editor.dietaryTags ?? []).filter((entry) => entry !== key) })}>Quitar etiqueta</button>
+          </p>)}
+        </fieldset> : <label className="field"><span>Etiquetas dietéticas (separadas por coma)</span><input onChange={(event) => setEditor({ ...editor, dietaryTags: event.currentTarget.value.split(',').map((tag) => tag.trim()).filter(Boolean) })} placeholder="Vegana, Sin TACC, Vegetariana" value={(editor.dietaryTags ?? []).join(', ')} /></label>}
         <label className="field"><span>Disponibilidad en el catálogo</span><select onChange={(event) => setEditor({ ...editor, status: event.currentTarget.value ? event.currentTarget.value as AdminRecipe['status'] : undefined })} required value={editor.status ?? ''}><option value="">Seleccionar…</option><option value="draft">Borrador: no visible para usuarios</option><option value="published">Publicada</option></select></label>
         <label className="field"><span>Estado</span><select onChange={(event) => setEditor({ ...editor, active: event.currentTarget.value ? event.currentTarget.value === 'active' : undefined })} required value={editor.active === undefined ? '' : editor.active ? 'active' : 'inactive'}><option value="">Seleccionar…</option><option value="active">Activo · disponible para usuarios si está publicada</option><option value="inactive">Inactivo · no disponible para nuevas acciones</option></select></label>
         <label className="recipe-pantry-toggle"><input checked={editor.featured ?? false} onChange={(event) => setEditor({ ...editor, featured: event.currentTarget.checked })} type="checkbox" /> Destacar en Explorar recetas</label>
@@ -303,11 +322,27 @@ export function RecipesTab() {
             <div className="shopping-form-grid">
               <label className="field"><span>Duración y temporizador (minutos)</span><input min="1" max="240" onChange={(event) => updateStepMeta(index, { durationMinutes: event.currentTarget.value ? event.currentTarget.valueAsNumber : undefined, minutes: undefined })} type="number" value={editor.stepMeta?.[index]?.durationMinutes ?? editor.stepMeta?.[index]?.minutes ?? ''} /></label>
               <label className="field"><span>Temperatura o tipo de cocción</span><input maxLength={80} onChange={(event) => updateStepMeta(index, { temperature: event.currentTarget.value })} placeholder="Ej.: 180 °C o fuego medio" value={editor.stepMeta?.[index]?.temperature ?? ''} /></label>
-              <label className="field"><span>Ingredientes de este paso</span><select multiple onChange={(event) => updateStepMeta(index, { ingredientIds: Array.from(event.currentTarget.selectedOptions, (option) => option.value) })} value={editor.stepMeta?.[index]?.ingredientIds ?? []}>{(editor.ingredients ?? []).map((entry) => { const ingredient = availableIngredients.find((item) => item.id === entry.ingredientId); return ingredient ? <option key={entry.ingredientId} value={entry.ingredientId}>{ingredient.name} ({entry.quantity})</option> : null })}</select><small className="field-help">Podés seleccionar más de uno con Ctrl o Cmd.</small></label>
               <label className="field"><span>Utensilios (separados por coma)</span><input onChange={(event) => updateStepMeta(index, { utensils: event.currentTarget.value.split(',').map((item) => item.trim()).filter(Boolean) })} placeholder="Olla, cuchillo, tabla" value={(editor.stepMeta?.[index]?.utensils ?? []).join(', ')} /></label>
               <label className="field"><span>Consejo del paso</span><input maxLength={240} onChange={(event) => updateStepMeta(index, { tip: event.currentTarget.value })} value={editor.stepMeta?.[index]?.tip ?? ''} /></label>
               <label className="field"><span>Advertencia o error frecuente</span><input maxLength={240} onChange={(event) => updateStepMeta(index, { warning: event.currentTarget.value })} value={editor.stepMeta?.[index]?.warning ?? ''} /></label>
             </div>
+            <fieldset className="admin-checkbox-group">
+              <legend>Ingredientes de este paso</legend>
+              {stepIngredients.length === 0
+                ? <p className="field-help">Agregá ingredientes a la receta para asignarlos al paso.</p>
+                : <div className="admin-checkbox-options">{stepIngredients.map((ingredient) => {
+                  const selectedIds = editor.stepMeta?.[index]?.ingredientIds ?? []
+                  return <label key={ingredient.id}>
+                    <input checked={selectedIds.includes(ingredient.id)} onChange={(event) => {
+                      const ingredientIds = event.currentTarget.checked
+                        ? [...selectedIds, ingredient.id]
+                        : selectedIds.filter((id) => id !== ingredient.id)
+                      updateStepMeta(index, { ingredientIds })
+                    }} type="checkbox" />
+                    <span>{ingredient.name}</span>
+                  </label>
+                })}</div>}
+            </fieldset>
             <label className="field"><span>Indicación especial del paso</span><textarea maxLength={400} onChange={(event) => updateStepMeta(index, { specialInstructions: event.currentTarget.value })} value={editor.stepMeta?.[index]?.specialInstructions ?? ''} /></label>
           </div>)}
         </section>

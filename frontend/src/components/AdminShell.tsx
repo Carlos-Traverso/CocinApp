@@ -5,6 +5,7 @@ import { authRepository, useAuth } from '../features/auth/data/AuthRepository'
 import { adminNavigation, getAdminNavigationItem, type AdminNavigationKey } from '../features/admin/ui/adminNavigation'
 import { BrandLogo } from './BrandLogo'
 import { useNotifications } from '../shared/notifications/NotificationProvider'
+import '../features/admin/ui/AdminLayout.css'
 
 const icons = {
   dashboard: LayoutDashboard,
@@ -28,17 +29,27 @@ export function AdminShell() {
   const firstLinkRef = useRef<HTMLAnchorElement>(null)
   const currentSection = getAdminNavigationItem(location.pathname)
 
+  function closeDrawer() {
+    setDrawerOpen(false)
+    requestAnimationFrame(() => menuButtonRef.current?.focus())
+  }
+
   useEffect(() => {
     if (!drawerOpen) return
     firstLinkRef.current?.focus()
+    const desktop = window.matchMedia('(min-width: 851px)')
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setDrawerOpen(false)
-        menuButtonRef.current?.focus()
-      }
+      if (event.key === 'Escape') closeDrawer()
     }
+    function closeOnDesktop(event: MediaQueryListEvent) {
+      if (event.matches) setDrawerOpen(false)
+    }
+    desktop.addEventListener('change', closeOnDesktop)
     document.addEventListener('keydown', closeOnEscape)
-    return () => document.removeEventListener('keydown', closeOnEscape)
+    return () => {
+      desktop.removeEventListener('change', closeOnDesktop)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
   }, [drawerOpen])
 
   async function logout() {
@@ -49,17 +60,17 @@ export function AdminShell() {
   }
 
   return <div className={`app-shell admin-shell${drawerOpen ? ' drawer-open' : ''}`}>
-    <button aria-label="Cerrar menú de administración" className="admin-drawer-overlay" onClick={() => setDrawerOpen(false)} type="button" />
+    <button aria-label="Cerrar menú de administración" className="admin-drawer-overlay" onClick={closeDrawer} tabIndex={-1} type="button" />
     <aside aria-label="Administración" className="sidebar admin-sidebar" id="admin-navigation">
       <div className="admin-sidebar-head">
-        <NavLink className="wordmark" ref={firstLinkRef} to="/admin" aria-label="CocinAPP, administración"><BrandLogo /></NavLink>
-        <button aria-label="Cerrar menú" className="admin-drawer-close" onClick={() => setDrawerOpen(false)} type="button"><X aria-hidden="true" size={20} /></button>
+        <NavLink className="wordmark" ref={firstLinkRef} to="/admin" aria-label="CocinAPP, administración" onClick={() => { if (drawerOpen) closeDrawer() }}><BrandLogo /></NavLink>
+        <button aria-label="Cerrar menú" className="admin-drawer-close" onClick={closeDrawer} type="button"><X aria-hidden="true" size={20} /></button>
       </div>
       <p className="sidebar-label">ADMINISTRACIÓN</p>
       <nav aria-label="Navegación de administración" className="primary-nav">
         {adminNavigation.map((item) => {
           const Icon = icons[item.key]
-          return <NavLink className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} end={item.end} key={item.path} onClick={() => setDrawerOpen(false)} to={item.path}>
+          return <NavLink className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} end={item.end} key={item.path} onClick={() => { if (drawerOpen) closeDrawer() }} to={item.path}>
             <Icon size={19} aria-hidden="true" /><span>{item.label}</span>
           </NavLink>
         })}
@@ -70,7 +81,7 @@ export function AdminShell() {
       </div>
       <button className="sidebar-logout" disabled={loggingOut} onClick={() => void logout()} type="button"><LogOut size={18} aria-hidden="true" /><span>{loggingOut ? 'Cerrando…' : 'Cerrar sesión'}</span></button>
     </aside>
-    <main className="main-content admin-main-content">
+    <main className="main-content admin-main-content" inert={drawerOpen}>
       <header className="admin-topbar">
         <button aria-controls="admin-navigation" aria-expanded={drawerOpen} aria-label="Abrir menú de administración" className="admin-menu-button" onClick={() => setDrawerOpen(true)} ref={menuButtonRef} type="button"><Menu aria-hidden="true" size={21} /></button>
         <nav aria-label="Migas de pan" className="admin-breadcrumb"><NavLink to="/admin">Administración</NavLink><span aria-hidden="true">/</span><strong>{currentSection?.label ?? 'Página'}</strong></nav>

@@ -1,0 +1,364 @@
+.admin-shell :is(.records, .admin-dashboard, .admin-step-editor, .field, fieldset) {
+  min-width: 0;
+}
+
+.admin-shell :is(.record-main, .admin-step-editor, .admin-checkbox-group, .admin-preview-dialog, .admin-recent-list, .admin-form-stack, .admin-identity) {
+  overflow-wrap: anywhere;
+}
+
+.admin-shell .admin-record-title svg {
+  flex: 0 0 auto;
+}
+
+.admin-shell .admin-filter-bar {
+  grid-template-columns: minmax(0, 1.45fr) repeat(6, minmax(0, 1fr));
+}
+
+.admin-shell .admin-filter-bar .field span {
+  white-space: normal;
+}
+
+.admin-shell :is(.admin-filter-bar, .admin-catalog-filters) select {
+  text-overflow: ellipsis;
+}
+
+.admin-shell :is(.section-header-actions, .admin-form-stack > .section-heading, .admin-recipe-section > .section-header) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.admin-shell .field textarea {
+  width: 100%;
+  min-height: 88px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 11px;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 400;
+}
+
+.admin-shell .admin-checkbox-group {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px 12px;
+}
+
+.admin-shell .admin-checkbox-group legend {
+  padding: 0 5px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-shell .admin-checkbox-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap: 6px;
+}
+
+.admin-shell .admin-checkbox-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px;
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.admin-shell .admin-checkbox-options input {
+  flex: 0 0 auto;
+  margin: 0;
+  accent-color: var(--green);
+}
+
+.admin-shell .admin-checkbox-options label:has(input:checked) {
+  border-color: var(--green);
+  background: #edf3eb;
+}
+
+.admin-shell .users-role-control select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 0 8px;
+  color: var(--ink);
+}
+
+.admin-shell :is(.admin-form-stack, .admin-form-stack fieldset) {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-shell .admin-form-stack fieldset {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.admin-shell .admin-form-stack legend {
+  padding-inline: 5px;
+  font-weight: 700;
+}
+
+.admin-shell .admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.admin-shell .admin-nutrition-versions {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-shell .admin-nutrition-versions li {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--surface);
+}
+
+.admin-shell .admin-nutrition-versions time {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 1279px) {
+  .admin-shell .admin-filter-bar {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .admin-shell .admin-filter-bar .admin-filter-search {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 850px) {
+  .admin-shell:not(.drawer-open) .admin-sidebar {
+    visibility: hidden;
+  }
+
+  .admin-shell .admin-sidebar {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+
+  .admin-shell .admin-sidebar .wordmark {
+    margin-bottom: 22px;
+  }
+
+  .admin-shell .admin-menu-button,
+  .admin-shell .admin-drawer-close {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+  }
+
+  .admin-shell :is(.admin-sidebar .primary-nav .nav-link, .sidebar-logout, .admin-catalog-links a) {
+    min-height: 44px;
+  }
+
+  .admin-shell .admin-breadcrumb {
+    flex-wrap: wrap;
+    row-gap: 2px;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 620px) {
+  .admin-shell .feature-page > .pane > .panel > .section-header {
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .admin-shell .feature-page > .pane > .panel > .section-header > .button {
+    align-self: stretch;
+  }
+
+  .admin-shell :is(.button, .users-role-control select, .admin-checkbox-options label, .admin-meal-shifts label, .admin-color-picker label) {
+    min-height: 44px;
+  }
+
+  .admin-shell :is(.pantry-icon-button, .admin-symbol-picker button) {
+    width: 44px;
+    height: 44px;
+  }
+
+  .admin-shell .section-header-actions > .button {
+    flex: 1 1 126px;
+  }
+
+  .admin-shell :is(.admin-catalog-filters, .admin-filter-bar, .admin-preview-facts) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-shell .admin-filter-bar .admin-filter-search {
+    grid-column: 1 / -1;
+  }
+
+  .admin-shell .admin-catalog-filters:not(:has(> .field:nth-child(3))) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-shell .record {
+    padding: 12px;
+    gap: 9px;
+  }
+
+  .admin-shell .record-actions {
+    gap: 6px;
+  }
+
+  .admin-shell .record-actions .pantry-icon-button {
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 6px;
+  }
+
+  .admin-shell .record-actions .pantry-icon-button:not(.active) {
+    border-color: var(--line);
+  }
+
+  .admin-shell .admin-recipe-record {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .admin-shell .admin-recipe-record .record-main {
+    min-width: 0;
+  }
+
+  .admin-shell .admin-record-actions {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .admin-shell .users-record {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-shell .users-record .record-actions {
+    justify-content: flex-start;
+    border-top: 1px solid var(--line);
+    padding-top: 9px;
+  }
+
+  .admin-shell .users-role-control {
+    flex: 1 1 100%;
+  }
+
+  .admin-shell .users-role-control select {
+    min-width: 0;
+  }
+
+  .admin-shell .admin-pagination {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  .admin-shell .admin-pagination .button {
+    padding-inline: 8px;
+  }
+
+  .admin-shell :is(.shopping-editor, .admin-preview-dialog) {
+    width: calc(100% - 24px);
+    max-height: calc(100dvh - 24px);
+    overscroll-behavior: contain;
+    padding: 16px;
+  }
+
+  .admin-shell dialog .shopping-form-grid,
+  .admin-shell .admin-step-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-shell .admin-recipe-dialog form > .shopping-form-grid:first-child {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+  }
+
+  .admin-shell .admin-recipe-dialog form > .shopping-form-grid:first-child > :is(.field:first-child, fieldset) {
+    grid-column: 1 / -1;
+  }
+
+  .admin-shell .admin-recipe-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px;
+  }
+
+  .admin-shell .admin-recipe-row .field:nth-child(3) {
+    grid-column: auto;
+  }
+
+  .admin-shell .admin-recipe-row-actions {
+    justify-content: flex-end;
+  }
+
+  .admin-shell .admin-recipe-section > .section-header > .button {
+    min-width: 0;
+    margin-inline-start: auto;
+  }
+
+  .admin-shell .admin-recipe-dialog .pantry-dialog-actions {
+    bottom: -16px;
+    border-top: 1px solid var(--line);
+  }
+
+  .admin-shell dialog .pantry-dialog-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-shell :is(.admin-audit-actions, .admin-form-stack > .section-heading) > .button {
+    align-self: stretch;
+  }
+
+  .admin-shell .admin-recent-list > div {
+    flex-wrap: wrap;
+    gap: 5px 15px;
+    padding-block: 10px;
+  }
+}
+
+@media (max-width: 359px) {
+  .admin-shell .admin-record-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-shell .admin-record-actions .pantry-icon-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 390px) {
+  .admin-shell .admin-audit-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-shell :is(.admin-audit-actions, .admin-form-stack > .section-heading) > .button {
+    width: 100%;
+  }
+}

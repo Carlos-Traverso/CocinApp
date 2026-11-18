@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   CalendarDays,
   CookingPot,
@@ -6,11 +6,12 @@ import {
   History,
   LayoutDashboard,
   LogOut,
+  Ellipsis,
   Refrigerator,
   ShoppingCart,
   UserRound,
 } from 'lucide-react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { BrandLogo } from './BrandLogo'
 import { appNavigation } from './navigation'
 import { ScrollToTopButton } from './ScrollToTopButton'
@@ -26,6 +27,62 @@ const navigationIcons = {
   favorites: Heart,
   history: History,
   profile: UserRound,
+}
+
+const mobilePrimary = ['panel', 'recipes', 'pantry', 'shopping']
+
+function NavigationLink({ item, label = item.label, onClick }: { item: typeof appNavigation[number]; label?: string; onClick?: () => void }) {
+  const { id, to } = item
+  const Icon = navigationIcons[id]
+  return (
+    <NavLink className="nav-link" end={'end' in item ? item.end : undefined} onClick={onClick} to={to}>
+      <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
+      <span>{label}</span>
+    </NavLink>
+  )
+}
+
+const mobileMain = appNavigation.filter(({ id, mobile }) => mobile && mobilePrimary.includes(id))
+const mobileMore = appNavigation.filter(({ id, mobile }) => mobile && !mobilePrimary.includes(id))
+
+function MobileNavigation({ loggingOut, onLogout }: { loggingOut: boolean; onLogout: () => void }) {
+  const location = useLocation()
+  const [openAt, setOpenAt] = useState<string>()
+  const trigger = useRef<HTMLButtonElement>(null)
+  const expanded = openAt === location.key
+  const active = mobileMore.some(({ to }) => location.pathname === to)
+
+  function close() {
+    setOpenAt(undefined)
+    trigger.current?.focus()
+  }
+
+  useEffect(() => {
+    if (!expanded) return
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') close()
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [expanded])
+
+  return (
+    <nav className="mobile-navigation" aria-label="Navegación principal" onBlur={(event) => {
+      if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setOpenAt(undefined)
+    }}>
+      {mobileMain.map((item) => <NavigationLink item={item} key={item.id} label={item.mobileLabel} onClick={() => setOpenAt(undefined)} />)}
+      <button aria-controls="mobile-more" aria-expanded={expanded} className={`nav-link mobile-more-toggle${active || expanded ? ' active' : ''}`} onClick={() => setOpenAt(expanded ? undefined : location.key)} ref={trigger} type="button">
+        <Ellipsis size={20} aria-hidden="true" /> Más
+      </button>
+      {expanded && <button aria-hidden="true" className="mobile-more-backdrop" onClick={close} tabIndex={-1} type="button" />}
+      <div className="mobile-more-links" hidden={!expanded} id="mobile-more">
+        {mobileMore.map((item) => <NavigationLink item={item} key={item.id} onClick={close} />)}
+        <button className="nav-link mobile-more-logout" disabled={loggingOut} onClick={onLogout} type="button">
+          <LogOut size={18} aria-hidden="true" /> {loggingOut ? 'Cerrando…' : 'Cerrar sesión'}
+        </button>
+      </div>
+    </nav>
+  )
 }
 
 export function AppShell() {
@@ -47,21 +104,9 @@ export function AppShell() {
         </NavLink>
         <p className="sidebar-label">TU COCINA</p>
         <nav className="primary-nav" aria-label="Navegación principal">
-          {appNavigation.map(({ id, to, label, mobileLabel, mobile, ...linkProps }) => {
-            const Icon = navigationIcons[id]
-            return (
-            <NavLink
-              key={to}
-              to={to}
-              end={'end' in linkProps ? linkProps.end : undefined}
-              className={({ isActive }) => `nav-link${mobile ? '' : ' nav-link-desktop-only'}${isActive ? ' active' : ''}`}
-            >
-              <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
-              <span className="nav-label-desktop">{label}</span><span className="nav-label-mobile">{mobileLabel}</span>
-            </NavLink>
-            )
-          })}
+          {appNavigation.map((item) => <NavigationLink item={item} key={item.id} />)}
         </nav>
+        <MobileNavigation loggingOut={loggingOut} onLogout={() => void logout()} />
         <button className="app-sidebar-logout" disabled={loggingOut} onClick={() => void logout()} type="button">
           <LogOut size={18} strokeWidth={1.8} aria-hidden="true" />
           <span>{loggingOut ? 'Cerrando…' : 'Cerrar sesión'}</span>
