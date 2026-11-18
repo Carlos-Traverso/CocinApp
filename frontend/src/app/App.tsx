@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterProvider } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { CookingPage } from '../pages/CookingPage'
 import { AdminNutritionPage, AdminAuditPage, AdminCategoriesPage, AdminIngredientsPage, AdminPage, AdminRecipesPage, AdminUnitsPage, AdminUsersPage } from '../pages/AdminPage'
@@ -12,57 +12,60 @@ import { RecipesPage } from '../pages/RecipesPage'
 import { RecipeDetailPage } from '../pages/RecipeDetailPage'
 import { ShoppingPage } from '../pages/ShoppingPage'
 import { WelcomePage } from '../pages/WelcomePage'
-import { NotFoundPage } from '../pages/NotFoundPage'
 import { RequestPasswordRecoveryPage, ResetPasswordPage } from '../pages/PasswordRecoveryPage'
 import { AdminShell } from '../components/AdminShell'
-import { RequireAdmin, RequireUser, RedirectIfAuthenticated } from './AuthGuards'
+import { RequireRole, RequireSession, RedirectIfAuthenticated } from './AuthGuards'
+import { RouteErrorPage, UnexpectedErrorPage } from './RouteErrorPage'
 import { NotificationProvider } from '../shared/notifications/NotificationProvider'
+
+const router = createBrowserRouter(createRoutesFromElements(
+  <Route errorElement={<UnexpectedErrorPage />}>
+    <Route path="recuperar-contrasena" element={<RequestPasswordRecoveryPage />} />
+    <Route path="restablecer-contrasena" element={<ResetPasswordPage />} />
+    <Route element={<RedirectIfAuthenticated />}>
+      <Route index element={<WelcomePage />} />
+      <Route path="auth" element={<Navigate replace to="/" />} />
+    </Route>
+
+    <Route element={<RequireSession />}>
+      <Route element={<RequireRole role="ADMIN" />}>
+        <Route path="admin" element={<AdminShell />}>
+          <Route index element={<AdminPage />} />
+          <Route path="recipes" element={<AdminRecipesPage />} />
+          <Route path="ingredients" element={<AdminIngredientsPage />} />
+          <Route path="categories" element={<AdminCategoriesPage />} />
+          <Route path="units" element={<AdminUnitsPage />} />
+          <Route path="users" element={<AdminUsersPage />} />
+          <Route path="history" element={<AdminAuditPage />} />
+          <Route path="nutrition" element={<AdminNutritionPage />} />
+        </Route>
+      </Route>
+
+      <Route element={<RequireRole role="USER" />}>
+        <Route path="onboarding" element={<OnboardingPage />} />
+        <Route path="recipes/:id/cook" element={<CookingPage />} />
+        <Route element={<AppShell />}>
+          <Route path="panel" element={<HomePage />} />
+          <Route path="recipes" element={<RecipesPage />} />
+          <Route path="recipes/:id" element={<RecipeDetailPage />} />
+          <Route path="favorites" element={<RecipesPage favoritesOnly />} />
+          <Route path="history" element={<HistoryPage />} />
+          <Route path="cooking" element={<Navigate replace to="/recipes" />} />
+          <Route path="profile" element={<ProfilePage />} />
+          <Route path="pantry" element={<PantryPage />} />
+          <Route path="planner" element={<PlannerPage />} />
+          <Route path="shopping" element={<ShoppingPage />} />
+        </Route>
+      </Route>
+      <Route path="*" element={<RouteErrorPage status={404} />} />
+    </Route>
+  </Route>,
+))
 
 export function App() {
   return (
     <NotificationProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="recuperar-contrasena" element={<RequestPasswordRecoveryPage />} />
-          <Route path="restablecer-contrasena" element={<ResetPasswordPage />} />
-          <Route element={<RedirectIfAuthenticated />}>
-            <Route index element={<WelcomePage />} />
-            <Route path="auth" element={<Navigate replace to="/" />} />
-          </Route>
-
-          <Route element={<RequireAdmin />}>
-            <Route path="admin" element={<AdminShell />}>
-              <Route index element={<AdminPage />} />
-              <Route path="recipes" element={<AdminRecipesPage />} />
-              <Route path="ingredients" element={<AdminIngredientsPage />} />
-              <Route path="categories" element={<AdminCategoriesPage />} />
-              <Route path="units" element={<AdminUnitsPage />} />
-              <Route path="users" element={<AdminUsersPage />} />
-              <Route path="history" element={<AdminAuditPage />} />
-              <Route path="nutrition" element={<AdminNutritionPage />} />
-              <Route path="*" element={<NotFoundPage homeLabel="Volver a Administración" homePath="/admin" />} />
-            </Route>
-          </Route>
-
-          <Route element={<RequireUser />}>
-            <Route path="onboarding" element={<OnboardingPage />} />
-            <Route path="recipes/:id/cook" element={<CookingPage />} />
-            <Route element={<AppShell />}>
-              <Route path="panel" element={<HomePage />} />
-              <Route path="recipes" element={<RecipesPage />} />
-              <Route path="recipes/:id" element={<RecipeDetailPage />} />
-              <Route path="favorites" element={<RecipesPage favoritesOnly />} />
-              <Route path="history" element={<HistoryPage />} />
-              <Route path="cooking" element={<Navigate replace to="/recipes" />} />
-              <Route path="profile" element={<ProfilePage />} />
-              <Route path="pantry" element={<PantryPage />} />
-              <Route path="planner" element={<PlannerPage />} />
-              <Route path="shopping" element={<ShoppingPage />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Route>
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </NotificationProvider>
   )
 }

@@ -18,6 +18,10 @@ The backend migrations and `admin-users` Edge Function live on `feat/cocinapp-et
 
 `npm run test:admin-users-edge` exercises the actual backend handler with simulated transports. This command requires `backend/supabase/functions/admin-users/index.ts` from the backend branch as well as the frontend dependencies. `npm test` covers the frontend suite independently.
 
+## Direct links in production
+
+Publish the Vite output in `dist`. Configure the hosting provider to serve existing assets and files first, then rewrite navigation requests such as `/panel`, `/admin/users`, and `/restablecer-contrasena` to `/index.html` while keeping the requested URL and query string. This lets CocinAPP check the session, handle password recovery, and display its own 404 page for unknown addresses. The development server and `npm run preview` already support this behavior.
+
 ## Structure and data boundary
 
 - `src/app` contains routes and session and role guards.

@@ -1,3 +1,4 @@
+import { ErrorScreen } from '../app/ErrorScreen'
 import { LoadingScreen } from '../components/LoadingScreen'
 import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, Clock3, CookingPot, Lightbulb, Minus, Plus, Thermometer, UtensilsCrossed, X } from 'lucide-react'
@@ -9,6 +10,7 @@ import { mockRecipeRepository } from '../features/recipes/data/MockRecipeReposit
 import type { IngredientDeficit } from '../features/recipes/domain/recipeRules'
 import type { Recipe } from '../features/recipes/domain/Recipe'
 import { RecipeImage } from '../features/recipes/ui/RecipeImage'
+import { MissingRecipe } from '../features/recipes/ui/MissingRecipe'
 import { parseRecipePortions } from '../features/recipes/domain/recipeRules'
 import { useNotifications } from '../shared/notifications/NotificationProvider'
 import { isRelationalCookingEnabled } from '../shared/data/supabaseClient'
@@ -53,6 +55,7 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
   const [stockVerified, setStockVerified] = useState(false)
   const [stockCheckError, setStockCheckError] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [finishing, setFinishing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [reloadRequired, setReloadRequired] = useState(false)
@@ -72,6 +75,7 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
       : Promise.all([mockRecipeRepository.getById(id), mockCookingRepository.getSession(id)] as const)
     void load.then(async ([found, saved]) => {
       if (!current) return
+      setLoadFailed(false)
       const selectedRecipe = isRelationalCookingEnabled ? (saved?.recipeSnapshot ?? found) : found
       setRecipe(selectedRecipe ?? null)
       if (selectedRecipe) {
@@ -89,7 +93,7 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
           finally { progressWriteRef.current = false; if (current) setPersistingProgress(false) }
         }
       }
-    }).catch(() => { if (current) void notify({ type: 'error', title: 'No se pudo recuperar la receta', message: 'No se pudo recuperar la receta o el progreso guardado.' }) }).finally(() => { if (current) setLoading(false) })
+    }).catch(() => { if (current) setLoadFailed(true) }).finally(() => { if (current) setLoading(false) })
     return () => { current = false }
   }, [id, requestedPortions, notify])
 
@@ -126,12 +130,20 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
     void notify({ type: 'info', title: 'Temporizador terminado', message: 'Podés continuar cuando estés listo.' })
   }, [session, activeTimer, finishedTimer, notify])
 
+  if (loadFailed) {
+    return <ErrorScreen description="No se pudo recuperar la receta o el progreso guardado." title="No se pudo abrir el modo cocina">
+      <button className="button button-primary" onClick={() => window.location.reload()} type="button">Recargar página</button>
+      <Link className="button button-quiet" to="/recipes">Volver a recetas</Link>
+    </ErrorScreen>
+  }
   if (!recipe) {
     if (loading) return <LoadingScreen message="Cargando receta y progreso…" variant="fullscreen" />
-    return <main className="cooking-missing"><h1>Receta no encontrada</h1><Link className="button button-primary" to="/recipes">Volver a recetas</Link></main>
+    return <MissingRecipe />
   }
   if (!session || session.recipeId !== recipe.id || recipe.steps.length === 0) {
-    return <main className="cooking-missing"><h1>Esta receta no tiene pasos válidos</h1><p>Podés volver a su detalle o elegir otra receta para cocinar.</p><Link className="button button-primary" to={`/recipes/${recipe.id}`}>Volver a la receta</Link></main>
+    return <ErrorScreen description="Podés volver a su detalle o elegir otra receta para cocinar." title="Esta receta no tiene pasos válidos">
+      <Link className="button button-primary" to={`/recipes/${recipe.id}`}>Volver a la receta</Link>
+    </ErrorScreen>
   }
 
   const stepCount = recipe.steps.length

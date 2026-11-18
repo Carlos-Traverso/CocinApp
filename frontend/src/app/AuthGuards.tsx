@@ -1,30 +1,22 @@
 import { LoadingScreen } from '../components/LoadingScreen'
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, useLocation, useOutletContext } from 'react-router-dom'
 import { useAuth } from '../features/auth/data/AuthRepository'
-import { canAccessPath, roleHome } from '../features/auth/domain/routeAccess'
+import type { UserRole } from '../features/auth/data/localAuthStore'
+import { roleHome } from '../features/auth/domain/routeAccess'
+import { RouteErrorPage } from './RouteErrorPage'
 import { SessionError } from './SessionError'
 
-export function RequireUser() {
-  const auth = useAuth()
-  const location = useLocation()
-  if (auth.error) return <SessionError message={auth.error} retry={auth.retry} retrying={auth.loading} />
-  if (auth.loading) return <LoadingScreen message="Comprobando sesión…" variant="fullscreen" />
-  const { session } = auth
-  if (!session) return <Navigate to="/" replace />
-  if (!canAccessPath(session.role, location.pathname)) return <Navigate to={roleHome(session.role)} replace />
-  return <Outlet />
-}
-
-export function RequireAdmin() {
+export function RequireSession() {
   const { session, loading, error, retry } = useAuth()
   if (error) return <SessionError message={error} retry={retry} retrying={loading} />
   if (loading) return <LoadingScreen message="Comprobando sesión…" variant="fullscreen" />
-  if (!session) {
-    return <Navigate to="/" replace />
-  }
-  if (!canAccessPath(session.role, '/admin')) {
-    return <Navigate to={roleHome(session.role)} replace />
-  }
+  if (!session) return <Navigate to="/" replace />
+  return <Outlet context={session.role} />
+}
+
+export function RequireRole({ role }: { role: UserRole }) {
+  const sessionRole = useOutletContext<UserRole>()
+  if (sessionRole !== role) return <RouteErrorPage status={403} />
   return <Outlet />
 }
 

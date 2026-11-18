@@ -12,7 +12,7 @@ global.window = { dispatchEvent: () => {}, addEventListener: () => {}, removeEve
 import assert from 'node:assert/strict'
 import test, { beforeEach, describe } from 'node:test'
 import { authenticateUser, clearStoredUserSession, demoAdminEmail, endSession, getSession, registerAccount, startDemoAdminSession, startSession, startSupabaseUserSession, startUserSession } from '../src/features/auth/data/localAuthStore'
-import { canAccessPath, roleHome } from '../src/features/auth/domain/routeAccess'
+import { roleHome } from '../src/features/auth/domain/routeAccess'
 import { personalStorage } from '../src/features/auth/data/personalStorage'
 import { assertAuthenticationConfigured } from '../src/features/auth/domain/security'
 import { adminUsersRepository } from '../src/features/admin/data/AdminUsersRepository'
@@ -168,11 +168,7 @@ describe('local access flows', () => {
     assert.equal(personalStorage.getItem('cocinapp.pantry.v1'), originalPantry)
   })
 
-  test('route access is isolated by role and redirects to the role home', () => {
-    assert.equal(canAccessPath('USER', '/recipes/one'), true)
-    assert.equal(canAccessPath('USER', '/admin'), false)
-    assert.equal(canAccessPath('ADMIN', '/admin/recipes'), true)
-    assert.equal(canAccessPath('ADMIN', '/pantry'), false)
+  test('each role has its own home route', () => {
     assert.equal(roleHome('USER'), '/panel')
     assert.equal(roleHome('ADMIN'), '/admin')
   })
