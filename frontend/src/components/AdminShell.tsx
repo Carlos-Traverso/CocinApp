@@ -81,7 +81,7 @@ export function AdminShell() {
       </div>
       <button className="sidebar-logout" disabled={loggingOut} onClick={() => void logout()} type="button"><LogOut size={18} aria-hidden="true" /><span>{loggingOut ? 'Cerrando…' : 'Cerrar sesión'}</span></button>
     </aside>
-    <main className="main-content admin-main-content" inert={drawerOpen}>
+    <main className="main-content admin-main-content" data-page-background={currentSection?.key ?? 'admin'} inert={drawerOpen}>
       <header className="admin-topbar">
         <button aria-controls="admin-navigation" aria-expanded={drawerOpen} aria-label="Abrir menú de administración" className="admin-menu-button" onClick={() => setDrawerOpen(true)} ref={menuButtonRef} type="button"><Menu aria-hidden="true" size={21} /></button>
         <nav aria-label="Migas de pan" className="admin-breadcrumb"><NavLink to="/admin">Administración</NavLink><span aria-hidden="true">/</span><strong>{currentSection?.label ?? 'Página'}</strong></nav>

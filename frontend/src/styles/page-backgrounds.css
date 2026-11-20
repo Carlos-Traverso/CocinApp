@@ -1,0 +1,123 @@
+/* Paint the page canvas while leaving cards, controls and navigation opaque. */
+:root,
+[data-page-background],
+.access-page,
+.setup-page,
+.cooking-page {
+  --canvas-base: #f8faf5;
+  --canvas-accent: #e3f0e2;
+  --canvas-secondary: #f5eddb;
+  --canvas-ink: #69947824;
+  --canvas-x: 96%;
+  --canvas-shape: radial-gradient(
+    ellipse clamp(11rem, 35vw, 32rem) clamp(9rem, 29vw, 25rem) at var(--canvas-x) 1rem,
+    transparent 63%, var(--canvas-ink) 63.4% 64%, transparent 64.4% 78%,
+    var(--canvas-ink) 78.4% 79%, transparent 79.4%
+  );
+
+  background-color: var(--canvas-base);
+  background-image:
+    var(--canvas-shape),
+    radial-gradient(ellipse clamp(16rem, 47vw, 47rem) 25rem at var(--canvas-x) 0, var(--canvas-accent), transparent 100%),
+    radial-gradient(ellipse clamp(17rem, 50vw, 49rem) 26rem at 18% 22rem, var(--canvas-secondary), transparent 100%);
+  background-repeat: no-repeat;
+}
+
+[data-page-background='recipes'],
+[data-page-background='recipe-detail'],
+.cooking-page {
+  --canvas-base: #fcfaf4;
+  --canvas-accent: #f2e6cb;
+  --canvas-secondary: #e6f0df;
+  --canvas-ink: #ac793329;
+}
+
+[data-page-background='recipe-detail'],
+[data-page-background='planner'],
+[data-page-background='history'],
+.setup-page,
+.cooking-page {
+  --canvas-x: 12%;
+}
+
+[data-page-background='pantry'],
+[data-page-background='shopping'],
+.setup-page {
+  --canvas-base: #f5faf7;
+  --canvas-accent: #dceee4;
+  --canvas-secondary: #e9f0d9;
+  --canvas-shape: radial-gradient(
+    ellipse clamp(9rem, 25vw, 23rem) clamp(7rem, 19vw, 16rem) at var(--canvas-x) 1rem,
+    var(--canvas-ink) 49%, transparent 50%
+  );
+}
+
+[data-page-background='shopping'] { --canvas-x: 78%; }
+
+[data-page-background='planner'],
+[data-page-background='profile'],
+.password-recovery-page {
+  --canvas-base: #f7faf9;
+  --canvas-accent: #deeeea;
+  --canvas-secondary: #edf2e1;
+  --canvas-ink: #5d8b8926;
+}
+
+[data-page-background='favorites'],
+[data-page-background='history'] {
+  --canvas-base: #fcf9f5;
+  --canvas-accent: #f1e4dc;
+  --canvas-secondary: #f2eedb;
+  --canvas-ink: #a57a6326;
+}
+
+.access-page-login {
+  --canvas-base: #fcfaf4;
+  --canvas-accent: #e2efdf;
+  --canvas-secondary: #f4ead3;
+  --canvas-x: 17%;
+}
+
+.admin-main-content {
+  --canvas-base: #f6f8f4;
+  --canvas-accent: #e4ede3;
+  --canvas-secondary: #eef0e5;
+}
+
+.admin-main-content[data-page-background='ingredients'],
+.admin-main-content[data-page-background='units'],
+.admin-main-content[data-page-background='users'] {
+  --canvas-x: 15%;
+}
+
+.admin-main-content[data-page-background='recipes'],
+.admin-main-content[data-page-background='units'],
+.admin-main-content[data-page-background='audit'] {
+  --canvas-accent: #f0e9d9;
+  --canvas-ink: #a0865524;
+}
+
+.admin-main-content[data-page-background='categories'],
+.admin-main-content[data-page-background='users'],
+.admin-main-content[data-page-background='nutrition'] {
+  --canvas-accent: #e1eeea;
+  --canvas-ink: #5d8b8926;
+}
+
+.admin-main-content[data-page-background='nutrition'],
+.admin-main-content[data-page-background='audit'] {
+  --canvas-x: 75%;
+}
+
+@media (max-width: 760px) {
+  :root,
+  [data-page-background],
+  .access-page,
+  .setup-page,
+  .cooking-page {
+    background-image:
+      var(--canvas-shape),
+      radial-gradient(ellipse 23rem 18rem at var(--canvas-x) 0, var(--canvas-accent), transparent 100%),
+      radial-gradient(ellipse 20rem 19rem at 18% 15rem, var(--canvas-secondary), transparent 100%);
+  }
+}

@@ -86,6 +86,9 @@ function MobileNavigation({ loggingOut, onLogout }: { loggingOut: boolean; onLog
 }
 
 export function AppShell() {
+  const { pathname } = useLocation()
+  const [, section, recipeId] = pathname.toLowerCase().split('/')
+  const background = section === 'recipes' && recipeId ? 'recipe-detail' : section
   const [loggingOut, setLoggingOut] = useState(false)
   const { notify } = useNotifications()
 
@@ -117,7 +120,7 @@ export function AppShell() {
           <span>{loggingOut ? 'Cerrando…' : 'Cerrar sesión'}</span>
         </button>
       </aside>
-      <main className="main-content"><NavLink aria-label="CocinAPP, inicio" className="mobile-brand" to="/panel"><BrandLogo /></NavLink><Outlet /></main>
+      <main className="main-content" data-page-background={background}><NavLink aria-label="CocinAPP, inicio" className="mobile-brand" to="/panel"><BrandLogo /></NavLink><Outlet /></main>
       <ScrollToTopButton />
     </div>
   )
