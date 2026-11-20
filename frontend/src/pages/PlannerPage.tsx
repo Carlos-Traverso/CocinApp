@@ -71,7 +71,17 @@ export function PlannerPage() {
   }
 
   return <div className="page planner-page">
-    <header className="page-heading"><div><p className="eyebrow">ORGANIZÁ TUS COMIDAS</p><h1>Planificación semanal</h1><p className="page-lead">Asigná recetas de lunes a domingo para desayuno, almuerzo, merienda y cena. Cada semana se guarda por separado.</p></div><div className="planner-head-actions"><Link className="button button-quiet" to="/recipes">Explorar recetas</Link><button className="button button-primary" disabled={loading || saving} onClick={sendWeekToShopping} type="button">Generar compras de esta semana</button></div></header>
+    <header className="page-heading">
+      <div>
+        <p className="eyebrow">ORGANIZÁ TUS COMIDAS</p>
+        <h1>Planificación semanal</h1>
+        <p className="page-lead">Asigná recetas de lunes a domingo para desayuno, almuerzo, merienda y cena. Cada semana se guarda por separado.</p>
+      </div>
+      <div className="planner-head-actions">
+        <button className="button button-primary" disabled={loading || saving} onClick={sendWeekToShopping} type="button">Generar compras de esta semana</button>
+        <Link className="button button-quiet" to="/recipes">Explorar recetas</Link>
+      </div>
+    </header>
     <div className="planner-toolbar"><h2>Semana del {new Date(`${dates[0]}T12:00:00`).toLocaleDateString('es-AR')} al {new Date(`${dates[6]}T12:00:00`).toLocaleDateString('es-AR')}</h2><div><button aria-label="Semana anterior" disabled={saving} className="button button-quiet" onClick={() => setWeekOffset(weekOffset - 1)} type="button"><ChevronLeft size={18} /></button><button className="button button-quiet" disabled={saving} onClick={() => setWeekOffset(0)} type="button">Esta semana</button><button aria-label="Semana siguiente" disabled={saving} className="button button-quiet" onClick={() => setWeekOffset(weekOffset + 1)} type="button"><ChevronRight size={18} /></button></div></div>
     <button className="button button-quiet" disabled={saving || loading} onClick={() => { setPicker(null); setLoadAttempt((value) => value + 1) }} type="button">Recargar semana</button>
     {plan.some((item) => item.available === false) && <p role="status">Hay recetas que ya no están disponibles. Para editar la semana, quitá explícitamente esas entradas. <button className="text-link" disabled={saving || loading} onClick={() => void removeUnavailable()} type="button">Quitar recetas no disponibles</button></p>}

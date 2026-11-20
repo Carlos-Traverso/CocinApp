@@ -97,7 +97,13 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
 
   return <div className="page recipes-page">
     <section aria-labelledby="recipe-catalog-title" className="recipe-catalog recipe-catalog-primary" id="recipe-catalog">
-      <div className="recipe-catalog-heading"><div><h1 id="recipe-catalog-title">{favoritesOnly ? 'Todas tus favoritas' : 'Explorá el catálogo'}</h1></div><div><p aria-live="polite" className="recipe-result-count">{visibleMatches.length} de {candidateCount} recetas</p><SearchFeedback resultCount={visibleMatches.length} status={search.status} />{favoritesOnly && <Link className="recipe-rail-catalog-link" to="/recipes">Explorar recetas <ArrowRight aria-hidden="true" size={16} /></Link>}</div></div>
+      <div className="recipe-catalog-heading">
+        <h1 id="recipe-catalog-title">{favoritesOnly ? 'Todas tus favoritas' : 'Explorá el catálogo'}</h1>
+        {!favoritesOnly && <div>
+          <p aria-live="polite" className="recipe-result-count">{visibleMatches.length} de {candidateCount} recetas</p>
+          <SearchFeedback resultCount={visibleMatches.length} status={search.status} />
+        </div>}
+      </div>
       <div aria-label="Filtros de recetas" className="recipe-controls with-search">
         <label className="field"><span>Buscar receta o ingrediente</span><span className="pantry-search-input"><Search aria-hidden="true" size={17} /><input onChange={(event) => setFilters({ ...filters, search: event.currentTarget.value })} placeholder="Ej.: quinoa, calabaza" type="search" value={filters.search} /></span></label>
         <FilterSelect label="Categoría" onChange={(category) => setFilters((current) => ({ ...current, category }))} options={[{ value: '', label: 'Todas' }, ...meals.map((meal) => ({ value: meal, label: meal }))]} value={filters.category} />
@@ -106,7 +112,13 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
       </div>
       <fieldset className="recipe-dietary-filters"><legend>Preferencias dietéticas</legend><div>{dietOptions.map(({ id, label }) => <label key={id}><input checked={selectedDiet.includes(id)} onChange={(event) => setFilters({ ...filters, preferences: event.currentTarget.checked ? [...selectedDiet, id] : selectedDiet.filter((item) => item !== id) })} type="checkbox" /> {label}</label>)}</div></fieldset>
       <p className="recipe-cross-contamination-note" role="note">Las preferencias guardadas se aplican siempre: {activePreferences.length > 0 ? activePreferences.map((preference) => dietOptions.find((option) => option.id === preference)?.label ?? preference).join(', ') : 'sin restricciones dietéticas activas'}. Podés agregar filtros más restrictivos. Las etiquetas describen los ingredientes declarados y no garantizan ausencia de trazas; verificá rótulos y contaminación cruzada.</p>
-      <div className="recipe-filter-footer"><label className="recipe-pantry-toggle"><input checked={filters.pantryOnly} onChange={(event) => setFilters({ ...filters, pantryOnly: event.currentTarget.checked })} type="checkbox" /> Puedo cocinar con mi despensa</label><button onClick={() => setFilters(initialFilters)} type="button">Limpiar filtros</button></div>
+      <div className="recipe-filter-footer">
+        <label className="recipe-pantry-toggle"><input checked={filters.pantryOnly} onChange={(event) => setFilters({ ...filters, pantryOnly: event.currentTarget.checked })} type="checkbox" /> Puedo cocinar con mi despensa</label>
+        <div className="recipe-filter-actions">
+          <button onClick={() => setFilters(initialFilters)} type="button">Limpiar filtros</button>
+          {favoritesOnly && <Link className="button button-quiet" to="/recipes">Ver recetas</Link>}
+        </div>
+      </div>
     </section>
     {!loading && search.status !== 'waiting' && candidateCount > visibleMatches.length && <p className="recipe-filter-exclusions" role="status">{candidateCount - visibleMatches.length} {candidateCount - visibleMatches.length === 1 ? 'receta no coincide' : 'recetas no coinciden'} con la búsqueda, los filtros y las preferencias dietéticas.</p>}
     {loading ? <LoadingScreen message="Cargando recetas…" variant="section" /> : loadFailed ? <section className="pantry-empty"><h2>No se pudieron cargar las recetas</h2><p>Volvé a intentarlo para consultar el recetario.</p><button className="button button-primary" onClick={retryLoad} type="button">Reintentar</button></section> : search.status !== 'waiting' && (visibleMatches.length === 0 ? <section className="pantry-empty"><h2>{favoritesOnly && favoriteIds.length === 0 ? 'Todavía no guardaste recetas' : 'No encontramos recetas'}</h2><p>{favoritesOnly && favoriteIds.length === 0 ? 'Explorá el catálogo y tocá el corazón de una receta.' : 'Probá limpiar filtros o revisar tus preferencias dietéticas y la despensa.'}</p></section> : <section aria-label="Listado de recetas" className="recipe-grid">
