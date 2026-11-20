@@ -32,7 +32,7 @@ export function HomePage() {
   const [loadFailed, setLoadFailed] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
   useEffect(() => { let current = true; setData(null); setLoadFailed(false); void dashboardRepository.loadHome().then((loaded) => { if (current) setData(loaded) }).catch(() => { if (current) { setLoadFailed(true); void notify({ type: 'error', title: 'No se pudo cargar el panel', message: 'Probá de nuevo más tarde.' }) } }); return () => { current = false } }, [loadAttempt, notify])
-  if (loadFailed) return <div className="page dashboard-page"><header className="dashboard-focus-heading"><div><p className="eyebrow">MI COCINA</p><h1>Panel</h1><p>No se pudo cargar tu cocina.</p><button className="button button-primary" onClick={() => { setLoadFailed(false); setLoadAttempt((attempt) => attempt + 1) }} type="button">Reintentar</button></div></header></div>
+  if (loadFailed) return <div className="page dashboard-page"><header className="dashboard-focus-heading"><div><h1>No se pudo cargar tu cocina</h1><button className="button button-primary" onClick={() => { setLoadFailed(false); setLoadAttempt((attempt) => attempt + 1) }} type="button">Reintentar</button></div></header></div>
   if (!data) return <div className="page dashboard-page"><LoadingScreen message="Cargando tu cocina…" /></div>
   const preferences = data.profile.preferences ?? []
   const recipes = data.recipes.filter((recipe) => matchesDietaryPreferences(recipe, preferences))
@@ -46,14 +46,6 @@ export function HomePage() {
   const plannedMeals = getPlannedMealsForDate(data.plannedMeals, date)
 
   return <div className="page dashboard-page dashboard-focus-page">
-    <header className="dashboard-focus-heading"><div><p className="eyebrow">MI COCINA</p><h1>Panel</h1><p>Ideas basadas en tu despensa, tu horario y tus preparaciones.</p></div></header>
-
-    {data.summary && <section aria-label="Resumen de tu cocina" className="dashboard-summary-counts">
-      <p>Despensa: {data.summary.pantry.total} productos · {data.summary.pantry.low} bajos · {data.summary.pantry.expired} vencidos · {data.summary.pantry.soon} por vencer</p>
-      <p>Favoritos: {data.summary.favorites.total} ({data.summary.favorites.available} disponibles) · Compras: {data.summary.shopping.pending} pendientes, {data.summary.shopping.checked} marcados, {data.summary.shopping.transferred} transferidos · Plan de hoy: {data.summary.todayPlanCount}</p>
-    </section>}
-
-    {preferences.length > 0 && <p className="form-message" role="status">Sugerencias filtradas según tus {preferences.length} preferencias dietéticas activas. <Link to="/profile">Editar preferencias</Link></p>}
     <div className="dashboard-highlight-layout">
       <div className="dashboard-highlight-grid">
         <TodayPlanSection activeRecipeIds={new Set(data.recipes.map((recipe) => recipe.id))} knownRecipes={data.knownRecipes} plannedMeals={plannedMeals} />
@@ -63,6 +55,13 @@ export function HomePage() {
         </section>
       </div>
     </div>
+
+    {data.summary && <section aria-label="Resumen de tu cocina" className="dashboard-summary-counts">
+      <p>Despensa: {data.summary.pantry.total} productos · {data.summary.pantry.low} bajos · {data.summary.pantry.expired} vencidos · {data.summary.pantry.soon} por vencer</p>
+      <p>Favoritos: {data.summary.favorites.total} ({data.summary.favorites.available} disponibles) · Compras: {data.summary.shopping.pending} pendientes, {data.summary.shopping.checked} marcados, {data.summary.shopping.transferred} transferidos · Plan de hoy: {data.summary.todayPlanCount}</p>
+    </section>}
+
+    {preferences.length > 0 && <p className="form-message" role="status">Sugerencias filtradas según tus {preferences.length} preferencias dietéticas activas. <Link to="/profile">Editar preferencias</Link></p>}
 
     {preferences.length > 0 && recipes.length === 0
       ? <p className="recipe-rail-empty" role="status">Ninguna receta activa coincide con tus preferencias actuales. <Link to="/profile">Ajustar preferencias</Link></p>

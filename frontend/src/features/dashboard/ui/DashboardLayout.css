@@ -4,6 +4,12 @@
   margin-bottom: 32px;
 }
 
+.dashboard-today-section .section-header h1 {
+  margin-bottom: 7px;
+  font-size: 19px;
+  line-height: 1.3;
+}
+
 .dashboard-highlight-grid {
   display: grid;
   min-width: 0;

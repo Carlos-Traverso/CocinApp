@@ -16,7 +16,7 @@ export function TodayPlanSection({ activeRecipeIds, knownRecipes, plannedMeals }
     <div className="section-header">
       <div>
         <p className="dashboard-recommendation-kicker"><CalendarDays aria-hidden="true" size={17} /> Tu organización</p>
-        <h2 id="today-plan-title">Planificado para hoy</h2>
+        <h1 id="today-plan-title">Planificado para hoy</h1>
       </div>
       <Link className="text-link" to="/planner">Ver planificación</Link>
     </div>
