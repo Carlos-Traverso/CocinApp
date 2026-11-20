@@ -39,10 +39,25 @@ export function RecipePicker({ title, meal, recipes, onSelect, onClose, selected
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const node = dialog.current
+    const scrollY = window.scrollY
+    const body = document.body
+    const previousPosition = body.style.position
+    const previousTop = body.style.top
+    const previousWidth = body.style.width
+    body.style.position = 'fixed'
+    body.style.top = `-${scrollY}px`
+    body.style.width = '100%'
     node?.showModal()
     if (portionsInput.current) portionsInput.current.focus()
     else input.current?.focus()
-    return () => { node?.close(); previousFocus?.focus() }
+    return () => {
+      node?.close()
+      body.style.position = previousPosition
+      body.style.top = previousTop
+      body.style.width = previousWidth
+      window.scrollTo(0, scrollY)
+      previousFocus?.focus()
+    }
   }, [])
 
   function choose(index: number) {

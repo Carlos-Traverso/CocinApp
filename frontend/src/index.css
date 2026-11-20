@@ -298,7 +298,7 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
 .planner-pick-button { width: 100%; min-height: 40px; border: 1px dashed #bdcdbd; border-radius: 8px; color: var(--green); background: #fff; cursor: pointer; padding: 7px 9px; font-size: 10px; font-weight: 750; text-align: center; }
 .planner-pick-button:hover, .planner-pick-button:focus-visible { border-color: var(--green); background: #f3f8f1; }
 .recipe-picker { width: min(560px, calc(100vw - 24px)); max-height: min(720px, calc(100dvh - 24px)); margin: auto; overflow: hidden; border: 0; border-radius: 18px; }
-.recipe-picker[open] { display: flex; flex-direction: column; height: min(720px, calc(100dvh - 24px)); box-sizing: border-box; }
+.recipe-picker[open] { display: flex; flex-direction: column; height: min(720px, calc(100dvh - 24px)); box-sizing: border-box; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .recipe-picker[open]:not(:has(.recipe-picker-results)) { height: fit-content; gap: 10px; overflow-y: auto; }
 .recipe-picker > * { flex-shrink: 0; }
 .recipe-picker::backdrop { background: #172819a8; }
@@ -312,7 +312,7 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
 .recipe-picker-search:focus-within { outline: 2px solid var(--green); outline-offset: 2px; }
 .recipe-picker-search button { border: 0; background: none; cursor: pointer; }
 .recipe-picker-count { font-size: 12px; color: var(--muted); }
-.recipe-picker-results { flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.recipe-picker-results { flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-gutter: stable; }
 .recipe-picker-option { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px; border: 0; border-bottom: 1px solid var(--line); background: #fff; color: var(--ink); text-align: left; cursor: pointer; }
 .recipe-picker-option.active, .recipe-picker-option:hover { background: #edf5e9; }
 .recipe-picker-option.current { box-shadow: inset 3px 0 0 var(--green); }
