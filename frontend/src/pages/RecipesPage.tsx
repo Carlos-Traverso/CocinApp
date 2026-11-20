@@ -96,10 +96,8 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
   }
 
   return <div className="page recipes-page">
-    {favoritesOnly && <header className="page-heading"><div><p className="eyebrow">RECETAS GUARDADAS</p><h1>Colección Personal</h1><p className="page-lead">Tus recetas favoritas activas, organizadas para volver a ellas.</p></div><Link className="button button-quiet" to="/recipes">Explorar recetas</Link></header>}
-
-    <section aria-labelledby="recipe-catalog-title" className={`recipe-catalog${favoritesOnly ? '' : ' recipe-catalog-primary'}`} id="recipe-catalog">
-      <div className="recipe-catalog-heading"><div>{favoritesOnly ? <><p className="eyebrow">TU COLECCIÓN</p><h2 id="recipe-catalog-title">Todas tus favoritas</h2></> : <h1 id="recipe-catalog-title">Explorá el catálogo</h1>}</div><div><p aria-live="polite" className="recipe-result-count">{visibleMatches.length} de {candidateCount} recetas</p><SearchFeedback resultCount={visibleMatches.length} status={search.status} /></div></div>
+    <section aria-labelledby="recipe-catalog-title" className="recipe-catalog recipe-catalog-primary" id="recipe-catalog">
+      <div className="recipe-catalog-heading"><div><h1 id="recipe-catalog-title">{favoritesOnly ? 'Todas tus favoritas' : 'Explorá el catálogo'}</h1></div><div><p aria-live="polite" className="recipe-result-count">{visibleMatches.length} de {candidateCount} recetas</p><SearchFeedback resultCount={visibleMatches.length} status={search.status} />{favoritesOnly && <Link className="recipe-rail-catalog-link" to="/recipes">Explorar recetas <ArrowRight aria-hidden="true" size={16} /></Link>}</div></div>
       <div aria-label="Filtros de recetas" className="recipe-controls with-search">
         <label className="field"><span>Buscar receta o ingrediente</span><span className="pantry-search-input"><Search aria-hidden="true" size={17} /><input onChange={(event) => setFilters({ ...filters, search: event.currentTarget.value })} placeholder="Ej.: quinoa, calabaza" type="search" value={filters.search} /></span></label>
         <FilterSelect label="Categoría" onChange={(category) => setFilters((current) => ({ ...current, category }))} options={[{ value: '', label: 'Todas' }, ...meals.map((meal) => ({ value: meal, label: meal }))]} value={filters.category} />
