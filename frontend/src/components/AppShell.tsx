@@ -98,13 +98,18 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <NavLink className="wordmark" to="/panel" aria-label="CocinAPP, inicio">
-          <BrandLogo />
-        </NavLink>
+      <aside className="sidebar app-sidebar">
+        <div className="app-sidebar-header">
+          <NavLink className="wordmark" to="/panel" aria-label="CocinAPP, inicio">
+            <BrandLogo />
+          </NavLink>
+          <p className="app-sidebar-tagline">Tu cocina, más organizada</p>
+        </div>
         <p className="sidebar-label">TU COCINA</p>
         <nav className="primary-nav" aria-label="Navegación principal">
-          {appNavigation.map((item) => <NavigationLink item={item} key={item.id} />)}
+          {appNavigation.map((item) => item.id === 'profile'
+            ? <div className="app-sidebar-profile" key={item.id}><NavigationLink item={item} /></div>
+            : <NavigationLink item={item} key={item.id} />)}
         </nav>
         <MobileNavigation loggingOut={loggingOut} onLogout={() => void logout()} />
         <button className="app-sidebar-logout" disabled={loggingOut} onClick={() => void logout()} type="button">

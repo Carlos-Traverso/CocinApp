@@ -35,6 +35,55 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px
 .app-sidebar-logout { display: flex; width: 100%; min-height: 43px; align-items: center; justify-content: flex-start; gap: 11px; margin-top: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: #596158; padding: 0 11px; text-align: left; font-size: 14px; font-weight: 600; cursor: pointer; }
 .app-sidebar-logout:hover:not(:disabled) { border-color: #d7e4d6; background: #f5f7f3; color: var(--green-dark); }
 .app-sidebar-logout:disabled { cursor: wait; opacity: .7; }
+
+@media (width > 760px) {
+  .app-sidebar {
+    overflow-y: auto;
+    gap: 0;
+    padding: 0 14px 16px;
+  }
+
+  .app-sidebar-header {
+    flex: none;
+    margin: 0 -14px clamp(15px, 3vh, 26px);
+    padding: clamp(14px, 3vh, 24px) 12px clamp(17px, 3vh, 26px);
+    border-radius: 0 0 50% 50% / 0 0 14% 14%;
+    background: #e9f2e9;
+    text-align: center;
+  }
+
+  .app-sidebar-header .wordmark { margin: 0 auto; }
+  .app-sidebar-header .brand-logo-compact { flex-direction: column; gap: 8px; }
+  .app-sidebar-header .brand-logo-mark { width: 43px; height: 43px; }
+  .app-sidebar-header .brand-logo-name { font-size: 29px; }
+
+  .app-sidebar-tagline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 7px 0 0;
+    color: #216443;
+    font-size: 12px;
+  }
+
+  .app-sidebar-tagline::before,
+  .app-sidebar-tagline::after {
+    width: clamp(8px, 1.2vw, 17px);
+    height: 1px;
+    background: currentColor;
+    content: '';
+  }
+
+  .app-sidebar .sidebar-label { letter-spacing: .055em; }
+  .app-sidebar .primary-nav { flex: none; gap: 3px; margin-bottom: 16px; }
+  .app-sidebar .nav-link { min-height: clamp(39px, 5.6vh, 48px); border-radius: 9px; }
+  .app-sidebar .nav-link svg, .app-sidebar-logout svg { flex: none; }
+  .app-sidebar .nav-link.active { background: #e6f0e6; }
+  .app-sidebar-profile { margin-top: 9px; padding: 9px 0; border-block: 1px solid var(--line); }
+  .app-sidebar-logout { flex: none; border-radius: 9px; }
+}
+
 .sidebar-foot { display: flex; align-items: center; gap: 11px; margin-top: auto; border-top: 1px solid var(--line); padding: 18px 7px 0; }
 .avatar { display: grid; width: 35px; height: 35px; place-items: center; border-radius: 50%; background: #f7e7ce; color: #744d1d; font-weight: 750; }
 .sidebar-foot strong, .sidebar-foot small { display: block; }
