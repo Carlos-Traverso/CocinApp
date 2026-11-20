@@ -1,4 +1,5 @@
 import type { ChangeEvent } from 'react'
+import { FilterSelect } from '../../../components/FilterSelect'
 import type {
   ActivityLevel,
   DietaryPreference,
@@ -97,35 +98,8 @@ export function ProfileFields({ profile, onChange, showEmail = false }: ProfileF
           required
         />
       </label>
-      <label className="field">
-        <span>Sexo para el cálculo metabólico</span>
-        <select
-          name="metabolicSex"
-          value={profile.metabolicSex ?? ''}
-          onChange={(event) => onChange({ metabolicSex: event.currentTarget.value as MetabolicSex })}
-          required
-        >
-          <option value="">Seleccionar</option>
-          <option value="female">Femenino</option>
-          <option value="male">Masculino</option>
-        </select>
-      </label>
-      <label className="field">
-        <span>Actividad habitual</span>
-        <select
-          name="activityLevel"
-          value={profile.activityLevel ?? ''}
-          onChange={(event) => onChange({ activityLevel: event.currentTarget.value as ActivityLevel })}
-          required
-        >
-          <option value="">Seleccionar</option>
-          <option value="sedentary">Sedentaria</option>
-          <option value="light">Ligera</option>
-          <option value="moderate">Moderada</option>
-          <option value="active">Alta</option>
-          <option value="very-active">Muy alta</option>
-        </select>
-      </label>
+      <FilterSelect label="Sexo para el cálculo metabólico" name="metabolicSex" onChange={(value) => onChange({ metabolicSex: value as MetabolicSex })} options={[{ value: '', label: 'Seleccionar' }, { value: 'female', label: 'Femenino' }, { value: 'male', label: 'Masculino' }]} required value={profile.metabolicSex ?? ''} />
+      <FilterSelect label="Actividad habitual" name="activityLevel" onChange={(value) => onChange({ activityLevel: value as ActivityLevel })} options={[{ value: '', label: 'Seleccionar' }, { value: 'sedentary', label: 'Sedentaria' }, { value: 'light', label: 'Ligera' }, { value: 'moderate', label: 'Moderada' }, { value: 'active', label: 'Alta' }, { value: 'very-active', label: 'Muy alta' }]} required value={profile.activityLevel ?? ''} />
     </div>
     <fieldset className="choice-group">
       <legend>Objetivo principal</legend>

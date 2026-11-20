@@ -12,9 +12,11 @@ interface Props {
   value: string
   options: FilterOption[]
   onChange: (value: string) => void
+  name?: string
+  required?: boolean
 }
 
-export function FilterSelect({ label, value, options, onChange }: Props) {
+export function FilterSelect({ label, value, options, onChange, name, required }: Props) {
   const id = useId()
   const [open, setOpen] = useState(false)
   const dialog = useRef<HTMLDialogElement>(null)
@@ -46,7 +48,7 @@ export function FilterSelect({ label, value, options, onChange }: Props) {
   }, [open])
 
   return <div className="field filter-select">
-    <label className="filter-select-native" htmlFor={id}><span>{label}</span><select id={id} onChange={(event) => onChange(event.currentTarget.value)} value={value}>{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+    <label className="filter-select-native" htmlFor={id}><span>{label}</span><select id={id} name={name} onChange={(event) => onChange(event.currentTarget.value)} required={required} value={value}>{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
     <div className="filter-select-mobile">
       <span id={`${id}-label`}>{label}</span>
       <button aria-expanded={open} aria-haspopup="dialog" aria-labelledby={`${id}-label ${id}-value`} className="filter-select-trigger" onClick={() => setOpen(true)} ref={trigger} type="button"><span id={`${id}-value`}>{selected?.label ?? ''}</span><ChevronDown aria-hidden="true" size={18} /></button>

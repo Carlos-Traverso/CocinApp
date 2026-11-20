@@ -51,7 +51,9 @@ export function ProfilePage() {
     clearValidationError()
     if (!form.checkValidity()) {
       const invalidField = form.querySelector<HTMLInputElement | HTMLSelectElement>(':invalid')
-      invalidField?.focus()
+      if (invalidField instanceof HTMLSelectElement && window.matchMedia('(max-width: 760px)').matches) {
+        invalidField.closest('.filter-select')?.querySelector<HTMLButtonElement>('.filter-select-trigger')?.click()
+      } else invalidField?.focus()
       showValidationError(invalidField, invalidField ? profileFieldValidationMessage(invalidField) : 'Revisá los datos ingresados.')
       return
     }
@@ -100,7 +102,7 @@ export function ProfilePage() {
       <form className="profile-form surface" noValidate onInput={clearValidationError} onChange={clearValidationError} onSubmit={save}>
         {validationError && <p className="form-message error" id="profile-validation-error" role="alert">{validationError}</p>}
         <div className="section-heading"><div><h2>Datos y objetivos</h2><p>{isRelationalProfilesEnabled ? 'Guardados en tu cuenta.' : 'Guardados solo en este navegador durante esta etapa.'}</p></div></div>
-        {loading ? <LoadingScreen message="Cargando perfil…" variant="section" /> : <><ProfileFields profile={profile} showEmail onChange={(changes) => { setProfile({ ...profile, ...changes }) }} />
+        {loading ? <LoadingScreen message="Cargando perfil…" variant="section" /> : <><ProfileFields profile={profile} showEmail onChange={(changes) => { setProfile({ ...profile, ...changes }); clearValidationError() }} />
         <p className="medical-note compact">Las etiquetas dietéticas son informativas y no garantizan ausencia de contaminación cruzada.</p></>}
         <div className="profile-save-row"><button className="button button-primary" disabled={loading || saving} type="submit"><Save size={17} /> {saving ? 'Guardando…' : 'Guardar perfil'}</button></div>
       </form>

@@ -36,7 +36,9 @@ export function OnboardingPage() {
     clearValidationError()
     if (!form.checkValidity()) {
       const invalidField = form.querySelector<HTMLInputElement | HTMLSelectElement>(':invalid')
-      invalidField?.focus()
+      if (invalidField instanceof HTMLSelectElement && window.matchMedia('(max-width: 760px)').matches) {
+        invalidField.closest('.filter-select')?.querySelector<HTMLButtonElement>('.filter-select-trigger')?.click()
+      } else invalidField?.focus()
       showValidationError(invalidField, invalidField ? profileFieldValidationMessage(invalidField) : 'Revisá los datos ingresados.')
       return
     }
@@ -81,7 +83,7 @@ export function OnboardingPage() {
       <p className="setup-lead">Estos datos permiten mostrar una referencia de energía y priorizar recetas compatibles. Podés modificarlos cuando quieras.</p>
       <form noValidate onInput={clearValidationError} onChange={clearValidationError} onSubmit={saveAndContinue} ref={formRef}>
         {validationError && <p className="form-message error" id="setup-validation-error" role="alert">{validationError}</p>}
-        {loading ? <LoadingScreen message="Cargando preferencias…" variant="section" /> : <ProfileFields profile={profile} onChange={(changes) => { setProfile({ ...profile, ...changes }) }} />}
+        {loading ? <LoadingScreen message="Cargando preferencias…" variant="section" /> : <ProfileFields profile={profile} onChange={(changes) => { setProfile({ ...profile, ...changes }); clearValidationError() }} />}
         {age !== undefined && <p className="calculated-age">Edad calculada: <strong>{age} años</strong></p>}
         {estimate && <EnergySummary estimate={estimate} />}
         <p className="medical-note"><CircleAlert size={17} /> Esta estimación es informativa; no reemplaza el asesoramiento de un profesional de nutrición. Las etiquetas dietéticas no garantizan ausencia de contaminación cruzada.</p>
