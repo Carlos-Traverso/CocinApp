@@ -29,7 +29,7 @@ const navigationIcons = {
   profile: UserRound,
 }
 
-const mobilePrimary = ['panel', 'recipes', 'pantry', 'shopping']
+const mobilePrimary = ['panel', 'recipes', 'planner', 'shopping']
 
 function NavigationLink({ item, label = item.label, onClick }: { item: typeof appNavigation[number]; label?: string; onClick?: () => void }) {
   const { id, to } = item
