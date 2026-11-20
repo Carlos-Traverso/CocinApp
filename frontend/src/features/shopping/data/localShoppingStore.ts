@@ -4,7 +4,7 @@ import { personalStorage } from '../../auth/data/personalStorage'
 import { readPantryItems, writePantryItems } from '../../pantry/data/localPantryStore'
 import { addPurchaseToPantry, isShoppingItemTransferable } from '../domain/shopping'
 import { mergeShoppingSuggestions, type ShoppingItem, type ShoppingSource, type ShoppingSuggestion } from '../domain/shopping'
-import { normalizePantryName } from '../../pantry/domain/pantry'
+import { normalizePantryName, type PantryItem } from '../../pantry/domain/pantry'
 import { inferIngredientCategory } from '../../admin/domain/ingredientCategory'
 
 const key = 'cocinapp.shopping.v1'
@@ -53,16 +53,20 @@ function getAdminDataFallback() { return createInitialAdminData() }
 export function readShoppingItems(storage: StorageLike = personalStorage): ShoppingItem[] {
   try {
     const value: unknown = JSON.parse(storage.getItem(key) ?? '[]')
-    if (!Array.isArray(value)) return []
-    const transferredIds = new Set(readPantryItems(storage).flatMap((item) => item.sourceShoppingIds ?? []))
-    const seen = new Set<string>()
-    return value.flatMap((value): ShoppingItem[] => {
-      const item = readShoppingItem(value, transferredIds)
-      if (!item || item.transferredToPantry || seen.has(item.id)) return []
-      seen.add(item.id)
-      return [item]
-    })
+    return parseShoppingItems(value, readPantryItems(storage))
   } catch { return [] }
+}
+
+export function parseShoppingItems(value: unknown, pantry: PantryItem[]): ShoppingItem[] {
+  if (!Array.isArray(value)) return []
+  const transferredIds = new Set(pantry.flatMap((item) => item.sourceShoppingIds ?? []))
+  const seen = new Set<string>()
+  return value.flatMap((row): ShoppingItem[] => {
+    const item = readShoppingItem(row, transferredIds)
+    if (!item || item.transferredToPantry || seen.has(item.id)) return []
+    seen.add(item.id)
+    return [item]
+  })
 }
 
 export function writeShoppingItems(items: ShoppingItem[], storage: StorageLike = personalStorage): void {
@@ -95,24 +99,27 @@ export function markAllShoppingPurchased(storage: StorageLike = personalStorage)
 
 export interface PantryTransferResult { items: ShoppingItem[]; transferredCount: number; removedCount: number }
 
-export function transferPurchasedToPantry(storage: StorageLike = personalStorage, now = new Date()): PantryTransferResult {
-  const items = readShoppingItems(storage)
-  const pantryBefore = readPantryItems(storage)
+export function preparePantryTransfer(items: ShoppingItem[], pantryBefore: PantryItem[], now = new Date()) {
   const catalog = catalogData()
   const purchases = items.filter((item) => isShoppingItemTransferable(item, catalog))
-  if (purchases.length === 0) return { items, transferredCount: 0, removedCount: 0 }
-
   const transferredAt = now.toISOString()
   const transferred = purchases.map((item) => ({ ...item, transferredToPantry: true, transferredAt }))
   const pantryAfter = transferred.reduce((pantry, item) => addPurchaseToPantry(pantry, item, catalog.units), pantryBefore)
   const transferredIds = new Set(transferred.map((item) => item.id))
   const shoppingAfter = items.filter((item) => !transferredIds.has(item.id))
+  const result: PantryTransferResult = { items: shoppingAfter, transferredCount: transferred.length, removedCount: transferred.length }
+  return { pantryAfter, transferredIds, result }
+}
 
+export function transferPurchasedToPantry(storage: StorageLike = personalStorage, now = new Date()): PantryTransferResult {
+  const pantryBefore = readPantryItems(storage)
+  const { pantryAfter, result } = preparePantryTransfer(readShoppingItems(storage), pantryBefore, now)
+  if (!result.transferredCount) return result
   let pantryCommitted = false
   try {
     writePantryItems(pantryAfter, storage)
     pantryCommitted = true
-    writeShoppingItems(shoppingAfter, storage)
+    writeShoppingItems(result.items, storage)
   } catch (cause) {
     if (pantryCommitted) {
       try { writePantryItems(pantryBefore, storage) } catch { /* Preserve the original transfer error. */ }
@@ -120,5 +127,5 @@ export function transferPurchasedToPantry(storage: StorageLike = personalStorage
     throw new Error('La transferencia no se pudo confirmar.', { cause })
   }
 
-  return { items: shoppingAfter, transferredCount: transferred.length, removedCount: items.length - shoppingAfter.length }
+  return result
 }
