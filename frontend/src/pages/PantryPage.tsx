@@ -1,4 +1,5 @@
 import { LoadingScreen } from '../components/LoadingScreen'
+import { FilterSelect } from '../components/FilterSelect'
 import { AlertTriangle, CalendarClock, ClipboardList, ImagePlus, Pencil, Plus, Search, ShoppingCart, Trash2, X } from 'lucide-react'
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -323,9 +324,9 @@ export function PantryPage() {
 
     <section aria-label="Filtros de ingredientes" className="pantry-controls">
       <label className="field pantry-search"><span>Buscar por nombre</span><span className="pantry-search-input"><Search aria-hidden="true" size={17} /><input onChange={(event) => setFilters({ ...filters, search: event.currentTarget.value })} placeholder="Ej.: arroz, tomate" type="search" value={filters.search} /></span></label>
-      <label className="field"><span>Categoría</span><select onChange={(event) => setFilters({ ...filters, category: event.currentTarget.value as PantryCategory | '' })} value={filters.category}><option value="">Todas</option>{categories.map((category) => <option key={category}>{category}</option>)}</select></label>
-      <label className="field"><span>Estado</span><select onChange={(event) => setFilters({ ...filters, status: event.currentTarget.value as PantryStatus | '' })} value={filters.status}><option value="">Todos</option><option value="ok">Disponibles</option><option value="low">Stock bajo</option><option value="empty">Sin stock</option><option value="soon">Por vencer</option><option value="expired">Vencidos</option></select></label>
-      <label className="field"><span>Ordenar por</span><select onChange={(event) => setSortOrder(event.currentTarget.value as SortOrder)} value={sortOrder}><option value="name">Nombre</option><option value="expiry">Vencimiento</option><option value="quantity">Cantidad</option></select></label>
+      <FilterSelect label="Categoría" onChange={(category) => setFilters((current) => ({ ...current, category: category as PantryCategory | '' }))} options={[{ value: '', label: 'Todas' }, ...categories.map((category) => ({ value: category, label: category }))]} value={filters.category} />
+      <FilterSelect label="Estado" onChange={(status) => setFilters((current) => ({ ...current, status: status as PantryStatus | '' }))} options={[{ value: '', label: 'Todos' }, { value: 'ok', label: 'Disponibles' }, { value: 'low', label: 'Stock bajo' }, { value: 'empty', label: 'Sin stock' }, { value: 'soon', label: 'Por vencer' }, { value: 'expired', label: 'Vencidos' }]} value={filters.status} />
+      <FilterSelect label="Ordenar por" onChange={(order) => setSortOrder(order as SortOrder)} options={[{ value: 'name', label: 'Nombre' }, { value: 'expiry', label: 'Vencimiento' }, { value: 'quantity', label: 'Cantidad' }]} value={sortOrder} />
     </section>
 
     <div className="pantry-results"><span><SearchFeedback resultCount={visibleItems.length} status={search.status} />{search.status === 'empty' && ` · ${visibleItems.length} ${visibleItems.length === 1 ? 'ingrediente visible' : 'ingredientes visibles'}`}</span><button disabled={!filters.search && !filters.category && !filters.status} onClick={() => setFilters(emptyFilters)} type="button">Limpiar filtros</button></div>
