@@ -25,10 +25,22 @@ export function FilterSelect({ label, value, options, onChange }: Props) {
     if (!open) return
     const node = dialog.current
     const returnFocus = trigger.current
+    const scrollY = window.scrollY
+    const body = document.body
+    const previousPosition = body.style.position
+    const previousTop = body.style.top
+    const previousWidth = body.style.width
+    body.style.position = 'fixed'
+    body.style.top = `-${scrollY}px`
+    body.style.width = '100%'
     node?.showModal()
     node?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus()
     return () => {
       node?.close()
+      body.style.position = previousPosition
+      body.style.top = previousTop
+      body.style.width = previousWidth
+      window.scrollTo(0, scrollY)
       returnFocus?.focus()
     }
   }, [open])
