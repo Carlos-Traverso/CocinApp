@@ -4,6 +4,7 @@ import type { PlannedMeal } from '../../planner/domain/planner'
 import { MealBadge } from '../../planner/ui/MealBadge'
 import { RecipeImage } from '../../recipes/ui/RecipeImage'
 import type { Recipe } from '../../recipes/domain/Recipe'
+import { findPlannedRecipe } from '../domain/dashboard'
 
 interface TodayPlanSectionProps {
   activeRecipeIds: Set<string>
@@ -29,7 +30,7 @@ export function TodayPlanSection({ activeRecipeIds, knownRecipes, plannedMeals }
         </div>
       : <div className="dashboard-today-grid">
           {plannedMeals.map((entry) => {
-            const recipe = knownRecipes.find((item) => item.id === entry.recipeId || item.relationalId === entry.relationalId)
+            const recipe = findPlannedRecipe(knownRecipes, entry)
             const isActive = !!recipe && activeRecipeIds.has(recipe.id)
             return <article className="dashboard-today-card" key={`${entry.date}:${entry.meal}:${entry.position ?? 1}`}>
               {recipe && <RecipeImage className="dashboard-today-image" recipe={recipe} />}

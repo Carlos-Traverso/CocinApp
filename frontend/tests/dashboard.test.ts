@@ -2,9 +2,20 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { sampleRecipes } from '../src/mocks/recipes'
 import type { PantryItem } from '../src/features/pantry/domain/pantry'
-import { buildCookingSuggestions, mealForHour, recentPreparations, recommendRecipeForTime } from '../src/features/dashboard/domain/dashboard'
+import { buildCookingSuggestions, findPlannedRecipe, mealForHour, recentPreparations, recommendRecipeForTime } from '../src/features/dashboard/domain/dashboard'
 
 const today = new Date(2026, 8, 23)
+
+test('today plan resolves each legacy recipe by its own ID and leaves unknown recipes unresolved', () => {
+  const recipeIds = ['scrambled-eggs-toast', 'pumpkin-pasta', 'overnight-oats', 'spinach-pie']
+  assert.deepEqual(recipeIds.map((recipeId) => findPlannedRecipe(sampleRecipes, { recipeId })?.id), recipeIds)
+  assert.equal(findPlannedRecipe(sampleRecipes, { recipeId: 'unknown-recipe' }), undefined)
+})
+
+test('today plan resolves a recipe by its relational ID when its route ID differs', () => {
+  const recipe = { ...sampleRecipes[0], relationalId: 'relational-recipe' }
+  assert.equal(findPlannedRecipe([recipe], { recipeId: 'old-route', relationalId: recipe.relationalId }), recipe)
+})
 
 test('meal boundaries cover the four local time ranges exactly', () => {
   assert.equal(mealForHour(4), 'Cena')

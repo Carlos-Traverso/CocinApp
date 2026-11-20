@@ -1,6 +1,6 @@
 import type { PreparationEvent } from '../../cooking/domain/cooking'
 import type { PantryItem } from '../../pantry/domain/pantry'
-import type { Meal } from '../../planner/domain/planner'
+import type { Meal, PlannedMeal } from '../../planner/domain/planner'
 import type { Recipe } from '../../recipes/domain/Recipe'
 import { getIngredientAvailability, recipeMealShifts } from '../../recipes/domain/recipeRules'
 import type { AdminUnit } from '../../admin/domain/adminModels'
@@ -24,6 +24,11 @@ export interface RecommendationContext {
 }
 
 export interface TimeRecommendation { meal: Meal; recipe?: Recipe; reason?: string }
+
+export function findPlannedRecipe(recipes: Recipe[], entry: Pick<PlannedMeal, 'recipeId' | 'relationalId'>): Recipe | undefined {
+  const { recipeId, relationalId } = entry
+  return recipes.find((recipe) => recipe.id === recipeId || (relationalId && recipe.relationalId === relationalId))
+}
 
 export function recentPreparations(history: PreparationEvent[], knownRecipeIds: Iterable<string>, limit = 4): PreparationEvent[] {
   const known = new Set(knownRecipeIds)
