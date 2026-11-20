@@ -102,9 +102,23 @@ function PantryEditor({ item, items, catalog, categories, onClose, onSave }: {
 
   useEffect(() => {
     const dialog = dialogRef.current
+    const scrollY = window.scrollY
+    const body = document.body
+    const previousPosition = body.style.position
+    const previousTop = body.style.top
+    const previousWidth = body.style.width
+    body.style.position = 'fixed'
+    body.style.top = `-${scrollY}px`
+    body.style.width = '100%'
     dialog?.showModal()
     dialog?.querySelector<HTMLInputElement>('input[name="name"]')?.focus()
-    return () => { if (dialog?.open) dialog.close() }
+    return () => {
+      if (dialog?.open) dialog.close()
+      body.style.position = previousPosition
+      body.style.top = previousTop
+      body.style.width = previousWidth
+      window.scrollTo(0, scrollY)
+    }
   }, [])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -136,10 +150,10 @@ function PantryEditor({ item, items, catalog, categories, onClose, onSave }: {
     <p className="pantry-dialog-intro">Registrá el stock disponible y, si querés, un mínimo y un vencimiento.</p>
     <form className="pantry-form" noValidate onSubmit={submit}>
       <label className="field"><span>Ingrediente</span><input autoComplete="off" list="admin-ingredient-catalog" maxLength={70} name="name" onChange={(event) => { const name = event.currentTarget.value; const catalogItem = findCatalogIngredient(catalog, name); const category = catalog.categories.find((entry) => entry.id === catalogItem?.categoryId)?.name; const baseUnit = catalog.units.find((entry) => entry.id === catalogItem?.baseUnitId)?.abbreviation; setDraft({ ...draft, name, ingredientId: catalogItem?.id, ingredientRef: useRelationalPantry ? (catalogItem as (typeof catalogItem & { relationalId?: string }))?.relationalId : undefined, ...(category ? { category } : {}), ...(baseUnit ? { unit: baseUnit } : {}) }); setError('') }} placeholder="Ej.: arroz integral" required value={draft.name} /><datalist id="admin-ingredient-catalog">{catalog.ingredients.filter((entry) => entry.active && !entry.isDeleted).map((entry) => <option key={entry.id} value={entry.name} />)}</datalist></label>
-      <label className="field"><span>Categoría</span><select onChange={(event) => setDraft({ ...draft, category: event.currentTarget.value as PantryCategory })} value={draft.category}>{categories.map((category) => <option key={category}>{category}</option>)}</select></label>
+      <FilterSelect label="Categoría" onChange={(category) => setDraft((current) => ({ ...current, category: category as PantryCategory }))} options={categories.map((category) => ({ value: category, label: category }))} value={draft.category} />
       <div className="pantry-form-grid">
         <label className="field"><span>Cantidad disponible</span><input inputMode="decimal" max="1000000" min="0" name="quantity" onChange={(event) => setDraft({ ...draft, quantity: event.currentTarget.value === '' ? Number.NaN : event.currentTarget.valueAsNumber })} required step="any" type="number" value={Number.isNaN(draft.quantity) ? '' : draft.quantity} /></label>
-        <label className="field"><span>Unidad</span><select onChange={(event) => setDraft({ ...draft, unit: event.currentTarget.value as PantryUnit })} value={draft.unit}>{unitChoices.map((unit) => <option key={unit}>{unit}</option>)}</select></label>
+        <FilterSelect label="Unidad" onChange={(unit) => setDraft((current) => ({ ...current, unit: unit as PantryUnit }))} options={unitChoices.map((unit) => ({ value: unit, label: unit }))} value={draft.unit} />
         <label className="field"><span>Avisar por debajo de</span><input inputMode="decimal" max="1000000" min="0" name="minimum" onChange={(event) => setDraft({ ...draft, minimum: event.currentTarget.value === '' ? Number.NaN : event.currentTarget.valueAsNumber })} required step="any" type="number" value={Number.isNaN(draft.minimum) ? '' : draft.minimum} /></label>
         <label className="field"><span>Vencimiento (opcional)</span><input onChange={(event) => setDraft({ ...draft, expiry: event.currentTarget.value || null })} type="date" value={draft.expiry ?? ''} /></label>
       </div>

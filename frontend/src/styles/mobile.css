@@ -163,6 +163,11 @@
     overscroll-behavior: contain;
   }
 
+  .pantry-dialog {
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
   .pantry-dialog-actions,
   .profile-head-actions,
   .pantry-head-actions,
