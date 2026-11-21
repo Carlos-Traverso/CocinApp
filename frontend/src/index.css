@@ -90,7 +90,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px
 .sidebar-foot strong { font-size: 13px; }
 .sidebar-foot small { margin-top: 2px; color: var(--muted); font-size: 11px; }
 .main-content { min-height: 100vh; margin-left: 248px; padding: 45px clamp(24px, 5vw, 76px) 64px; }
-.page { width: min(100%, 1120px); margin: 0 auto; }
+.page { width: min(100%, 1120px); margin: 0 auto; border: 1px solid var(--line); border-radius: 16px; background: #fff; padding: clamp(18px, 3vw, 32px); box-shadow: 0 12px 32px #263c280a; }
 .page-heading { display: flex; min-height: 112px; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 32px; }
 .eyebrow { margin-bottom: 8px; color: var(--green); }
 h1, h2, p { margin-top: 0; }
