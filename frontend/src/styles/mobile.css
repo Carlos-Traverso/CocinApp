@@ -253,19 +253,15 @@
     flex: 1 1 auto;
   }
 
-  .planner-slot-links {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-    gap: 7px;
+  .planner-slot {
+    grid-template-rows: 44px var(--planner-recipe-height) 44px;
   }
 
   .planner-slot-links .text-link {
-    min-height: 44px;
     font-size: 12px;
   }
 
   .planner-pick-button {
-    min-height: 44px;
     padding: 6px 10px;
     font-size: 12px;
   }
