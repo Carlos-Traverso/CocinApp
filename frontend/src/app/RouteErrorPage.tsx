@@ -1,5 +1,5 @@
 import { ArrowLeft, RefreshCw } from 'lucide-react'
-import { Link, useOutletContext } from 'react-router-dom'
+import { isRouteErrorResponse, Link, useRouteError } from 'react-router-dom'
 import type { UserRole } from '../features/auth/data/localAuthStore'
 import { roleHome } from '../features/auth/domain/routeAccess'
 import { ErrorScreen } from './ErrorScreen'
@@ -15,20 +15,25 @@ const errorCopy = {
   },
 }
 
-export function RouteErrorPage({ status }: { status: 403 | 404 }) {
-  const role = useOutletContext<UserRole>()
+export function RouteErrorPage({ status, role }: { status: 403 | 404; role?: UserRole }) {
   return <ErrorScreen status={status} {...errorCopy[status]}>
-    <Link className="button button-primary" replace to={roleHome(role)}>
+    <Link className="button button-primary" replace to={role ? roleHome(role) : '/'}>
       <ArrowLeft aria-hidden="true" size={17} />
-      {role === 'ADMIN' ? 'Volver a Administración' : 'Volver al panel'}
+      {role === 'ADMIN' ? 'Volver a Administración' : role === 'USER' ? 'Volver al panel' : 'Volver al inicio'}
     </Link>
   </ErrorScreen>
 }
 
 export function UnexpectedErrorPage() {
+  const error = useRouteError()
+  if (isRouteErrorResponse(error) && (error.status === 403 || error.status === 404)) {
+    return <RouteErrorPage status={error.status} />
+  }
+
   return <ErrorScreen
-    description="Podés recargar la página para intentarlo de nuevo o regresar al inicio."
-    title="Algo salió mal en CocinAPP"
+    description="Tuvimos un problema al abrir esta página. Probá recargarla o volvé al inicio."
+    status={500}
+    title="Algo salió mal en la cocina"
   >
     <button className="button button-primary" onClick={() => window.location.reload()} type="button">
       <RefreshCw aria-hidden="true" size={17} />Recargar página

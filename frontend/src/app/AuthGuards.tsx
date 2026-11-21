@@ -19,7 +19,7 @@ export function RequireSession() {
 
 export function RequireRole({ role }: { role: UserRole }) {
   const sessionRole = useOutletContext<UserRole>()
-  if (sessionRole !== role) return <RouteErrorPage status={403} />
+  if (sessionRole !== role) return <RouteErrorPage role={sessionRole} status={403} />
   return <Outlet />
 }
 

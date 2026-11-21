@@ -1,84 +1,129 @@
 .error-page {
   display: grid;
-  min-height: 100vh;
   min-height: 100svh;
   place-items: center;
-  padding: clamp(18px, 4vw, 36px);
-  background: radial-gradient(ellipse at 10% 5%, #e2eedc 0, transparent 55%),
-    radial-gradient(ellipse at 95% 95%, #efe5ca 0, transparent 45%), #f6f7f3;
+  padding: clamp(18px, 5vw, 52px);
+  container-type: inline-size;
 }
 
 .error-page-embedded {
   min-height: 0;
   padding-inline: 0;
-  background: none;
 }
 
 .error-card {
-  width: min(100%, 500px);
-  padding: clamp(24px, 6vw, 40px);
-  border: 1px solid #dbe5d6;
-  border-top: 5px solid var(--green);
-  border-radius: 22px;
-  background: #fffefa;
+  --error-inset: clamp(30px, 6cqw, 64px);
+
+  display: grid;
+  width: min(100%, 900px);
+  min-height: 390px;
+  grid-template: "logo visual" auto "content visual" 1fr / minmax(0, 1.45fr) minmax(0, 1fr);
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background: var(--surface);
   box-shadow: 0 20px 65px #254b3412;
-  text-align: center;
 }
 
-.error-logo { margin-bottom: 24px; }
+.error-logo {
+  grid-area: logo;
+  justify-self: start;
+  margin: 30px var(--error-inset) 24px;
+}
+
+.error-visual {
+  display: flex;
+  min-height: 100%;
+  grid-area: visual;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 28px 16px;
+  border: 1px solid var(--line);
+  border-radius: 19px;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0 105px, #296b4a14 106px, transparent 107px 138px, #296b4a14 139px, transparent 140px),
+    linear-gradient(150deg, var(--green-soft) 30%, #f6efdf);
+  color: var(--green-dark);
+}
 
 .error-symbol {
   display: grid;
   width: 64px;
   height: 64px;
   place-items: center;
-  margin: 0 auto 18px;
-  border: 1px solid #eaddb8;
-  border-radius: 18px;
-  color: #916926;
-  background: #fbf1d9;
+  border: 1px solid #d4e3d7;
+  border-radius: 50%;
+  background: var(--surface);
 }
 
-.error-card .eyebrow { margin-bottom: 10px; }
+.error-status {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(64px, 11cqw, 116px);
+  line-height: .82;
+  text-align: center;
+}
+
+.error-status span {
+  display: block;
+  margin-bottom: 12px;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: .16em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.error-content {
+  grid-area: content;
+  padding: 0 var(--error-inset) 32px;
+}
 
 .error-card h1 {
-  margin: 0 0 12px;
+  max-width: 13ch;
+  margin: 0 0 16px;
   color: var(--green-dark);
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(28px, 6vw, 38px);
+  font-size: clamp(32px, 6cqw, 54px);
   font-weight: 500;
-  line-height: 1.14;
+  letter-spacing: -.035em;
+  line-height: 1.04;
+  text-wrap: balance;
 }
 
 .error-description {
-  margin: 0 0 22px;
+  max-width: 38ch;
+  margin: 0 0 24px;
   color: var(--muted);
   font-size: 15px;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .error-notice {
   margin: 0 0 22px;
-  padding: 13px 15px;
-  border: 1px solid #e8dfc9;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
   border-radius: 10px;
-  color: #75603a;
-  background: #f9f5e9;
-  font-size: 13px;
-  line-height: 1.6;
+  background: #fbfaf6;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 
 .error-actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   gap: 10px;
 }
 
 .error-actions .button {
   min-height: 46px;
-  padding-block: 8px;
+  padding: 8px 16px;
   border-radius: 9px;
   cursor: pointer;
 }
@@ -86,6 +131,23 @@
 .error-actions .button:disabled { cursor: wait; }
 .error-actions .button svg { flex: none; }
 
-@media (max-width: 440px) {
+@container (max-width: 650px) {
+  .error-card {
+    --error-inset: clamp(12px, 4cqw, 26px);
+
+    min-height: 0;
+    grid-template: "logo" "visual" "content" / minmax(0, 1fr);
+  }
+
+  .error-logo { margin-block: 8px 16px; }
+  .error-visual { min-height: 0; flex-direction: row; padding-block: 20px; }
+  .error-symbol { width: 52px; height: 52px; }
+  .error-status { font-size: 56px; }
+  .error-status span { margin-bottom: 6px; }
+  .error-content { padding-block: 24px 12px; }
+  .error-card h1 { max-width: 19ch; }
+}
+
+@container (max-width: 360px) {
   .error-actions { flex-direction: column; }
 }

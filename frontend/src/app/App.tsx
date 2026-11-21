@@ -22,6 +22,9 @@ const router = createBrowserRouter(createRoutesFromElements(
   <Route errorElement={<UnexpectedErrorPage />}>
     <Route path="recuperar-contrasena" element={<RequestPasswordRecoveryPage />} />
     <Route path="restablecer-contrasena" element={<ResetPasswordPage />} />
+    {import.meta.env.DEV && <Route path="__errores/500" element={null} loader={() => {
+      throw new Response(null, { status: 500 })
+    }} />}
     <Route element={<RedirectIfAuthenticated />}>
       <Route index element={<WelcomePage />} />
       <Route path="auth" element={<Navigate replace to="/" />} />
@@ -57,8 +60,8 @@ const router = createBrowserRouter(createRoutesFromElements(
           <Route path="shopping" element={<ShoppingPage />} />
         </Route>
       </Route>
-      <Route path="*" element={<RouteErrorPage status={404} />} />
     </Route>
+    <Route path="*" element={<RouteErrorPage status={404} />} />
   </Route>,
 ))
 

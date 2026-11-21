@@ -2,6 +2,7 @@ import { LoadingScreen } from '../components/LoadingScreen'
 import { useEffect, useState } from 'react'
 import { Clock3, History, PackageCheck, SunMedium } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { ErrorScreen } from '../app/ErrorScreen'
 import { dashboardRepository, type DashboardHomeData } from '../features/dashboard/data/DashboardRepository'
 import { buildCookingSuggestions, recentPreparations, recommendRecipeForTime } from '../features/dashboard/domain/dashboard'
 import type { Recipe } from '../features/recipes/domain/Recipe'
@@ -32,7 +33,13 @@ export function HomePage() {
   const [loadFailed, setLoadFailed] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
   useEffect(() => { let current = true; setData(null); setLoadFailed(false); void dashboardRepository.loadHome().then((loaded) => { if (current) setData(loaded) }).catch(() => { if (current) { setLoadFailed(true); void notify({ type: 'error', title: 'No se pudo cargar el panel', message: 'Probá de nuevo más tarde.' }) } }); return () => { current = false } }, [loadAttempt, notify])
-  if (loadFailed) return <div className="page dashboard-page"><header className="dashboard-focus-heading"><div><h1>No se pudo cargar tu cocina</h1><button className="button button-primary" onClick={() => { setLoadFailed(false); setLoadAttempt((attempt) => attempt + 1) }} type="button">Reintentar</button></div></header></div>
+  if (loadFailed) return <ErrorScreen
+    description="Volvé a intentarlo para consultar tu plan y tus recomendaciones."
+    embedded
+    title="No se pudo cargar tu cocina"
+  >
+    <button className="button button-primary" onClick={() => { setLoadFailed(false); setLoadAttempt((attempt) => attempt + 1) }} type="button">Reintentar</button>
+  </ErrorScreen>
   if (!data) return <div className="page dashboard-page"><LoadingScreen message="Cargando tu cocina…" /></div>
   const preferences = data.profile.preferences ?? []
   const recipes = data.recipes.filter((recipe) => matchesDietaryPreferences(recipe, preferences))
