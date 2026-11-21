@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { Session } from '@supabase/supabase-js'
 import { authenticateUser, changeLocalPassword, clearStoredUserSession, endSession, getSession, getSessionRevision, registerAccount, startDemoAdminSession, startSupabaseUserSession, startUserSession, type SessionInfo } from './localAuthStore'
-import { createPasswordVerificationClient, isRelationalProfilesEnabled, supabase } from '../../../shared/data/supabaseClient'
+import { createIsolatedAuthClient, isRelationalProfilesEnabled, supabase } from '../../../shared/data/supabaseClient'
 import type { UserRole } from './localAuthStore'
 import { adminRepository } from '../../admin/data/AdminRepository'
 import { assertAuthenticationConfigured } from '../domain/security'
@@ -26,15 +27,29 @@ async function expireCurrentSession(identity: string): Promise<void> {
 }
 
 let sessionRevision = 0
+let remoteUserId: string | null | undefined
 if (supabase) {
-  supabase.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_OUT') {
+  supabase.auth.onAuthStateChange((event, session) => {
+    const userId = session?.user.id ?? null
+    if (userId !== remoteUserId) {
+      remoteUserId = userId
       sessionRevision += 1
+      if (userId && getSession()?.token !== `supabase-user:${userId}`) clearStoredUserSession()
+    }
+    if (event === 'SIGNED_OUT') {
       const current = getSession()
       if (current) clearSessionPolicy(policyIdentity(current))
       endSession()
     }
   })
+}
+
+function isRemoteSessionCurrent(userId: string, revision: number): boolean {
+  return revision === sessionRevision && (remoteUserId === undefined || remoteUserId === userId)
+}
+
+function assertRemoteSessionCurrent(userId: string, revision: number): void {
+  if (!isRemoteSessionCurrent(userId, revision)) throw new Error('La sesión cambió. Volvé a intentarlo.')
 }
 
 function requireConfiguredAuthentication() {
@@ -52,27 +67,27 @@ async function preloadCatalog(): Promise<void> {
   }
 }
 
-async function getRemoteRole(): Promise<UserRole> {
+async function getRemoteRole(session: Session, revision: number): Promise<UserRole> {
   if (!supabase) return 'USER'
-  const { data: active, error: activeError } = await supabase.rpc('current_account_is_active')
+  const authorization = `Bearer ${session.access_token}`
+  const { data: active, error: activeError } = await supabase.rpc('current_account_is_active').setHeader('Authorization', authorization)
+  assertRemoteSessionCurrent(session.user.id, revision)
   if (activeError) throw new Error('No se pudo verificar el estado de la cuenta.', { cause: activeError })
   if (active !== true) {
     await supabase.auth.signOut({ scope: 'local' })
     throw new Error('Tu cuenta está desactivada. Contactá con un administrador.')
   }
-  const { data, error } = await supabase.rpc('current_app_role')
+  const { data, error } = await supabase.rpc('current_app_role').setHeader('Authorization', authorization)
+  assertRemoteSessionCurrent(session.user.id, revision)
   if (error) throw new Error('No se pudo consultar el rol. Verificá que esté aplicada la migración 202610160004_create_user_roles.sql.', { cause: error })
   if (data !== 'USER' && data !== 'ADMIN') throw new Error('Supabase devolvió un rol desconocido.')
   return data
 }
 
-async function getCanonicalProfileName(fallback: string, expectedUserId: string): Promise<string> {
+async function getCanonicalProfileName(fallback: string, session: Session): Promise<string> {
   if (!supabase || !isRelationalProfilesEnabled) return fallback
-  const { data, error } = await supabase.rpc('get_my_profile')
+  const { data, error } = await supabase.rpc('get_my_profile').setHeader('Authorization', `Bearer ${session.access_token}`)
   if (error) throw new Error('No se pudo consultar el nombre del perfil.', { cause: error })
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError) throw userError
-  if (user?.id !== expectedUserId) throw new Error('La cuenta cambió mientras se cargaba el perfil. Volvé a intentarlo.')
   if (!data || typeof data !== 'object') return fallback
   const profile = (data as Record<string, unknown>).profile
   if (!profile || typeof profile !== 'object') return fallback
@@ -93,7 +108,6 @@ export interface AuthRepository {
 export const authRepository: AuthRepository = {
   async session() {
     requireConfiguredAuthentication()
-    const revision = sessionRevision
     const localSession = getSession()
     if (!supabase) {
       await Promise.resolve()
@@ -110,35 +124,39 @@ export const authRepository: AuthRepository = {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError) throw sessionError
     if (!session) { clearStoredUserSession(); return null }
+    const revision = sessionRevision
+    if (!isRemoteSessionCurrent(session.user.id, revision)) return null
     const identity = `supabase-user:${session.user.id}|${session.user.email?.toLocaleLowerCase('es') ?? ''}`
     if (hasSessionExpired(identity, detectSessionDevice())) {
       try { await supabase.auth.signOut({ scope: 'local' }) } catch { /* The local deadline still applies while offline. */ }
       if (revision === sessionRevision) endSession()
       return null
     }
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    const { data: { user }, error: userError } = await supabase.auth.getUser(session.access_token)
     if (userError) throw userError
-    if (!user?.email) { clearStoredUserSession(); return null }
+    if (!user?.email || user.id !== session.user.id || !isRemoteSessionCurrent(user.id, revision)) return null
     const metadataName = user.user_metadata.name ?? user.user_metadata.full_name
     const name = typeof metadataName === 'string' && metadataName.trim() ? metadataName : user.email.split('@')[0]
-    const remoteRole = await getRemoteRole()
-    const canonicalName = await getCanonicalProfileName(name, user.id)
-    if (revision !== sessionRevision) return null
-    startSupabaseUserSession(user.id, user.email, canonicalName, remoteRole)
+    const remoteRole = await getRemoteRole(session, revision)
+    const canonicalName = await getCanonicalProfileName(name, session)
+    if (!isRemoteSessionCurrent(user.id, revision)) return null
+    const verified = startSupabaseUserSession(user.id, user.email, canonicalName, remoteRole)
     await preloadCatalog()
-    if (revision !== sessionRevision) return null
-    return getSession()
+    return isRemoteSessionCurrent(user.id, revision) ? verified : null
   },
   async login(email, password) {
     requireConfiguredAuthentication()
     if (!supabase) { await Promise.resolve(); startUserSession(authenticateUser(email, password)); beginSessionPolicy(getSession()!); return }
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
     if (error) throw mapAuthError(error.message)
-    if (!data.user?.email) throw new Error('Supabase no devolvió los datos de la cuenta.')
+    if (!data.user?.email || !data.session) throw new Error('Supabase no devolvió los datos de la cuenta.')
     const metadataName = data.user.user_metadata.name ?? data.user.user_metadata.full_name
     const name = typeof metadataName === 'string' && metadataName.trim() ? metadataName : data.user.email.split('@')[0]
-    const remoteRole = await getRemoteRole()
-    const canonicalName = await getCanonicalProfileName(name, data.user.id)
+    const revision = sessionRevision
+    assertRemoteSessionCurrent(data.user.id, revision)
+    const remoteRole = await getRemoteRole(data.session, revision)
+    const canonicalName = await getCanonicalProfileName(name, data.session)
+    assertRemoteSessionCurrent(data.user.id, revision)
     beginSessionPolicy(startSupabaseUserSession(data.user.id, data.user.email, canonicalName, remoteRole))
     await preloadCatalog()
   },
@@ -160,8 +178,11 @@ export const authRepository: AuthRepository = {
     if (!data.session || !data.user?.email) {
       throw new Error('La cuenta se creó. Confirmá tu correo desde el mensaje de Supabase y después iniciá sesión.')
     }
-    const remoteRole = await getRemoteRole()
-    const canonicalName = await getCanonicalProfileName(cleanName, data.user.id)
+    const revision = sessionRevision
+    assertRemoteSessionCurrent(data.user.id, revision)
+    const remoteRole = await getRemoteRole(data.session, revision)
+    const canonicalName = await getCanonicalProfileName(cleanName, data.session)
+    assertRemoteSessionCurrent(data.user.id, revision)
     beginSessionPolicy(startSupabaseUserSession(data.user.id, data.user.email, canonicalName, remoteRole))
     await preloadCatalog()
   },
@@ -187,7 +208,7 @@ export const authRepository: AuthRepository = {
 
     // Supabase projects can omit the server's current-password requirement.
     // Verify against Auth before updating, even on projects with that setting off.
-    const verifier = createPasswordVerificationClient()
+    const verifier = createIsolatedAuthClient()
     const { data, error: verificationError } = await verifier.auth.signInWithPassword({ email: account.email, password: currentPassword })
     if (verificationError?.code === 'invalid_credentials') throw new Error('La contraseña actual es incorrecta.')
     if (!data.session) throw new Error('No se pudo verificar la contraseña actual. Intentá de nuevo.')
@@ -210,9 +231,20 @@ export const authRepository: AuthRepository = {
     if (newPassword.length < 8) throw new Error('La nueva contraseña debe tener al menos 8 caracteres.')
     if (currentPassword === newPassword) throw new Error('La nueva contraseña debe ser distinta de la actual.')
 
+    const account = getSession()
+    const revision = getSessionRevision()
     await authRepository.verifyCurrentPassword(currentPassword)
 
-    const { error } = await supabase.auth.updateUser({ current_password: currentPassword, password: newPassword })
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    const sessionChanged = () => revision !== getSessionRevision() || getSession()?.token !== account?.token
+    if (sessionError || !session || account?.token !== `supabase-user:${session.user.id}` || sessionChanged()) {
+      throw new Error('Volvé a iniciar sesión para cambiar tu contraseña.')
+    }
+    const passwordClient = createIsolatedAuthClient()
+    const { error: restoreError } = await passwordClient.auth.setSession(session)
+    if (restoreError || sessionChanged()) throw new Error('Volvé a iniciar sesión para cambiar tu contraseña.')
+
+    const { error } = await passwordClient.auth.updateUser({ current_password: currentPassword, password: newPassword })
     if (!error) return
     if (error.code === 'current_password_mismatch') throw new Error('La contraseña actual es incorrecta.')
     if (error.code === 'same_password') throw new Error('La nueva contraseña debe ser distinta de la actual.')
@@ -245,9 +277,10 @@ function mapAuthError(message: string): Error {
 export function useAuth() {
   const [state, setState] = useState<{ session: SessionInfo | null; loading: boolean; error: string }>({ session: null, loading: true, error: '' })
   const sessionPolicyIdentity = state.session ? policyIdentity(state.session) : null
+  const refreshRef = useRef<() => void>(() => {})
   const retry = useCallback(() => {
     setState((current) => ({ ...current, loading: true }))
-    void authRepository.session().then((session) => setState({ session, loading: false, error: '' })).catch(() => setState({ session: null, loading: false, error: 'No se pudo cargar la sesión.' }))
+    refreshRef.current()
   }, [])
   useEffect(() => {
     let mounted = true
@@ -256,19 +289,31 @@ export function useAuth() {
       const current = ++request
       void authRepository.session().then((session) => { if (mounted && current === request) setState({ session, loading: false, error: '' }) }).catch(() => { if (mounted && current === request) setState({ session: null, loading: false, error: 'No se pudo cargar la sesión.' }) })
     }
+    const hidePreviousSession = (token: string | null, email?: string) => {
+      setState((current) => current.session && (current.session.token !== token || email !== undefined && current.session.email !== email)
+        ? { session: null, loading: true, error: '' } : current)
+    }
+    const refreshStoredSession = () => {
+      const stored = getSession()
+      hidePreviousSession(stored?.token ?? null, stored?.email)
+      refresh()
+    }
     // Defer remote work until Supabase releases its auth callback lock.
-    const subscription = supabase?.auth.onAuthStateChange((event) => {
+    const subscription = supabase?.auth.onAuthStateChange((event, session) => {
+      request += 1
       if (event === 'SIGNED_OUT') {
-        request += 1
         if (mounted) setState({ session: null, loading: false, error: '' })
       } else {
+        const token = session ? `supabase-user:${session.user.id}` : null
+        if (mounted) hidePreviousSession(token)
         window.setTimeout(() => { if (mounted) refresh() }, 0)
       }
     }).data.subscription
+    refreshRef.current = refresh
     refresh()
-    window.addEventListener('auth-change', refresh)
-    window.addEventListener('storage', refresh)
-    return () => { mounted = false; subscription?.unsubscribe(); window.removeEventListener('auth-change', refresh); window.removeEventListener('storage', refresh) }
+    window.addEventListener('auth-change', refreshStoredSession)
+    window.addEventListener('storage', refreshStoredSession)
+    return () => { mounted = false; refreshRef.current = () => {}; subscription?.unsubscribe(); window.removeEventListener('auth-change', refreshStoredSession); window.removeEventListener('storage', refreshStoredSession) }
   }, [])
   useEffect(() => {
     if (!sessionPolicyIdentity) return

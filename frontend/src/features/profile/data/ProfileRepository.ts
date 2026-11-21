@@ -2,7 +2,7 @@ import type { ProfileDraft, DietaryPreference } from '../domain/profile'
 import { readLocalProfile, saveLocalProfile, parseProfileDraft } from './localProfileStore'
 import { loadPersonalData, savePersonalData } from '../../../shared/data/personalDataRepository'
 import { isRelationalProfilesEnabled, isSupabaseConfigured, supabase } from '../../../shared/data/supabaseClient'
-import { assertPersonalDataOwner, assertPersonalDataSessionCurrent, capturePersonalDataSession, type PersonalDataSession } from '../../../shared/data/personalDataSession'
+import { assertPersonalDataSessionCurrent, capturePersonalDataSession, getPersonalDataAuthorization, type PersonalDataSession } from '../../../shared/data/personalDataSession'
 import { getSession, updateSupabaseSessionName } from '../../auth/data/localAuthStore'
 import { nutritionRepository } from './NutritionRepository'
 
@@ -75,27 +75,19 @@ export function createProfileRepository(dependencies: ProfileRepositoryDependenc
     return config
   },
   async getMyProfile(session) {
-    assertPersonalDataSessionCurrent(session)
-    const { data: { user }, error: userError } = await supabase!.auth.getUser()
-    if (userError) throw userError
-    if (!user) throw new Error('Iniciá sesión para consultar tu perfil.')
-    assertPersonalDataOwner(session, user.id)
-    const { data, error } = await supabase!.rpc('get_my_profile')
+    const authorization = await getPersonalDataAuthorization(session)
+    const { data, error } = await supabase!.rpc('get_my_profile').setHeader('Authorization', authorization)
     if (error) throw error
-    assertPersonalDataOwner(session, user.id)
+    assertPersonalDataSessionCurrent(session)
     return data
   },
   async saveMyProfile(profile, preferences, version, session) {
-    assertPersonalDataSessionCurrent(session)
-    const { data: { user }, error: userError } = await supabase!.auth.getUser()
-    if (userError) throw userError
-    if (!user) throw new Error('Iniciá sesión para guardar tu perfil.')
-    assertPersonalDataOwner(session, user.id)
+    const authorization = await getPersonalDataAuthorization(session)
     const { data, error } = await supabase!.rpc('save_my_profile', {
       p_profile: profile, p_preference_keys: preferences, p_expected_version: version,
-    })
+    }).setHeader('Authorization', authorization)
     if (error) throw error
-    assertPersonalDataOwner(session, user.id)
+    assertPersonalDataSessionCurrent(session)
     return data
   },
 }) {

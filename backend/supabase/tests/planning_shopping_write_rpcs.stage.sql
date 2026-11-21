@@ -241,7 +241,7 @@ begin
   execute 'reset role';
   update public.user_roles set role='ADMIN' where user_id=account_ids[1];
   execute 'set local role authenticated';
-  if public.current_app_role()<>'ADMIN' or not exists(select 1 from public.recipes where id=recipe_ids[4]) then
+  if public.current_app_role()<>'ADMIN' or not exists(select 1 from public.recipes where id=recipe_ids[1]) then
     raise exception 'FAIL: administrator recipe positive control';
   end if;
   begin

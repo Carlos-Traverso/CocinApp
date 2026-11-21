@@ -25,24 +25,25 @@ export function migrateLegacyPersonalData(email: string) {
   localStorage.setItem(ownerKey, email.toLocaleLowerCase('es'))
 }
 
-function scopedKey(key: string): string {
+function storagePrefix(): string {
   const session = getSession()
-  if (!session || session.role !== 'USER' && !session.token.startsWith('supabase-user:')) return key
-  return `cocinapp.user.${encodeURIComponent(session.email.toLocaleLowerCase('es'))}.${key}`
+  if (session?.token.startsWith('supabase-user:')) {
+    return `cocinapp.remote.${encodeURIComponent(session.token.slice('supabase-user:'.length))}.`
+  }
+  return session?.role === 'USER' ? `cocinapp.user.${encodeURIComponent(session.email.toLocaleLowerCase('es'))}.` : ''
 }
 
 export const personalStorage: Storage = {
   get length() { return localStorage.length },
   clear() {
-    const session = getSession()
-    const prefix = session && (session.role === 'USER' || session.token.startsWith('supabase-user:')) ? `cocinapp.user.${encodeURIComponent(session.email.toLocaleLowerCase('es'))}.` : ''
+    const prefix = storagePrefix()
     for (let index = localStorage.length - 1; index >= 0; index -= 1) {
       const key = localStorage.key(index)
       if (key && (!prefix || key.startsWith(prefix))) localStorage.removeItem(key)
     }
   },
   key(index) { return localStorage.key(index) },
-  getItem(key) { return localStorage.getItem(scopedKey(key)) },
-  removeItem(key) { localStorage.removeItem(scopedKey(key)) },
-  setItem(key, value) { localStorage.setItem(scopedKey(key), value) },
+  getItem(key) { return localStorage.getItem(`${storagePrefix()}${key}`) },
+  removeItem(key) { localStorage.removeItem(`${storagePrefix()}${key}`) },
+  setItem(key, value) { localStorage.setItem(`${storagePrefix()}${key}`, value) },
 }

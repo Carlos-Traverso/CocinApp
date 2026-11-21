@@ -111,8 +111,8 @@ test('discards an in-flight profile load from account A after switching to accou
   resolveLoad({ name: 'Dato privado de Ana', goal: 'lose' })
 
   await assert.rejects(pendingLoad, /La sesión cambió/)
-  const accountAProfile = localStorage.getItem('cocinapp.user.ana%40example.com.cocinapp.profile.v1')
-  const accountBProfile = localStorage.getItem('cocinapp.user.luis%40example.com.cocinapp.profile.v1')
+  const accountAProfile = localStorage.getItem('cocinapp.remote.account-a.cocinapp.profile.v1')
+  const accountBProfile = localStorage.getItem('cocinapp.remote.account-b.cocinapp.profile.v1')
   assert.equal(accountAProfile?.includes('Dato privado de Ana'), false)
   assert.equal(accountBProfile?.includes('Dato privado de Ana'), false)
   assert.equal(saveCalls, 0)
@@ -137,7 +137,7 @@ test('does not import account A local data after switching accounts during the r
 
   await assert.rejects(pendingLoad, /La sesión cambió/)
   assert.deepEqual(saveSessions, [])
-  assert.equal(localStorage.getItem('cocinapp.user.luis%40example.com.cocinapp.profile.v1')?.includes('Perfil privado de Ana'), false)
+  assert.equal(localStorage.getItem('cocinapp.remote.account-b.cocinapp.profile.v1')?.includes('Perfil privado de Ana'), false)
   localStorage.clear()
 })
 
@@ -157,7 +157,7 @@ test('discards a pending load after the same account signs out and back in', asy
   resolveLoad({ name: 'Resultado de la sesión anterior', goal: 'lose' })
 
   await assert.rejects(pendingLoad, /La sesión cambió/)
-  assert.equal(localStorage.getItem('cocinapp.user.ana%40example.com.cocinapp.profile.v1')?.includes('Resultado de la sesión anterior'), false)
+  assert.equal(localStorage.getItem('cocinapp.remote.account-a.cocinapp.profile.v1')?.includes('Resultado de la sesión anterior'), false)
   localStorage.clear()
 })
 
@@ -181,7 +181,7 @@ test('keeps a pending profile save bound to account A and skips its cache write 
   resolveSave()
 
   await assert.rejects(pendingSave, /La sesión cambió/)
-  assert.equal(localStorage.getItem('cocinapp.user.luis%40example.com.cocinapp.profile.v1')?.includes('Dato privado de Ana'), false)
+  assert.equal(localStorage.getItem('cocinapp.remote.account-b.cocinapp.profile.v1')?.includes('Dato privado de Ana'), false)
   localStorage.clear()
 })
 
@@ -205,7 +205,7 @@ test('maps relational rows and stable preference keys without importing browser 
     metabolicSex: 'female', activityLevel: 'very-active', goal: 'gain-muscle',
     preferences: ['gluten-free', 'vegetarian', 'vegan', 'lactose-free', 'nut-free'],
   })
-  assert.match(localStorage.getItem('cocinapp.user.rel%40example.com.cocinapp.profile.v1') ?? '', /Legacy local profile/)
+  assert.match(localStorage.getItem('cocinapp.remote.relational-user.cocinapp.profile.v1') ?? '', /Legacy local profile/)
   localStorage.clear()
 })
 

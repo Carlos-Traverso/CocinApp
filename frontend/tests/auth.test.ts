@@ -14,7 +14,7 @@ import test, { beforeEach, describe } from 'node:test'
 import { authenticateUser, changeLocalPassword, clearStoredUserSession, demoAdminEmail, endSession, getSession, registerAccount, startDemoAdminSession, startSession, startSupabaseUserSession, startUserSession } from '../src/features/auth/data/localAuthStore'
 import { roleHome } from '../src/features/auth/domain/routeAccess'
 import { personalStorage } from '../src/features/auth/data/personalStorage'
-import { assertAuthenticationConfigured } from '../src/features/auth/domain/security'
+import { assertAuthenticationConfigured, authSessionIdentity } from '../src/features/auth/domain/security'
 import { adminUsersRepository } from '../src/features/admin/data/AdminUsersRepository'
 
 describe('local access flows', () => {
@@ -22,6 +22,19 @@ describe('local access flows', () => {
     assert.throws(() => assertAuthenticationConfigured(true, false), /conexión segura/)
     assert.doesNotThrow(() => assertAuthenticationConfigured(true, true))
     assert.doesNotThrow(() => assertAuthenticationConfigured(false, false))
+  })
+
+  test('recovery identity survives token refresh and changes on a new account or login', () => {
+    const session = (account: string, id: string, expires: number) => ({
+      user: { id: account },
+      access_token: `header.${Buffer.from(JSON.stringify({ sub: account, session_id: id, exp: expires })).toString('base64url')}.signature`,
+    })
+    const identity = authSessionIdentity(session('account-a', 'login-a', 100))
+    assert.equal(identity, 'account-a:login-a')
+    assert.equal(authSessionIdentity(session('account-a', 'login-a', 200)), identity)
+    assert.notEqual(authSessionIdentity(session('account-a', 'login-b', 100)), identity)
+    assert.notEqual(authSessionIdentity(session('account-b', 'login-a', 100)), identity)
+    assert.equal(authSessionIdentity({ ...session('account-a', 'login-a', 100), user: { id: 'account-b' } }), null)
   })
   beforeEach(() => localStorage.clear())
 
@@ -39,6 +52,18 @@ describe('local access flows', () => {
     assert.equal(getSession(), null)
     startSupabaseUserSession('other-account', 'luis@example.com', 'Luis', 'ADMIN')
     assert.equal(personalStorage.getItem('cocinapp.shopping.v1'), null)
+  })
+
+  test('Supabase caches remain tied to the account UUID when email is reassigned', () => {
+    startSupabaseUserSession('account-a', 'ana@example.com', 'Ana')
+    personalStorage.setItem('cocinapp.shopping.v1', '["private-data"]')
+    localStorage.setItem('cocinapp.user.ana%40example.com.cocinapp.shopping.v1', '["old email cache"]')
+
+    startSupabaseUserSession('account-b', 'ana@example.com', 'New account')
+    assert.equal(personalStorage.getItem('cocinapp.shopping.v1'), null)
+
+    startSupabaseUserSession('account-a', 'different@example.com', 'Ana')
+    assert.equal(personalStorage.getItem('cocinapp.shopping.v1'), '["private-data"]')
   })
 
   test('registration validates identity, duplicate email and password', () => {

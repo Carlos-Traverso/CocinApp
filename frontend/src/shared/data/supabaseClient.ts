@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { authSessionIdentity } from '../../features/auth/domain/security'
 
 const projectUrl = import.meta.env.VITE_SUPABASE_URL?.trim()
 const publishableKey = (
@@ -26,8 +27,8 @@ export const supabase = isSupabaseConfigured
   ? createClient(projectUrl!, publishableKey!, { db: { timeout: 12_000 } })
   : null
 
-/** Verify credentials without replacing the application's persisted session. */
-export function createPasswordVerificationClient() {
+/** Perform an Auth operation without replacing the application's persisted session. */
+export function createIsolatedAuthClient() {
   return createClient(projectUrl!, publishableKey!, {
     auth: {
       storageKey: 'cocinapp-password-verification',
@@ -44,14 +45,17 @@ const passwordRecoveryMarker = 'cocinapp.auth.password-recovery.v1'
 // renders the public password reset route.
 if (supabase && typeof window !== 'undefined') {
   supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') clearPasswordRecoveryMarker()
-    if (event !== 'PASSWORD_RECOVERY' || !session) return
-    try { window.sessionStorage.setItem(passwordRecoveryMarker, 'true') } catch { /* The route also handles unavailable session storage. */ }
+    const identity = authSessionIdentity(session)
+    if (event === 'PASSWORD_RECOVERY' && identity) {
+      try { window.sessionStorage.setItem(passwordRecoveryMarker, identity) } catch { /* Recovery requires session storage. */ }
+    } else if (getPasswordRecoveryIdentity() !== identity) {
+      clearPasswordRecoveryMarker()
+    }
   })
 }
 
-export function hasPasswordRecoveryMarker(): boolean {
-  try { return window.sessionStorage.getItem(passwordRecoveryMarker) === 'true' } catch { return false }
+export function getPasswordRecoveryIdentity(): string | null {
+  try { return window.sessionStorage.getItem(passwordRecoveryMarker) } catch { return null }
 }
 
 export function clearPasswordRecoveryMarker(): void {

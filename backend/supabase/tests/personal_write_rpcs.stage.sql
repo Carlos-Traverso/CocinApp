@@ -204,10 +204,10 @@ begin
   end;
   execute 'reset role';
 
-  -- Admin recipe visibility does not authorize favoriting another user's draft.
+  -- Administrative privileges do not authorize favoriting another user's draft.
   update public.user_roles set role='ADMIN' where user_id=users[1];
   execute 'set local role authenticated';
-  if public.current_app_role()<>'ADMIN' or not exists(select 1 from public.recipes where id=recipe_ids[4]) then
+  if public.current_app_role()<>'ADMIN' or not exists(select 1 from public.recipes where id=recipe_ids[1]) then
     raise exception 'FAIL: administrator fixture positive control';
   end if;
   begin

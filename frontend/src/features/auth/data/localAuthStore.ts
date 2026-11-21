@@ -119,7 +119,6 @@ export function getSession(): SessionInfo | null {
 export function startSupabaseUserSession(userId: string, email: string, name: string, role: UserRole = 'USER'): SessionInfo {
   const cleanEmail = email.trim().toLocaleLowerCase('es')
   if (!userId || !cleanEmail) throw new Error('La cuenta de Supabase no tiene una identidad válida.')
-  migrateLegacyPersonalData(cleanEmail)
   const session: SessionInfo = { token: `supabase-user:${userId}`, role, email: cleanEmail, name: name.trim() || cleanEmail }
   const previous = getSession()
   if (!previous || previous.token !== session.token || previous.email !== session.email || previous.name !== session.name || previous.role !== session.role) {

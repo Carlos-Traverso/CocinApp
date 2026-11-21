@@ -5,13 +5,16 @@ import type { UserRole } from '../features/auth/data/localAuthStore'
 import { roleHome } from '../features/auth/domain/routeAccess'
 import { RouteErrorPage } from './RouteErrorPage'
 import { SessionError } from './SessionError'
+import { NotificationProvider } from '../shared/notifications/NotificationProvider'
 
 export function RequireSession() {
   const { session, loading, error, retry } = useAuth()
   if (error) return <SessionError message={error} retry={retry} retrying={loading} />
   if (loading) return <LoadingScreen message="Comprobando sesión…" variant="fullscreen" />
   if (!session) return <Navigate to="/" replace />
-  return <Outlet context={session.role} />
+  return <NotificationProvider key={JSON.stringify([session.token, session.email, session.role])} privateScope>
+    <Outlet context={session.role} />
+  </NotificationProvider>
 }
 
 export function RequireRole({ role }: { role: UserRole }) {

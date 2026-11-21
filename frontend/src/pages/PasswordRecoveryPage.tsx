@@ -3,7 +3,8 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { ArrowLeft, ArrowRight, CheckCircle2, KeyRound, MailCheck } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BrandLogo } from '../components/BrandLogo'
-import { hasPasswordRecoveryMarker, supabase } from '../shared/data/supabaseClient'
+import { getPasswordRecoveryIdentity, supabase } from '../shared/data/supabaseClient'
+import { authSessionIdentity } from '../features/auth/domain/security'
 import { requestPasswordRecovery, saveRecoveredPassword } from '../features/auth/data/passwordRecovery'
 import { authRepository } from '../features/auth/data/AuthRepository'
 import { roleHome } from '../features/auth/domain/routeAccess'
@@ -51,16 +52,12 @@ export function RequestPasswordRecoveryPage() {
 }
 
 export function ResetPasswordPage() {
-  const [recoveryCallbackDetected] = useState(() => hasPasswordRecoveryMarker()
-    || new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery')
-  const [checking, setChecking] = useState(Boolean(supabase && recoveryCallbackDetected))
-  const [authorized, setAuthorized] = useState(false)
+  const [checking, setChecking] = useState(Boolean(supabase))
+  const [authorized, setAuthorized] = useState<string | null>(null)
   const [complete, setComplete] = useState(false)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [error, setError] = useState(!supabase
-    ? 'La recuperación por correo requiere una conexión con Supabase.'
-    : recoveryCallbackDetected ? '' : 'Abrí el enlace de recuperación que recibiste por correo.')
+  const [error, setError] = useState(!supabase ? 'La recuperación por correo requiere una conexión con Supabase.' : '')
   const [busy, setBusy] = useState(false)
   const navigate = useNavigate()
   const { notify } = useNotifications()
@@ -71,34 +68,35 @@ export function ResetPasswordPage() {
       return () => { mounted = false }
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' && session && mounted) {
-        setAuthorized(true)
-        setChecking(false)
-      }
-    })
-
-    if (!recoveryCallbackDetected) {
-      return () => { mounted = false; subscription.unsubscribe() }
+    const updateAuthorization = (identity: string | null) => {
+      if (!mounted) return
+      const allowed = identity && identity === getPasswordRecoveryIdentity() ? identity : null
+      setAuthorized(allowed)
+      setError(allowed ? '' : 'Abrí un enlace de recuperación válido recibido por correo.')
+      setChecking(false)
     }
 
-    void supabase.auth.getSession().then(({ data, error: sessionError }) => {
-      if (!mounted) return
-      if (!sessionError && data.session) setAuthorized(true)
-      else setError('El enlace venció o ya se usó. Solicitá uno nuevo para continuar.')
-      setChecking(false)
-    }).catch(() => {
-      if (mounted) {
-        setError('No se pudo validar el enlace. Solicitá uno nuevo para continuar.')
-        setChecking(false)
+    let revision = 0
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      revision += 1
+      updateAuthorization(authSessionIdentity(session))
+      if (event === 'SIGNED_OUT' || event === 'PASSWORD_RECOVERY') {
+        setPassword('')
+        setConfirmPassword('')
       }
+    })
+    void supabase.auth.getSession().then(({ data, error: sessionError }) => {
+      if (revision === 0) updateAuthorization(sessionError ? null : authSessionIdentity(data.session))
+    }).catch(() => {
+      if (revision === 0) updateAuthorization(null)
     })
 
     return () => { mounted = false; subscription.unsubscribe() }
-  }, [recoveryCallbackDetected])
+  }, [])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!authorized) return
     setError('')
     if (password !== confirmPassword) {
       setError('Las contraseñas no coinciden.')
@@ -106,7 +104,7 @@ export function ResetPasswordPage() {
     }
     setBusy(true)
     try {
-      await saveRecoveredPassword(password)
+      await saveRecoveredPassword(password, authorized)
       setComplete(true)
       const session = await authRepository.session()
       if (session) {

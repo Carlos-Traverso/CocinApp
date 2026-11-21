@@ -37,3 +37,14 @@ export function assertPersonalDataOwner(session: PersonalDataSession, userId: st
     throw new Error('La cuenta cambió mientras se procesaban tus datos. Volvé a intentarlo.')
   }
 }
+
+/** Pin requests to the account that supplied the data, including during SDK token lookup. */
+export async function getPersonalDataAuthorization(expected: PersonalDataSession): Promise<string> {
+  assertPersonalDataSessionCurrent(expected)
+  if (!supabase) throw new Error('Falta configurar la conexión de Supabase.')
+  const { data: { session }, error } = await supabase.auth.getSession()
+  if (error) throw error
+  if (!session) throw new Error('Iniciá sesión para acceder a tus datos.')
+  assertPersonalDataOwner(expected, session.user.id)
+  return `Bearer ${session.access_token}`
+}

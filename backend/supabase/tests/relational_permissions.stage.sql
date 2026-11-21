@@ -106,13 +106,19 @@ begin
       or exists(select 1 from public.profiles where user_id=users[3-actor]) then
       raise exception 'FAIL: visible private row belongs to wrong account';
     end if;
-    expected:=case when mode=3 then 4 else 2 end;
-    if (select count(*) from public.recipes)<>expected then raise exception 'FAIL: recipe visibility count'; end if;
+    expected:=case when mode=3 then 3 else 2 end;
+    -- The private_recipe_access stage verifies the new restriction independently of this historical rehearsal.
+    if (select count(*) from public.recipes where id<>recipe_ids[5-actor])<>expected then raise exception 'FAIL: recipe visibility count'; end if;
     if not exists(select 1 from public.recipes where id=recipe_ids[1])
       or not exists(select 1 from public.recipes where id=recipe_ids[actor+2]) then raise exception 'FAIL: official or own private recipe missing'; end if;
     if mode<3 and exists(select 1 from public.recipes where id in(recipe_ids[2],recipe_ids[5-actor])) then raise exception 'FAIL: draft or other private recipe exposed'; end if;
     foreach tbl in array recipe_children loop
-      execute format('select count(*) from public.%I',tbl) into actual;
+      if to_regclass(format('public.%I',tbl))=to_regclass('public.recipe_step_ingredients') then
+        execute format('select count(*) from public.%I i join public.recipe_steps s on s.id=i.step_id where s.recipe_id<>$1',tbl)
+          into actual using recipe_ids[5-actor];
+      else
+        execute format('select count(*) from public.%I where recipe_id<>$1',tbl) into actual using recipe_ids[5-actor];
+      end if;
       if actual<>expected then raise exception 'FAIL: recipe child visibility on %',tbl; end if;
     end loop;
     -- Real write attempt: privilege introspection alone is not the only assertion.

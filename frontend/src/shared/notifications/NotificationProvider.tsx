@@ -41,11 +41,12 @@ const typeLabels: Record<NotificationType, string> = {
 
 const isConfirmation = (pending: PendingNotification) => Boolean(pending.request.cancelLabel)
 
-export function NotificationProvider({ children }: { children: ReactNode }) {
+export function NotificationProvider({ children, privateScope = false }: { children: ReactNode; privateScope?: boolean }) {
   const [active, setActive] = useState<PendingNotification | null>(null)
   const activeRef = useRef<PendingNotification | null>(null)
   const queueRef = useRef<PendingNotification[]>([])
   const nextIdRef = useRef(0)
+  const mountedRef = useRef(true)
 
   const activateNext = useCallback(() => {
     const next = queueRef.current.shift() ?? null
@@ -54,6 +55,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const notify = useCallback((request: NotificationRequest) => {
+    if (!mountedRef.current) return Promise.resolve(false)
     // Routine success notices are informational; they must not interrupt the
     // action that just completed or replace a pending decision/error dialog.
     if (request.type === 'success' && !request.cancelLabel) {
@@ -108,12 +110,24 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, [activateNext])
 
   useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      activeRef.current?.resolve(false)
+      for (const queued of queueRef.current) queued.resolve(false)
+      activeRef.current = null
+      queueRef.current = []
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!privateScope) return
     const handlePantrySyncError = () => {
       void notify({ type: 'error', title: 'No se pudo guardar la despensa', message: 'Un cambio local no llegó a Supabase. Revisá la conexión y volvé a cargar la despensa.' })
     }
     window.addEventListener('cocinapp:pantry-sync-error', handlePantrySyncError)
     return () => window.removeEventListener('cocinapp:pantry-sync-error', handlePantrySyncError)
-  }, [notify])
+  }, [notify, privateScope])
 
   const finish = useCallback((id: number, confirmed: boolean) => {
     const current = activeRef.current
