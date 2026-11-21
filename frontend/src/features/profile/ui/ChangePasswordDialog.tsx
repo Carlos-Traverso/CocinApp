@@ -1,3 +1,4 @@
+import { Eye, EyeOff } from 'lucide-react'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { authRepository } from '../../auth/data/AuthRepository'
 
@@ -14,6 +15,8 @@ export function ChangePasswordDialog({ onClose, onChanged }: {
   const [confirming, setConfirming] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [currentError, setCurrentError] = useState('')
+  const [visible, setVisible] = useState([false, false, false])
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -31,7 +34,7 @@ export function ChangePasswordDialog({ onClose, onChanged }: {
     onClose()
   }
 
-  function review(event: FormEvent<HTMLFormElement>) {
+  async function review(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (newPassword === currentPassword) {
       setError('La nueva contraseña debe ser distinta de la actual.')
@@ -41,8 +44,25 @@ export function ChangePasswordDialog({ onClose, onChanged }: {
       setError('Las nuevas contraseñas no coinciden.')
       return
     }
+    if (savingRef.current) return
+    savingRef.current = true
+    setSaving(true)
     setError('')
-    setConfirming(true)
+    setCurrentError('')
+    try {
+      await authRepository.verifyCurrentPassword(currentPassword)
+      setVisible([false, false, false])
+      setConfirming(true)
+    } catch (failure) {
+      const message = failure instanceof Error ? failure.message : 'No se pudo verificar la contraseña actual. Intentá de nuevo.'
+      if (message === 'La contraseña actual es incorrecta.') {
+        setCurrentError(message)
+        dialogRef.current?.querySelector<HTMLInputElement>('input')?.focus()
+      } else setError(message)
+    } finally {
+      savingRef.current = false
+      setSaving(false)
+    }
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -55,7 +75,9 @@ export function ChangePasswordDialog({ onClose, onChanged }: {
       dialogRef.current?.close()
       onChanged()
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'No se pudo cambiar la contraseña. Intentá de nuevo.')
+      const message = failure instanceof Error ? failure.message : 'No se pudo cambiar la contraseña. Intentá de nuevo.'
+      if (message === 'La contraseña actual es incorrecta.') setCurrentError(message)
+      else setError(message)
       setConfirming(false)
     } finally {
       savingRef.current = false
@@ -87,20 +109,30 @@ export function ChangePasswordDialog({ onClose, onChanged }: {
         {error && <p className="form-message error" role="alert">{error}</p>}
         <label className="field">
           <span>Contraseña actual</span>
-          <input autoComplete="current-password" onChange={(event) => setCurrentPassword(event.currentTarget.value)} required type="password" value={currentPassword} />
+          <span className="profile-password-input">
+            <input disabled={saving} aria-invalid={Boolean(currentError)} aria-describedby={currentError ? 'profile-current-password-error' : undefined} autoComplete="current-password" onChange={(event) => { setCurrentPassword(event.currentTarget.value); setCurrentError('') }} required type={visible[0] ? 'text' : 'password'} value={currentPassword} />
+            <button aria-label={visible[0] ? 'Ocultar contraseña actual' : 'Mostrar contraseña actual'} aria-pressed={visible[0]} className="profile-password-toggle" disabled={saving} onClick={() => setVisible((values) => values.map((value, i) => i === 0 ? !value : value))} type="button">{visible[0] ? <EyeOff aria-hidden="true" size={19} /> : <Eye aria-hidden="true" size={19} />}</button>
+          </span>
+          {currentError && <small className="profile-password-error" id="profile-current-password-error" role="alert">{currentError}</small>}
         </label>
         <label className="field">
           <span>Nueva contraseña</span>
-          <input aria-describedby="profile-password-length" autoComplete="new-password" maxLength={72} minLength={8} onChange={(event) => setNewPassword(event.currentTarget.value)} required type="password" value={newPassword} />
+          <span className="profile-password-input">
+            <input disabled={saving} aria-describedby="profile-password-length" autoComplete="new-password" maxLength={72} minLength={8} onChange={(event) => setNewPassword(event.currentTarget.value)} required type={visible[1] ? 'text' : 'password'} value={newPassword} />
+            <button aria-label={visible[1] ? 'Ocultar contraseña nueva' : 'Mostrar contraseña nueva'} aria-pressed={visible[1]} className="profile-password-toggle" disabled={saving} onClick={() => setVisible((values) => values.map((value, i) => i === 1 ? !value : value))} type="button">{visible[1] ? <EyeOff aria-hidden="true" size={19} /> : <Eye aria-hidden="true" size={19} />}</button>
+          </span>
           <small id="profile-password-length">Usá al menos 8 caracteres.</small>
         </label>
         <label className="field">
           <span>Repetí la nueva contraseña</span>
-          <input autoComplete="new-password" maxLength={72} minLength={8} onChange={(event) => setRepeatedPassword(event.currentTarget.value)} required type="password" value={repeatedPassword} />
+          <span className="profile-password-input">
+            <input disabled={saving} autoComplete="new-password" maxLength={72} minLength={8} onChange={(event) => setRepeatedPassword(event.currentTarget.value)} required type={visible[2] ? 'text' : 'password'} value={repeatedPassword} />
+            <button aria-label={visible[2] ? 'Ocultar contraseña repetida' : 'Mostrar contraseña repetida'} aria-pressed={visible[2]} className="profile-password-toggle" disabled={saving} onClick={() => setVisible((values) => values.map((value, i) => i === 2 ? !value : value))} type="button">{visible[2] ? <EyeOff aria-hidden="true" size={19} /> : <Eye aria-hidden="true" size={19} />}</button>
+          </span>
         </label>
         <div className="pantry-dialog-actions">
-          <button className="button button-quiet" onClick={cancel} type="button">Cancelar</button>
-          <button className="button button-primary" type="submit">Confirmar</button>
+          <button className="button button-quiet" disabled={saving} onClick={cancel} type="button">Cancelar</button>
+          <button className="button button-primary" disabled={saving} type="submit">{saving ? 'Verificando…' : 'Confirmar'}</button>
         </div>
       </form>}
   </dialog>

@@ -84,6 +84,7 @@ export interface AuthRepository {
   session(): Promise<SessionInfo | null>
   login(email: string, password: string): Promise<void>
   register(name: string, email: string, password: string): Promise<void>
+  verifyCurrentPassword(currentPassword: string): Promise<void>
   changePassword(currentPassword: string, newPassword: string): Promise<void>
   loginAsDemoAdmin(): Promise<void>
   logout(): Promise<void>
@@ -170,16 +171,15 @@ export const authRepository: AuthRepository = {
     startDemoAdminSession()
     beginSessionPolicy(getSession()!)
   },
-  async changePassword(currentPassword, newPassword) {
+  async verifyCurrentPassword(currentPassword) {
     requireConfiguredAuthentication()
     if (!supabase) {
-      changeLocalPassword(currentPassword, newPassword)
+      const account = getSession()
+      if (!account || account.role !== 'USER') throw new Error('Volvé a iniciar sesión para cambiar tu contraseña.')
+      try { authenticateUser(account.email, currentPassword) }
+      catch { throw new Error('La contraseña actual es incorrecta.') }
       return
     }
-    if (!currentPassword) throw new Error('Ingresá tu contraseña actual.')
-    if (newPassword.length < 8) throw new Error('La nueva contraseña debe tener al menos 8 caracteres.')
-    if (currentPassword === newPassword) throw new Error('La nueva contraseña debe ser distinta de la actual.')
-
     const account = getSession()
     const revision = getSessionRevision()
     const sessionError = 'Volvé a iniciar sesión para cambiar tu contraseña.'
@@ -199,12 +199,25 @@ export const authRepository: AuthRepository = {
       || data.session.user.id !== session.user.id || revision !== getSessionRevision()
       || getSession()?.token !== account.token) throw new Error(sessionError)
 
+  },
+  async changePassword(currentPassword, newPassword) {
+    requireConfiguredAuthentication()
+    if (!supabase) {
+      changeLocalPassword(currentPassword, newPassword)
+      return
+    }
+    if (!currentPassword) throw new Error('Ingresá tu contraseña actual.')
+    if (newPassword.length < 8) throw new Error('La nueva contraseña debe tener al menos 8 caracteres.')
+    if (currentPassword === newPassword) throw new Error('La nueva contraseña debe ser distinta de la actual.')
+
+    await authRepository.verifyCurrentPassword(currentPassword)
+
     const { error } = await supabase.auth.updateUser({ current_password: currentPassword, password: newPassword })
     if (!error) return
     if (error.code === 'current_password_mismatch') throw new Error('La contraseña actual es incorrecta.')
     if (error.code === 'same_password') throw new Error('La nueva contraseña debe ser distinta de la actual.')
     if (error.code === 'weak_password') throw new Error('La nueva contraseña no cumple los requisitos de seguridad.')
-    if (error.code === 'reauthentication_needed' || error.code === 'session_not_found') throw new Error(sessionError)
+    if (error.code === 'reauthentication_needed' || error.code === 'session_not_found') throw new Error('Volvé a iniciar sesión para cambiar tu contraseña.')
     throw new Error('No se pudo cambiar la contraseña. Intentá de nuevo.')
   },
   async logout() {

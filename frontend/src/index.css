@@ -1193,3 +1193,9 @@ html:has(.profile-password-dialog[open]), body:has(.profile-password-dialog[open
     gap: 0.65rem;
   }
 }
+
+.profile-password-input { position: relative; display: flex; align-items: center; }
+.profile-password-input input { padding-right: 48px; }
+.profile-password-toggle { position: absolute; right: 2px; display: grid; place-items: center; width: 42px; height: 42px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; }
+.profile-password-input input[aria-invalid="true"] { border-color: #b42318; outline-color: #b42318; }
+.profile-password-form .profile-password-error { color: #b42318; }
