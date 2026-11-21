@@ -183,6 +183,15 @@
     font-size: 13px;
   }
 
+  .profile-head-actions,
+  .profile-password-dialog .pantry-dialog-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-password-dialog .field input {
+    font-size: 16px;
+  }
+
   .pantry-item {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 12px;

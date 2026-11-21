@@ -31,9 +31,10 @@ test('mobile back-to-top visibility follows scroll and cleans up its listeners',
   assert.equal(listeners.size, 0)
 })
 
-test('profile header groups Ver recetas and Cerrar sesión', () => {
+test('profile header places Cambiar contraseña between Ver recetas and Cerrar sesión', () => {
   assert.deepEqual(profileHeaderActions, [
     { id: 'recipes', label: 'Ver recetas', href: '/recipes', tone: 'neutral' },
+    { id: 'password', label: 'Cambiar contraseña', tone: 'neutral' },
     { id: 'signout', label: 'Cerrar sesión', tone: 'danger' },
   ])
 })

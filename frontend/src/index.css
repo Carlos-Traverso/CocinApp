@@ -686,6 +686,10 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
 .button-quiet:hover { background: #f3f7f1; }
 .profile-layout { display: grid; grid-template-columns: minmax(0, 1fr) 315px; gap: 20px; align-items: start; }
 .profile-head-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 9px; }
+.profile-password-dialog[open] { overflow-y: auto; overscroll-behavior: contain; }
+html:has(.profile-password-dialog[open]), body:has(.profile-password-dialog[open]) { overflow: hidden; }
+.profile-password-form { display: grid; gap: 14px; margin-top: 16px; }
+.profile-password-form small { color: var(--muted); }
 .button-signout { border-color: #e5cbc3; background: #fff9f7; color: #884c3d; }
 .button-signout:hover { border-color: #d8b0a5; background: #fff1ed; color: #753c30; }
 .surface { border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 26px; }

@@ -66,6 +66,22 @@ export function authenticateUser(email: string, password: string): LocalAccount 
   return account
 }
 
+export function changeLocalPassword(currentPassword: string, newPassword: string): void {
+  const session = getSession()
+  if (!session || session.role !== 'USER' || isSupabaseSession(session)) {
+    throw new Error('Volvé a iniciar sesión para cambiar tu contraseña.')
+  }
+  if (newPassword.length < 8) throw new Error('La nueva contraseña debe tener al menos 8 caracteres.')
+  if (currentPassword === newPassword) throw new Error('La nueva contraseña debe ser distinta de la actual.')
+
+  updateStoredAccount(session.email, (account) => {
+    if (account.active === false || account.password !== currentPassword) {
+      throw new Error('La contraseña actual es incorrecta.')
+    }
+    return { ...account, password: newPassword }
+  })
+}
+
 function isSession(value: unknown): value is SessionInfo {
   if (!value || typeof value !== 'object') return false
   const session = value as Record<string, unknown>
@@ -142,7 +158,7 @@ export function startUserSession(account: LocalAccount) {
   }
 }
 
-/** Update a stored account without changing its password or personal data. */
+/** Update a stored account without modifying its separate personal data. */
 export function updateStoredAccount(email: string, update: (account: LocalAccount) => LocalAccount): LocalAccount {
   const accounts = getAccounts()
   const index = accounts.findIndex((account) => account.email === email)

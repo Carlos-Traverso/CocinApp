@@ -26,6 +26,18 @@ export const supabase = isSupabaseConfigured
   ? createClient(projectUrl!, publishableKey!, { db: { timeout: 12_000 } })
   : null
 
+/** Verify credentials without replacing the application's persisted session. */
+export function createPasswordVerificationClient() {
+  return createClient(projectUrl!, publishableKey!, {
+    auth: {
+      storageKey: 'cocinapp-password-verification',
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  })
+}
+
 const passwordRecoveryMarker = 'cocinapp.auth.password-recovery.v1'
 
 // Record recovery callbacks during client initialization, before the router

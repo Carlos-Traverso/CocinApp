@@ -1,11 +1,12 @@
 import { LoadingScreen } from '../components/LoadingScreen'
-import { PencilLine, Save, LogOut } from 'lucide-react'
+import { KeyRound, PencilLine, Save, LogOut } from 'lucide-react'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { authRepository } from '../features/auth/data/AuthRepository'
 import { profileRepository } from '../features/profile/data/ProfileRepository'
 import { calculateAge, estimateForProfile, profileIsComplete, type ProfileDraft } from '../features/profile/domain/profile'
 import { EnergySummary } from '../features/profile/ui/EnergySummary'
+import { ChangePasswordDialog } from '../features/profile/ui/ChangePasswordDialog'
 import { ProfileFields } from '../features/profile/ui/ProfileFields'
 import { profileHeaderActions } from '../features/profile/ui/profileHeaderActions'
 import { isRelationalProfilesEnabled } from '../shared/data/supabaseClient'
@@ -26,6 +27,8 @@ export function ProfilePage() {
   const [reloadRequired, setReloadRequired] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [passwordChanged, setPasswordChanged] = useState(false)
   const [validationError, setValidationError] = useState('')
   const invalidFieldRef = useRef<HTMLInputElement | HTMLSelectElement | null>(null)
   const { notify } = useNotifications()
@@ -102,11 +105,18 @@ export function ProfilePage() {
     <header className="page-heading">
       <div><p className="eyebrow">CONFIGURACIÓN PERSONAL</p><h1>Mi perfil y preferencias</h1><p className="page-lead">Actualizá tus datos para que CocinAPP pueda priorizar recetas más útiles para vos.</p></div>
       <div className="profile-head-actions" aria-label="Acciones de perfil">
-        {profileHeaderActions.map((action) => action.id === 'recipes'
-          ? <Link className="button button-quiet" key={action.id} to={action.href}><PencilLine aria-hidden="true" size={17} /> {action.label}</Link>
-          : <button className="button button-signout" disabled={loggingOut} key={action.id} onClick={() => void logout()} type="button"><LogOut aria-hidden="true" size={17} /> {loggingOut ? 'Cerrando…' : action.label}</button>)}
+        {profileHeaderActions.map((action) => {
+          if (action.id === 'recipes') return <Link className="button button-quiet" key={action.id} to={action.href}><PencilLine aria-hidden="true" size={17} /> {action.label}</Link>
+          if (action.id === 'password') return <button aria-haspopup="dialog" className="button button-quiet" disabled={loggingOut} key={action.id} onClick={() => { setPasswordChanged(false); setChangingPassword(true) }} type="button"><KeyRound aria-hidden="true" size={17} /> {action.label}</button>
+          return <button className="button button-signout" disabled={loggingOut} key={action.id} onClick={() => void logout()} type="button"><LogOut aria-hidden="true" size={17} /> {loggingOut ? 'Cerrando…' : action.label}</button>
+        })}
       </div>
     </header>
+    <div role="status">{passwordChanged && <p className="form-message success">Cambiaste tu contraseña correctamente.</p>}</div>
+    {changingPassword && <ChangePasswordDialog
+      onClose={() => setChangingPassword(false)}
+      onChanged={() => { setChangingPassword(false); setPasswordChanged(true) }}
+    />}
     <div className="profile-layout">
       <form className="profile-form surface" noValidate onInput={clearValidationError} onChange={clearValidationError} onSubmit={save}>
         {validationError && <p className="form-message error" id="profile-validation-error" role="alert">{validationError}</p>}

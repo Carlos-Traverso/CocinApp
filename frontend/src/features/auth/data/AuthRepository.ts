@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { authenticateUser, clearStoredUserSession, endSession, getSession, registerAccount, startDemoAdminSession, startSupabaseUserSession, startUserSession, type SessionInfo } from './localAuthStore'
-import { isRelationalProfilesEnabled, supabase } from '../../../shared/data/supabaseClient'
+import { authenticateUser, changeLocalPassword, clearStoredUserSession, endSession, getSession, getSessionRevision, registerAccount, startDemoAdminSession, startSupabaseUserSession, startUserSession, type SessionInfo } from './localAuthStore'
+import { createPasswordVerificationClient, isRelationalProfilesEnabled, supabase } from '../../../shared/data/supabaseClient'
 import type { UserRole } from './localAuthStore'
 import { adminRepository } from '../../admin/data/AdminRepository'
 import { assertAuthenticationConfigured } from '../domain/security'
@@ -84,6 +84,7 @@ export interface AuthRepository {
   session(): Promise<SessionInfo | null>
   login(email: string, password: string): Promise<void>
   register(name: string, email: string, password: string): Promise<void>
+  changePassword(currentPassword: string, newPassword: string): Promise<void>
   loginAsDemoAdmin(): Promise<void>
   logout(): Promise<void>
 }
@@ -168,6 +169,43 @@ export const authRepository: AuthRepository = {
     if (supabase) throw new Error('Ingresá con una cuenta que tenga el rol de administrador en Supabase.')
     startDemoAdminSession()
     beginSessionPolicy(getSession()!)
+  },
+  async changePassword(currentPassword, newPassword) {
+    requireConfiguredAuthentication()
+    if (!supabase) {
+      changeLocalPassword(currentPassword, newPassword)
+      return
+    }
+    if (!currentPassword) throw new Error('Ingresá tu contraseña actual.')
+    if (newPassword.length < 8) throw new Error('La nueva contraseña debe tener al menos 8 caracteres.')
+    if (currentPassword === newPassword) throw new Error('La nueva contraseña debe ser distinta de la actual.')
+
+    const account = getSession()
+    const revision = getSessionRevision()
+    const sessionError = 'Volvé a iniciar sesión para cambiar tu contraseña.'
+    if (!account || account.role !== 'USER' || !account.token.startsWith('supabase-user:')) throw new Error(sessionError)
+
+    // Supabase projects can omit the server's current-password requirement.
+    // Verify against Auth before updating, even on projects with that setting off.
+    const verifier = createPasswordVerificationClient()
+    const { data, error: verificationError } = await verifier.auth.signInWithPassword({ email: account.email, password: currentPassword })
+    if (verificationError?.code === 'invalid_credentials') throw new Error('La contraseña actual es incorrecta.')
+    if (!data.session) throw new Error('No se pudo verificar la contraseña actual. Intentá de nuevo.')
+
+    // The verification session is temporary. Keep the original login active.
+    await verifier.auth.signOut({ scope: 'local' }).catch(() => undefined)
+    const { data: { session }, error: activeSessionError } = await supabase.auth.getSession()
+    if (activeSessionError || !session || account.token !== `supabase-user:${session.user.id}`
+      || data.session.user.id !== session.user.id || revision !== getSessionRevision()
+      || getSession()?.token !== account.token) throw new Error(sessionError)
+
+    const { error } = await supabase.auth.updateUser({ current_password: currentPassword, password: newPassword })
+    if (!error) return
+    if (error.code === 'current_password_mismatch') throw new Error('La contraseña actual es incorrecta.')
+    if (error.code === 'same_password') throw new Error('La nueva contraseña debe ser distinta de la actual.')
+    if (error.code === 'weak_password') throw new Error('La nueva contraseña no cumple los requisitos de seguridad.')
+    if (error.code === 'reauthentication_needed' || error.code === 'session_not_found') throw new Error(sessionError)
+    throw new Error('No se pudo cambiar la contraseña. Intentá de nuevo.')
   },
   async logout() {
     const current = getSession()

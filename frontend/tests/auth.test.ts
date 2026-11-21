@@ -11,7 +11,7 @@ global.window = { dispatchEvent: () => {}, addEventListener: () => {}, removeEve
 
 import assert from 'node:assert/strict'
 import test, { beforeEach, describe } from 'node:test'
-import { authenticateUser, clearStoredUserSession, demoAdminEmail, endSession, getSession, registerAccount, startDemoAdminSession, startSession, startSupabaseUserSession, startUserSession } from '../src/features/auth/data/localAuthStore'
+import { authenticateUser, changeLocalPassword, clearStoredUserSession, demoAdminEmail, endSession, getSession, registerAccount, startDemoAdminSession, startSession, startSupabaseUserSession, startUserSession } from '../src/features/auth/data/localAuthStore'
 import { roleHome } from '../src/features/auth/domain/routeAccess'
 import { personalStorage } from '../src/features/auth/data/personalStorage'
 import { assertAuthenticationConfigured } from '../src/features/auth/domain/security'
@@ -58,6 +58,21 @@ describe('local access flows', () => {
     assert.throws(() => authenticateUser(account.email, 'incorrecta'), /no son correctos/)
     endSession()
     assert.equal(getSession(), null)
+  })
+
+  test('changing a local password requires the current password and preserves the session', () => {
+    const account = registerAccount('Ana', 'ana@example.com', 'clave-segura')
+    assert.throws(() => changeLocalPassword('clave-segura', 'clave-nueva'), /iniciar sesión/)
+    startUserSession(account)
+    const session = getSession()
+    assert.throws(() => changeLocalPassword('incorrecta', 'clave-nueva'), /actual es incorrecta/)
+    assert.throws(() => changeLocalPassword('clave-segura', 'corta'), /8 caracteres/)
+    assert.throws(() => changeLocalPassword('clave-segura', 'clave-segura'), /distinta/)
+    assert.equal(authenticateUser(account.email, 'clave-segura').email, account.email)
+    changeLocalPassword('clave-segura', 'clave-nueva')
+    assert.deepEqual(getSession(), session)
+    assert.throws(() => authenticateUser(account.email, 'clave-segura'), /no son correctos/)
+    assert.equal(authenticateUser(account.email, 'clave-nueva').email, account.email)
   })
 
   test('personal records migrate to the first account and remain isolated between users', () => {
