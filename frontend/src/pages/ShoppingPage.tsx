@@ -1,3 +1,4 @@
+import { writeFailureMessage } from '../shared/data/writeFailure'
 import { LoadingScreen } from '../components/LoadingScreen'
 import { FilterSelect } from '../components/FilterSelect'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
@@ -20,6 +21,11 @@ const sourceLabels = { manual: 'Manual', recipe: 'Receta', plan: 'Plan', favorit
 
 function emptyItem(): ShoppingItem {
   return { id: crypto.randomUUID(), name: '', category: 'Otros', quantity: 1, unit: 'u', note: '', checked: false, transferredToPantry: false, transferredAt: null, sources: ['manual'], ingredientId: null }
+}
+
+function shoppingWriteFailure(error: unknown) {
+  return writeFailureMessage(error, 'Recargá la lista antes de volver a intentar.')
+    ?? 'No se confirmó el cambio. Recargá la lista para revisar el estado antes de volver a intentar.'
 }
 
 export function ShoppingPage() {
@@ -66,7 +72,7 @@ export function ShoppingPage() {
       if (!saved.acquired) { void notify({ type: 'warning', title: 'Operación en curso', message: 'Esperá a que termine la operación actual para volver a intentar.' }); return false }
       return saved.acquired && saved.result === true
     }
-    catch { setReloadRequired(true); void notify({ type: 'error', title: 'No se pudieron guardar los cambios', message: 'Recargá la lista antes de volver a intentar.' }); return false }
+    catch (error) { setReloadRequired(true); void notify({ type: 'error', title: 'No se pudieron guardar los cambios', message: shoppingWriteFailure(error) }); return false }
   }
 
   async function reloadShopping() {
@@ -140,7 +146,7 @@ export function ShoppingPage() {
         setItems(next)
       })
       if (!outcome.acquired) void notify({ type: 'warning', title: 'Operación en curso', message: 'Esperá a que termine la operación actual para volver a intentar.' })
-    } catch { setReloadRequired(true); void notify({ type: 'error', title: 'No se pudo actualizar la compra', message: 'Recargá la lista antes de volver a intentar.' }) }
+    } catch (error) { setReloadRequired(true); void notify({ type: 'error', title: 'No se pudo actualizar la compra', message: shoppingWriteFailure(error) }) }
   }
 
   async function markAll() {
@@ -148,7 +154,7 @@ export function ShoppingPage() {
       const outcome = await runExclusive('mark-all', async () => { setItems(await mockShoppingRepository.markAllPurchased()); void notify({ type: 'success', title: 'Compras actualizadas', message: `${pendingCount} ${pendingCount === 1 ? 'producto marcado como comprado' : 'productos marcados como comprados'}.` }) })
       if (!outcome.acquired) void notify({ type: 'warning', title: 'Operación en curso', message: 'Esperá a que termine la operación actual para volver a intentar.' })
     }
-    catch { setReloadRequired(true); void notify({ type: 'error', title: 'No se pudieron marcar las compras', message: 'Recargá la lista antes de volver a intentar.' }) }
+    catch (error) { setReloadRequired(true); void notify({ type: 'error', title: 'No se pudieron marcar las compras', message: shoppingWriteFailure(error) }) }
   }
 
   async function transferAll() {
@@ -160,7 +166,7 @@ export function ShoppingPage() {
         void notify({ type: result.transferredCount ? 'success' : 'info', title: result.transferredCount ? 'Transferencia completada' : 'Sin productos transferibles', message: result.transferredCount ? `${result.transferredCount} ${result.transferredCount === 1 ? 'producto transferido' : 'productos transferidos'} a la despensa.` : 'Marcá artículos como comprados y verificá que tengan una unidad y categoría válidas.' })
       })
       if (!outcome.acquired) void notify({ type: 'warning', title: 'Operación en curso', message: 'Esperá a que termine la operación actual para volver a intentar.' })
-    } catch { setReloadRequired(true); void notify({ type: 'error', title: 'La transferencia no se completó', message: 'Recargá la lista para confirmar el estado antes de volver a intentar.' }) }
+    } catch (error) { setReloadRequired(true); void notify({ type: 'error', title: 'La transferencia no se completó', message: shoppingWriteFailure(error) }) }
   }
 
   const mutating = working !== ''

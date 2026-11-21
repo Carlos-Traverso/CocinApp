@@ -10,6 +10,7 @@ import { MealBadge } from '../features/planner/ui/MealBadge'
 import { plannerSlotPresentation } from '../features/planner/ui/plannerPresentation'
 import { RecipeImage } from '../features/recipes/ui/RecipeImage'
 import { useNotifications } from '../shared/notifications/NotificationProvider'
+import { writeFailureMessage } from '../shared/data/writeFailure'
 
 const dayFormatter = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'short' })
 
@@ -47,7 +48,7 @@ export function PlannerPage() {
       void notify({ type: 'success', title: 'Plan actualizado', message: recipeName ? `${meal}: ${recipeName} quedó planificada.` : `${meal}: se quitó la receta planificada.` })
       return true
     }
-    catch (error) { void notify({ type: 'error', title: 'No se pudo guardar el plan', message: error instanceof Error ? error.message : 'No se confirmó el guardado. Recargá la semana para revisar los datos actuales.' }); return false }
+    catch (error) { void notify({ type: 'error', title: 'No se pudo guardar el plan', message: writeFailureMessage(error, 'Recargá la semana para revisar los datos actuales.') ?? (error instanceof Error ? error.message : 'No se confirmó el guardado. Recargá la semana para revisar los datos actuales.') }); return false }
     finally { savingRef.current = false; setSaving(false) }
   }
 
@@ -66,7 +67,7 @@ export function PlannerPage() {
     if (!await notify({ type: 'warning', title: 'Quitar recetas no disponibles', message: `Se quitarán ${unavailable.length} entradas de esta semana.`, confirmLabel: 'Quitar', cancelLabel: 'Cancelar' })) return
     savingRef.current = true; setSaving(true)
     try { await mockPlannerRepository.save(plan.filter((item) => item.available !== false)); setPlan(await mockPlannerRepository.list(dates[0])); void notify({ type: 'success', title: 'Plan actualizado', message: 'Se quitaron las recetas no disponibles.' }) }
-    catch (error) { void notify({ type: 'error', title: 'No se pudo actualizar el plan', message: error instanceof Error ? error.message : 'Recargá la semana e intentá nuevamente.' }) }
+    catch (error) { void notify({ type: 'error', title: 'No se pudo actualizar el plan', message: writeFailureMessage(error, 'Recargá la semana e intentá nuevamente.') ?? (error instanceof Error ? error.message : 'Recargá la semana e intentá nuevamente.') }) }
     finally { savingRef.current = false; setSaving(false) }
   }
 

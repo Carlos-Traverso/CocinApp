@@ -1,3 +1,4 @@
+import { writeFailureMessage } from '../shared/data/writeFailure'
 import { ErrorScreen } from '../app/ErrorScreen'
 import { LoadingScreen } from '../components/LoadingScreen'
 import { useEffect, useRef, useState } from 'react'
@@ -161,7 +162,7 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
       setSession({ ...next })
       if (next.recipeSnapshot) setRecipe(next.recipeSnapshot)
       return true
-    } catch { void notify({ type: 'error', title: 'No se pudo guardar el progreso', message: 'Revisá el espacio disponible del navegador e intentá de nuevo.' }); return false }
+    } catch (error) { void notify({ type: 'error', title: 'No se pudo guardar el progreso', message: writeFailureMessage(error, 'Recargá la cocina antes de volver a intentar.') ?? 'No se confirmó el progreso. Recargá la cocina antes de continuar.' }); return false }
     finally { progressWriteRef.current = false; setPersistingProgress(false) }
   }
 
@@ -224,7 +225,7 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
       const failure = error as { code?: string }
       if (failure?.code === '40001') setReloadRequired(true)
       else if (failure?.code) finishChoiceRef.current = null
-      void notify({ type: 'error', title: 'No se pudo finalizar', message: isRelationalCookingEnabled ? 'No se confirmó la finalización. Reintentá la misma decisión; si la sesión cambió, recargá la cocina.' : 'Revisá la despensa y el espacio disponible del navegador.' })
+      void notify({ type: 'error', title: 'No se pudo finalizar', message: writeFailureMessage(error, 'Recargá la cocina para confirmar el estado.') ?? (isRelationalCookingEnabled ? 'No se confirmó la finalización. Reintentá la misma decisión; si la sesión cambió, recargá la cocina.' : 'Revisá la despensa y el espacio disponible del navegador.') })
     }
   }
 

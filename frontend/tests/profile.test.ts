@@ -240,7 +240,7 @@ test('sends a full relational snapshot with string version and stable keys', asy
   }])
 })
 
-test('refreshes after a relational version conflict and blocks another save until a user reloads', async () => {
+test('reports a relational version conflict without waiting for a read and requires an explicit reload', async () => {
   let reads = 0
   let writes = 0
   const repository = createProfileRepository({
@@ -251,7 +251,7 @@ test('refreshes after a relational version conflict and blocks another save unti
   })
   await repository.getProfile()
   await assert.rejects(repository.saveProfile({ name: 'Mi borrador' }), /Recargá el perfil/)
-  assert.equal(reads, 2)
+  assert.equal(reads, 1)
   assert.equal(writes, 1)
   await assert.rejects(repository.saveProfile({ name: 'Mi borrador' }), /Recargá el perfil/)
   assert.equal(writes, 1)

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { nutritionRepository, type NutritionConfigInput } from '../../profile/data/NutritionRepository'
 import type { NutritionConfig } from '../../profile/domain/profile'
 import { useNotifications } from '../../../shared/notifications/NotificationProvider'
+import { writeFailureMessage } from '../../../shared/data/writeFailure'
 
 const activities = [['sedentary', 'Sedentaria'], ['light', 'Ligera'], ['moderate', 'Moderada'], ['active', 'Activa'], ['very-active', 'Muy activa']] as const
 const goals = [['lose', 'Perder peso'], ['maintain', 'Mantener'], ['gain', 'Ganar peso'], ['gain-muscle', 'Ganar masa muscular']] as const
@@ -19,6 +20,7 @@ export function NutritionTab() {
   const [draft, setDraft] = useState<Draft>(emptyDraft)
   const [loading, setLoading] = useState(true)
   const [publishing, setPublishing] = useState(false)
+  const [reloadRequired, setReloadRequired] = useState(false)
   const [pending, setPending] = useState<{ config: NutritionConfigInput; expected: number } | null>(null)
   const [error, setError] = useState('')
   const { notify } = useNotifications()
@@ -29,6 +31,7 @@ export function NutritionTab() {
     try {
       const result = await nutritionRepository.list()
       setVersions(result)
+      setReloadRequired(false)
       if (!draft.source && result[0]) setDraft(toDraft(result[0]))
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'No se pudieron cargar las versiones.') }
     finally { setLoading(false) }
@@ -58,13 +61,14 @@ export function NutritionTab() {
     try {
       const saved = await nutritionRepository.publish(request.config, request.expected)
       setPending(null); setVersions((current) => [saved, ...current.filter((item) => item.configVersion !== saved.configVersion)].sort((a, b) => b.configVersion - a.configVersion))
-      await notify({ type: 'success', title: 'Configuración publicada', message: `Versión ${saved.configVersion} publicada.` })
+      void notify({ type: 'success', title: 'Configuración publicada', message: `Versión ${saved.configVersion} publicada.` })
     } catch (cause) {
-      setPending(request)
       const message = cause instanceof Error ? cause.message : 'No se pudo publicar la configuración.'
-      setError(message)
       const code = cause && typeof cause === 'object' ? (cause as { code?: unknown }).code : undefined
-      if (code === '40001' || /40001|cambió|recargá/i.test(message)) await reload()
+      const conflict = code === '40001' || /40001|cambió|recargá/i.test(message)
+      setPending(conflict ? null : request)
+      setReloadRequired(conflict)
+      setError(writeFailureMessage(cause, 'Actualizá las versiones antes de continuar.') ?? message)
     } finally { setPublishing(false) }
   }
 
@@ -78,7 +82,7 @@ export function NutritionTab() {
       <time dateTime={item.effectiveAt}>Vigente desde {versionDate.format(new Date(item.effectiveAt))}</time>
       <span>{item.sourceNote}</span>
     </li>)}</ol>}
-    <form className="surface admin-form-stack" onSubmit={(event) => { event.preventDefault(); if (pending) void publish(pending); else { try { const request = prepare(); setPending(request); void publish(request) } catch (cause) { setError(cause instanceof Error ? cause.message : 'Revisá la configuración.') } } }}>
+    <form className="surface admin-form-stack" onSubmit={(event) => { event.preventDefault(); if (publishing || loading || reloadRequired) return; if (pending) void publish(pending); else { try { const request = prepare(); setPending(request); void publish(request) } catch (cause) { setError(cause instanceof Error ? cause.message : 'Revisá la configuración.') } } }}>
       <h3>{pending ? 'Reintentar publicación' : 'Nueva versión'}</h3>
       <fieldset disabled={publishing || Boolean(pending)}><legend>Factores de actividad</legend>{activities.map(([key, label]) => <label className="field" key={key}><span>{label}</span><input inputMode="decimal" onChange={(e) => setDraft({ ...draft, factors: { ...draft.factors, [key]: e.target.value } })} required value={draft.factors[key] ?? ''} /></label>)}</fieldset>
       <fieldset disabled={publishing || Boolean(pending)}><legend>Ajustes por objetivo (kcal/día)</legend>{goals.map(([key, label]) => <div key={key}><strong>{label}</strong><div className="admin-form-grid"><label className="field"><span>Mínimo</span><input inputMode="numeric" onChange={(e) => setDraft({ ...draft, goals: { ...draft.goals, [key]: { ...draft.goals[key], minimum: e.target.value } } })} required value={draft.goals[key]?.minimum ?? ''} /></label><label className="field"><span>Máximo</span><input inputMode="numeric" onChange={(e) => setDraft({ ...draft, goals: { ...draft.goals, [key]: { ...draft.goals[key], maximum: e.target.value } } })} required value={draft.goals[key]?.maximum ?? ''} /></label></div></div>)}</fieldset>
@@ -86,7 +90,7 @@ export function NutritionTab() {
       <label className="field"><span>Fecha y hora de vigencia (hora local)</span><input disabled={publishing || Boolean(pending)} onChange={(e) => setDraft({ ...draft, effectiveAt: e.target.value })} required type="datetime-local" value={draft.effectiveAt} /></label>
       {pending && <p>Se conserva la misma fecha, contenido y versión esperada para que el reintento sea idempotente.</p>}
       {!pending && <p>Se publicará sobre la última versión {nextVersion}.</p>}
-      <button className="button button-primary" disabled={publishing || loading} type="submit">{publishing ? 'Publicando…' : pending ? 'Reintentar publicación' : 'Publicar versión'}</button>
+      <button className="button button-primary" disabled={publishing || loading || reloadRequired} type="submit">{publishing ? 'Publicando…' : pending ? 'Reintentar publicación' : 'Publicar versión'}</button>
       {pending && <button className="button button-quiet" disabled={publishing} onClick={() => { setPending(null); setError('') }} type="button">Descartar reintento y editar</button>}
     </form>
   </section>

@@ -23,7 +23,7 @@ export const isRelationalAdminEnabled = import.meta.env.VITE_RELATIONAL_ADMIN ==
 export const isRelationalDashboardEnabled = import.meta.env.VITE_RELATIONAL_DASHBOARD === 'true'
 
 export const supabase = isSupabaseConfigured
-  ? createClient(projectUrl!, publishableKey!)
+  ? createClient(projectUrl!, publishableKey!, { db: { timeout: 12_000 } })
   : null
 
 const passwordRecoveryMarker = 'cocinapp.auth.password-recovery.v1'

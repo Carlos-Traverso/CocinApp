@@ -212,10 +212,6 @@ export function createProfileRepository(dependencies: ProfileRepositoryDependenc
         } catch (error) {
           assertPersonalDataSessionCurrent(session)
           if (isConflict(error)) {
-            const latest = await readRelational(session)
-            bindVersion(session, latest.version)
-            const known: Set<string> = new Set(Object.values(preferenceKeys))
-            preservedPreferenceKeys = latest.preferenceKeys.filter((key) => !known.has(key))
             conflictNeedsReload = true
             throw new Error('El perfil cambió en otra sesión. Recargá el perfil y volvé a aplicar tus cambios antes de guardar.')
           }

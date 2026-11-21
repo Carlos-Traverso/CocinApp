@@ -8,6 +8,7 @@ import { calculateAge, estimateForProfile, profileIsComplete, type ProfileDraft 
 import { EnergySummary } from '../features/profile/ui/EnergySummary'
 import { ProfileFields } from '../features/profile/ui/ProfileFields'
 import { useNotifications } from '../shared/notifications/NotificationProvider'
+import { writeFailureMessage } from '../shared/data/writeFailure'
 
 function profileFieldValidationMessage(field: HTMLInputElement | HTMLSelectElement): string {
   if (field.validity.valueMissing) return 'Completá los campos obligatorios del perfil.'
@@ -50,7 +51,7 @@ export function OnboardingPage() {
     }
     setSaving(true)
     try { await profileRepository.saveProfile(profile); navigate('/profile') }
-    catch { await notify({ type: 'error', title: 'No se pudo guardar el perfil', message: 'Revisá el espacio disponible del navegador e intentá de nuevo.' }) }
+    catch (error) { void notify({ type: 'error', title: 'No se pudo guardar el perfil', message: writeFailureMessage(error, 'Recargá la página antes de volver a guardar.') ?? (error instanceof Error && /Recargá el perfil/.test(error.message) ? error.message : 'Recargá la página para confirmar el estado antes de volver a guardar.') }) }
     finally { setSaving(false) }
   }
 

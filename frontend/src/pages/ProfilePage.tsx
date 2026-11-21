@@ -9,6 +9,7 @@ import { EnergySummary } from '../features/profile/ui/EnergySummary'
 import { ProfileFields } from '../features/profile/ui/ProfileFields'
 import { profileHeaderActions } from '../features/profile/ui/profileHeaderActions'
 import { isRelationalProfilesEnabled } from '../shared/data/supabaseClient'
+import { writeFailureMessage } from '../shared/data/writeFailure'
 import { useNotifications } from '../shared/notifications/NotificationProvider'
 
 function profileFieldValidationMessage(field: HTMLInputElement | HTMLSelectElement): string {
@@ -22,6 +23,8 @@ export function ProfilePage() {
   const [profile, setProfile] = useState<ProfileDraft>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [reloadRequired, setReloadRequired] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [loggingOut, setLoggingOut] = useState(false)
   const [validationError, setValidationError] = useState('')
   const invalidFieldRef = useRef<HTMLInputElement | HTMLSelectElement | null>(null)
@@ -30,11 +33,11 @@ export function ProfilePage() {
     let current = true
     setLoading(true)
     void profileRepository.getProfile()
-      .then((loadedProfile) => { if (current) setProfile(loadedProfile) })
+      .then((loadedProfile) => { if (current) { setProfile(loadedProfile); setReloadRequired(false) } })
       .catch(() => { if (current) void notify({ type: 'error', title: 'No se pudo cargar el perfil', message: 'No se pudo cargar el perfil.' }) })
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false }
-  }, [notify])
+  }, [loadAttempt, notify])
   const age = profile.birthDate ? calculateAge(profile.birthDate) : undefined
   const estimate = estimateForProfile(profile)
 
@@ -47,6 +50,7 @@ export function ProfilePage() {
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (loading || saving || reloadRequired) return
     const form = event.currentTarget
     clearValidationError()
     if (!form.checkValidity()) {
@@ -64,8 +68,13 @@ export function ProfilePage() {
       return
     }
     setSaving(true)
-    try { await profileRepository.saveProfile(profile); await notify({ type: 'success', title: 'Perfil guardado', message: 'Tus datos y preferencias se guardaron correctamente.' }) }
-    catch { await notify({ type: 'error', title: 'No se pudo guardar el perfil', message: 'Revisá el espacio disponible del navegador e intentá de nuevo.' }) }
+    try { await profileRepository.saveProfile(profile); void notify({ type: 'success', title: 'Perfil guardado', message: 'Tus datos y preferencias se guardaron correctamente.' }) }
+    catch (error) {
+      const message = writeFailureMessage(error, 'Recargá el perfil antes de volver a guardar.')
+        ?? (error instanceof Error && /Recargá el perfil/.test(error.message) ? error.message : 'No se confirmó el guardado. Recargá el perfil antes de volver a intentar.')
+      setReloadRequired(true)
+      void notify({ type: 'error', title: 'No se pudo guardar el perfil', message })
+    }
     finally { setSaving(false) }
   }
 
@@ -104,7 +113,10 @@ export function ProfilePage() {
         <div className="section-heading"><div><h2>Datos y objetivos</h2><p>{isRelationalProfilesEnabled ? 'Guardados en tu cuenta.' : 'Guardados solo en este navegador durante esta etapa.'}</p></div></div>
         {loading ? <LoadingScreen message="Cargando perfil…" variant="section" /> : <><ProfileFields profile={profile} showEmail onChange={(changes) => { setProfile({ ...profile, ...changes }); clearValidationError() }} />
         <p className="medical-note compact">Las etiquetas dietéticas son informativas y no garantizan ausencia de contaminación cruzada.</p></>}
-        <div className="profile-save-row"><button className="button button-primary" disabled={loading || saving} type="submit"><Save size={17} /> {saving ? 'Guardando…' : 'Guardar perfil'}</button></div>
+        <div className="profile-save-row">
+          {reloadRequired && <button className="button button-quiet" disabled={loading} onClick={() => setLoadAttempt((attempt) => attempt + 1)} type="button">Recargar perfil</button>}
+          <button className="button button-primary" disabled={loading || saving || reloadRequired} type="submit"><Save size={17} /> {saving ? 'Guardando…' : 'Guardar perfil'}</button>
+        </div>
       </form>
       <aside className="profile-summary surface" aria-label="Resumen de perfil">
         <p className="eyebrow">TU PERFIL</p><h2>{profile.name || 'Tu cocina'}</h2>

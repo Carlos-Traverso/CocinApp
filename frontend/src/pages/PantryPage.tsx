@@ -1,3 +1,4 @@
+import { writeFailureMessage } from '../shared/data/writeFailure'
 import { LoadingScreen } from '../components/LoadingScreen'
 import { FilterSelect } from '../components/FilterSelect'
 import { AlertTriangle, CalendarClock, ClipboardList, ImagePlus, Pencil, Plus, Search, ShoppingCart, Trash2, X } from 'lucide-react'
@@ -236,7 +237,7 @@ export function PantryPage() {
       const conflict = remoteError.code === '40001' || /otra sesión|recargá la despensa/i.test(remoteError.message ?? '')
       const invalid = remoteError.code === '22023' || remoteError.code === '42501'
       if (useRelationalPantry) { setMustReloadPantry(true); setEditor(null); setDeleting(null); setConfirmExamples(false) }
-      void notify({ type: 'error', title: conflict ? 'La despensa cambió en otra sesión' : 'No se pudieron guardar los cambios', message: conflict ? 'Recargá la despensa para ver la versión actual antes de continuar.' : invalid ? 'La solicitud no fue aceptada. Recargá la despensa y revisá que categoría, unidad e ingrediente estén disponibles.' : 'No se confirmó el guardado. Recargá la despensa antes de volver a intentar.' })
+      void notify({ type: 'error', title: conflict ? 'La despensa cambió en otra sesión' : 'No se pudieron guardar los cambios', message: writeFailureMessage(error, 'Recargá la despensa antes de continuar.') ?? (conflict ? 'Recargá la despensa para ver la versión actual antes de continuar.' : invalid ? 'La solicitud no fue aceptada. Recargá la despensa y revisá que categoría, unidad e ingrediente estén disponibles.' : 'No se confirmó el guardado. Recargá la despensa antes de volver a intentar.') })
       return false
     }
   }
