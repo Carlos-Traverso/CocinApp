@@ -20,6 +20,7 @@ export function PlannerPage() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [plan, setPlan] = useState<PlannedMeal[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [saving, setSaving] = useState(false)
   const [knownRecipes, setKnownRecipes] = useState<Recipe[]>([])
   const [availableRecipes, setAvailableRecipes] = useState<Recipe[]>([])
@@ -29,9 +30,37 @@ export function PlannerPage() {
   target.setDate(target.getDate() + weekOffset * 7)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const dates = weekDates(target)
+  const weekStart = dates[0]
   const recipesById = new Map(knownRecipes.map((recipe) => [recipe.id, recipe]))
 
-  useEffect(() => { let active = true; setLoading(true); Promise.all([mockPlannerRepository.list(dates[0]), mockPlannerRepository.loadRecipes()]).then(([value, recipes]) => { if (active) { setPlan(value); setKnownRecipes(recipes.known); setAvailableRecipes(recipes.available) } }).catch(() => { if (active) void notify({ type: 'error', title: 'No se pudo cargar el plan', message: 'No se pudo cargar el plan semanal y las recetas.' }) }).finally(() => { if (active) setLoading(false) }); return () => { active = false } }, [weekOffset, loadAttempt, notify])
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    setLoadFailed(false)
+    Promise.all([mockPlannerRepository.list(weekStart), mockPlannerRepository.loadRecipes()])
+      .then(([value, recipes]) => {
+        if (!active) return
+        setPlan(value)
+        setKnownRecipes(recipes.known)
+        setAvailableRecipes(recipes.available)
+      })
+      .catch(() => { if (active) setLoadFailed(true) })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [weekStart, loadAttempt])
+
+  function goToWeek(offset: number) {
+    if (offset === weekOffset) return
+    setPicker(null)
+    setLoading(true)
+    setWeekOffset(offset)
+  }
+
+  function reloadWeek() {
+    setPicker(null)
+    setLoading(true)
+    setLoadAttempt((value) => value + 1)
+  }
 
   async function assign(date: string, meal: Meal, recipeId: string, portions?: number): Promise<boolean> {
     if (savingRef.current || loading) return false
@@ -79,7 +108,7 @@ export function PlannerPage() {
         <p className="page-lead">Asigná recetas de lunes a domingo para desayuno, almuerzo, merienda y cena. Cada semana se guarda por separado.</p>
       </div>
       <div className="planner-head-actions">
-        <button className="button button-primary" disabled={loading || saving} onClick={sendWeekToShopping} type="button">Generar compras de esta semana</button>
+        <button className="button button-primary" disabled={loading || loadFailed || saving} onClick={sendWeekToShopping} type="button">Generar compras de esta semana</button>
         <Link className="button button-quiet" to="/recipes">Explorar recetas</Link>
       </div>
     </header>
@@ -87,54 +116,58 @@ export function PlannerPage() {
       <div className="planner-toolbar">
         <div className="planner-week-summary">
           <h2 id="planner-week-title">Semana del {new Date(`${dates[0]}T12:00:00`).toLocaleDateString('es-AR')} al {new Date(`${dates[6]}T12:00:00`).toLocaleDateString('es-AR')}</h2>
-          <button className="button button-quiet" disabled={saving || loading} onClick={() => { setPicker(null); setLoadAttempt((value) => value + 1) }} type="button">Recargar semana</button>
+          <button className="button button-quiet" disabled={saving || loading} onClick={reloadWeek} type="button">Recargar semana</button>
         </div>
         <div className="planner-week-navigation">
-          <button aria-label="Semana anterior" disabled={saving} className="button button-quiet" onClick={() => setWeekOffset(weekOffset - 1)} type="button"><ChevronLeft size={18} /></button>
-          <button className="button button-quiet" disabled={saving} onClick={() => setWeekOffset(0)} type="button">Esta semana</button>
-          <button aria-label="Semana siguiente" disabled={saving} className="button button-quiet" onClick={() => setWeekOffset(weekOffset + 1)} type="button"><ChevronRight size={18} /></button>
+          <button aria-label="Semana anterior" disabled={saving} className="button button-quiet" onClick={() => goToWeek(weekOffset - 1)} type="button"><ChevronLeft size={18} /></button>
+          <button className="button button-quiet" disabled={saving} onClick={() => goToWeek(0)} type="button">Esta semana</button>
+          <button aria-label="Semana siguiente" disabled={saving} className="button button-quiet" onClick={() => goToWeek(weekOffset + 1)} type="button"><ChevronRight size={18} /></button>
         </div>
       </div>
-      {plan.some((item) => item.available === false) && <p role="status">Hay recetas que ya no están disponibles. Para editar la semana, quitá explícitamente esas entradas. <button className="text-link" disabled={saving || loading} onClick={() => void removeUnavailable()} type="button">Quitar recetas no disponibles</button></p>}
-      {loading && <LoadingScreen message="Cargando plan semanal…" variant="section" />}{saving && <p role="status">Guardando cambio…</p>}
-      <div className="planner-grid">
-        {dates.map((date) => {
-          const dayLabel = dayFormatter.format(new Date(`${date}T12:00:00`))
-          const isToday = date === localDateKey(new Date())
-          const isSelected = picker?.date === date
-          return <article aria-labelledby={`planner-day-${date}`} className={`planner-day${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}`} key={date}>
-            <h3 id={`planner-day-${date}`}><span>{dayLabel}</span>{isToday && <span className="planner-today">Hoy</span>}</h3>
-            {meals.map((meal) => {
-              const assignment = plan.find((item) => item.date === date && item.meal === meal)
-              const recipeId = assignment?.recipeId ?? ''
-              const recipe = recipeId ? recipesById.get(recipeId) : undefined
-              const recipeIsActive = Boolean(recipe && availableRecipes.some((item) => item.id === recipe.id))
-              const presentation = plannerSlotPresentation(Boolean(recipe))
-              const isEditing = picker?.date === date && picker.meal === meal
-              return <div aria-label={`${meal} del ${dayLabel}: ${recipe?.name ?? presentation.state}`} className={`planner-slot ${recipe ? 'has-recipe' : 'empty'}${isEditing ? ' is-editing' : ''}`} key={meal}>
-                <div className="planner-slot-heading">
-                  <MealBadge meal={meal} />
-                  <button className="planner-pick-button" disabled={loading || saving} onClick={() => setPicker({ date, meal, label: dayLabel })} type="button">{presentation.primaryAction}</button>
-                </div>
-                {recipe ? <>
-                  <div className="planner-recipe-summary">
-                    <RecipeImage className="planner-assignment-image" recipe={recipe} />
-                    <div className="planner-recipe-caption">
-                      <p className={`planner-assignment${recipeIsActive ? '' : ' inactive'}`} title={recipe.name}>{recipe.name}{recipeIsActive ? '' : ' (inactiva)'}</p>
-                      <p className="planner-recipe-meta">{recipe.minutes} min · {recipe.difficulty}</p>
+      {loading ? <LoadingScreen message="Cargando plan semanal…" variant="section" /> : loadFailed ? (
+        <p role="alert">No se pudo cargar el plan semanal. Usá «Recargar semana» para volver a intentarlo.</p>
+      ) : <>
+        {plan.some((item) => item.available === false) && <p role="status">Hay recetas que ya no están disponibles. Para editar la semana, quitá explícitamente esas entradas. <button className="text-link" disabled={saving} onClick={() => void removeUnavailable()} type="button">Quitar recetas no disponibles</button></p>}
+        {saving && <p role="status">Guardando cambio…</p>}
+        <div className="planner-grid">
+          {dates.map((date) => {
+            const dayLabel = dayFormatter.format(new Date(`${date}T12:00:00`))
+            const isToday = date === localDateKey(new Date())
+            const isSelected = picker?.date === date
+            return <article aria-labelledby={`planner-day-${date}`} className={`planner-day${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}`} key={date}>
+              <h3 id={`planner-day-${date}`}><span>{dayLabel}</span>{isToday && <span className="planner-today">Hoy</span>}</h3>
+              {meals.map((meal) => {
+                const assignment = plan.find((item) => item.date === date && item.meal === meal)
+                const recipeId = assignment?.recipeId ?? ''
+                const recipe = recipeId ? recipesById.get(recipeId) : undefined
+                const recipeIsActive = Boolean(recipe && availableRecipes.some((item) => item.id === recipe.id))
+                const presentation = plannerSlotPresentation(Boolean(recipe))
+                const isEditing = picker?.date === date && picker.meal === meal
+                return <div aria-label={`${meal} del ${dayLabel}: ${recipe?.name ?? presentation.state}`} className={`planner-slot ${recipe ? 'has-recipe' : 'empty'}${isEditing ? ' is-editing' : ''}`} key={meal}>
+                  <div className="planner-slot-heading">
+                    <MealBadge meal={meal} />
+                    <button className="planner-pick-button" disabled={loading || saving} onClick={() => setPicker({ date, meal, label: dayLabel })} type="button">{presentation.primaryAction}</button>
+                  </div>
+                  {recipe ? <>
+                    <div className="planner-recipe-summary">
+                      <RecipeImage className="planner-assignment-image" recipe={recipe} />
+                      <div className="planner-recipe-caption">
+                        <p className={`planner-assignment${recipeIsActive ? '' : ' inactive'}`} title={recipe.name}>{recipe.name}{recipeIsActive ? '' : ' (inactiva)'}</p>
+                        <p className="planner-recipe-meta">{recipe.minutes} min · {recipe.difficulty}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="planner-slot-links">
-                    <Link className="text-link" to={`/recipes/${recipe.id}?portions=${assignment?.portions ?? recipe.portions}`}>Ver receta</Link>
-                    {recipeIsActive && <Link className="text-link" to={`/recipes/${recipe.id}/cook?portions=${assignment?.portions ?? recipe.portions}`}>Cocinar receta</Link>}
-                    <button aria-label={`Quitar ${meal} del ${dayLabel}`} className="text-link planner-remove" disabled={saving} onClick={() => assign(date, meal, '')} type="button">Quitar receta</button>
-                  </div>
-                </> : <p className="planner-slot-state">{presentation.state}</p>}
-              </div>
-            })}
-          </article>
-        })}
-      </div>
+                    <div className="planner-slot-links">
+                      <Link className="text-link" to={`/recipes/${recipe.id}?portions=${assignment?.portions ?? recipe.portions}`}>Ver receta</Link>
+                      {recipeIsActive && <Link className="text-link" to={`/recipes/${recipe.id}/cook?portions=${assignment?.portions ?? recipe.portions}`}>Cocinar receta</Link>}
+                      <button aria-label={`Quitar ${meal} del ${dayLabel}`} className="text-link planner-remove" disabled={saving} onClick={() => assign(date, meal, '')} type="button">Quitar receta</button>
+                    </div>
+                  </> : <p className="planner-slot-state">{presentation.state}</p>}
+                </div>
+              })}
+            </article>
+          })}
+        </div>
+      </>}
     </section>
     {picker && <RecipePicker meal={picker.meal} onClose={() => setPicker(null)} onSelect={(id, portions) => assign(picker.date, picker.meal, id, portions)} recipes={availableRecipes} selectedId={plan.find((item) => item.date === picker.date && item.meal === picker.meal)?.recipeId} selectedPortions={plan.find((item) => item.date === picker.date && item.meal === picker.meal)?.portions} title={`${picker.meal} del ${picker.label}`} />}
   </div>
