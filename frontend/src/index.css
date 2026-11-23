@@ -491,7 +491,7 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
   .cooking-page { position: fixed; inset: 0; height: auto; }
   .cooking-main { grid-template-columns: 1fr; gap: 28px; align-items: start; }
   .cooking-side { width: min(550px, 100%); justify-self: center; }
-  .cooking-footer { justify-content: flex-end; padding: 10px max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+  .cooking-footer { justify-content: space-between; padding: 10px max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
   .cooking-footer span { display: none; }
   .cooking-footer .button { width: 130px; min-width: 0; }
   .history-row { flex-wrap: wrap; }
