@@ -24,7 +24,6 @@ body:has(:is([data-page-background='planner'], [data-page-background='profile'],
 .admin-shell,
 .access-page,
 .access-page-login,
-.setup-page,
-.cooking-page {
+.setup-page {
   background: transparent;
 }
