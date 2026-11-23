@@ -1,7 +1,7 @@
 import { writeFailureMessage } from '../shared/data/writeFailure'
 import { ErrorScreen } from '../app/ErrorScreen'
 import { LoadingScreen } from '../components/LoadingScreen'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, Clock3, CookingPot, Lightbulb, Minus, Plus, Thermometer, UtensilsCrossed, X } from 'lucide-react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { formatPantryAmount } from '../features/pantry/domain/pantry'
@@ -62,12 +62,20 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
   const [reloadRequired, setReloadRequired] = useState(false)
   const [persistingProgress, setPersistingProgress] = useState(false)
   const [now, setNow] = useState(Date.now)
+  const contentRef = useRef<HTMLDivElement>(null)
   const finishingRef = useRef(false)
   const finishChoiceRef = useRef<boolean | null>(null)
   const progressWriteRef = useRef(false)
   const chimedRef = useRef('')
   const notifiedTimerRef = useRef('')
   const audioRef = useRef<AudioContext | null>(null)
+  const stepIndex = session?.stepIndex
+
+  useLayoutEffect(() => {
+    if (window.matchMedia('(max-width: 750px)').matches) {
+      contentRef.current?.scrollTo({ top: 0, behavior: 'instant' })
+    }
+  }, [stepIndex])
 
   useEffect(() => {
     let current = true
@@ -148,6 +156,7 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
   }
 
   const stepCount = recipe.steps.length
+  const currentStep = session.stepIndex + 1
   const completedCount = session.completed.length
   const ingredients = scaleIngredients(recipe, session.portions)
   const guidance = getStepGuidance(recipe, session.stepIndex, session.portions)
@@ -230,9 +239,9 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
   }
 
   return <div className="cooking-page">
-    <header className="cooking-header"><button aria-label="Salir del modo cocina" className="cooking-icon-button" disabled={persistingProgress || saving} onClick={leave} type="button"><X size={23} /></button><div><span>COCINANDO</span><strong>{recipe.name}</strong><p aria-live="polite" className="eyebrow cooking-current-step">PASO {session.stepIndex + 1} DE {stepCount}</p></div><span aria-hidden="true" className="cooking-header-spacer" /></header>
-    <div aria-label={`${completedCount} de ${stepCount} pasos completados`} className="cooking-progress" role="progressbar" aria-valuemax={stepCount} aria-valuemin={0} aria-valuenow={completedCount}><div style={{ width: `${completedCount / stepCount * 100}%` }} /></div>
-    <div className="cooking-content" role="region" aria-label="Instrucciones e ingredientes" tabIndex={0}>
+    <header className="cooking-header"><button aria-label="Salir del modo cocina" className="cooking-icon-button" disabled={persistingProgress || saving} onClick={leave} type="button"><X size={23} /></button><div><span>COCINANDO</span><strong>{recipe.name}</strong><p aria-live="polite" className="eyebrow cooking-current-step">PASO {currentStep} DE {stepCount}</p></div><span aria-hidden="true" className="cooking-header-spacer" /></header>
+    <div aria-label="Progreso de la receta" aria-valuetext={`Paso ${currentStep} de ${stepCount}`} className="cooking-progress" role="progressbar" aria-valuemax={stepCount} aria-valuemin={0} aria-valuenow={currentStep}><div style={{ width: `${currentStep / stepCount * 100}%` }} /></div>
+    <div className="cooking-content" ref={contentRef} role="region" aria-label="Instrucciones e ingredientes" tabIndex={0}>
     <main className="cooking-main">
       <section aria-labelledby="cooking-step-title" className="cooking-step">
         {resumeMessage && <p className="cooking-resumed" role="status">{resumeMessage}</p>}
