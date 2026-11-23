@@ -335,7 +335,7 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
 .planner-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; }
 .planner-day { grid-column: span 3; min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .planner-day:nth-child(n+5) { grid-column: span 4; }
-.planner-day h3 { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 46px; margin: 0; border-bottom: 1px solid var(--line); border-radius: 11px 11px 0 0; background: #edf4ed; color: var(--green-dark); padding: 8px 12px; font-size: 15px; text-transform: capitalize; }
+.planner-day h3 { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 46px; margin: 0; border-bottom: 1px solid var(--line); border-radius: 11px 11px 0 0; background: #d8e8db; color: var(--green-dark); padding: 8px 12px; font-size: 15px; text-transform: capitalize; }
 .planner-day.is-today { border-color: #76a985; box-shadow: 0 0 0 2px #dcebdd; }
 .planner-day.is-selected { border-color: var(--green); box-shadow: 0 0 0 2px #cce3d1; }
 .planner-today { flex: 0 0 auto; border-radius: 999px; background: #fff; padding: 3px 6px; color: #256742; font-size: 8px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
