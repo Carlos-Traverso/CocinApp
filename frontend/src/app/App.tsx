@@ -4,7 +4,6 @@ import { CookingPage } from '../pages/CookingPage'
 import { AdminNutritionPage, AdminAuditPage, AdminCategoriesPage, AdminIngredientsPage, AdminPage, AdminRecipesPage, AdminUnitsPage, AdminUsersPage } from '../pages/AdminPage'
 import { HomePage } from '../pages/HomePage'
 import { HistoryPage } from '../pages/HistoryPage'
-import { OnboardingPage } from '../pages/OnboardingPage'
 import { PantryPage } from '../pages/PantryPage'
 import { PlannerPage } from '../pages/PlannerPage'
 import { ProfilePage } from '../pages/ProfilePage'
@@ -17,6 +16,7 @@ import { AdminShell } from '../components/AdminShell'
 import { RequireRole, RequireSession, RedirectIfAuthenticated } from './AuthGuards'
 import { RouteErrorPage, UnexpectedErrorPage } from './RouteErrorPage'
 import { NotificationProvider } from '../shared/notifications/NotificationProvider'
+import { adminAuditAvailable, adminNutritionAvailable } from '../features/admin/ui/adminNavigation'
 
 const router = createBrowserRouter(createRoutesFromElements(
   <Route errorElement={<UnexpectedErrorPage />}>
@@ -39,13 +39,13 @@ const router = createBrowserRouter(createRoutesFromElements(
           <Route path="categories" element={<AdminCategoriesPage />} />
           <Route path="units" element={<AdminUnitsPage />} />
           <Route path="users" element={<AdminUsersPage />} />
-          <Route path="history" element={<AdminAuditPage />} />
-          <Route path="nutrition" element={<AdminNutritionPage />} />
+          <Route path="history" element={adminAuditAvailable ? <AdminAuditPage /> : <Navigate replace to="/admin" />} />
+          <Route path="nutrition" element={adminNutritionAvailable ? <AdminNutritionPage /> : <Navigate replace to="/admin" />} />
         </Route>
       </Route>
 
       <Route element={<RequireRole role="USER" />}>
-        <Route path="onboarding" element={<OnboardingPage />} />
+        <Route path="onboarding" element={<Navigate replace to="/profile" />} />
         <Route path="recipes/:id/cook" element={<CookingPage />} />
         <Route element={<AppShell />}>
           <Route path="panel" element={<HomePage />} />

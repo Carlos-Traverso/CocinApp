@@ -43,13 +43,16 @@ export function WelcomePage() {
     }
     setBusy(true)
     try {
-      if (mode === 'register') {
-        await authRepository.register(name, email, password)
+      const session = mode === 'register'
+        ? await authRepository.register(name, email, password)
+        : await authRepository.login(email, password)
+      if (session) {
+        navigate(roleHome(session.role), { replace: true })
       } else {
-        await authRepository.login(email, password)
+        setMode('login')
+        setPassword('')
+        await notify({ type: 'info', title: 'Confirmá tu correo', message: 'Si recibís un correo de confirmación, abrí el enlace para activar tu cuenta. Después podés iniciar sesión.' })
       }
-      const session = await authRepository.session()
-      if (session) navigate(roleHome(session.role), { replace: true })
     } catch (cause) {
       await notify({ type: 'error', title: mode === 'register' ? 'No se pudo crear la cuenta' : 'No se pudo iniciar sesión', message: cause instanceof Error ? cause.message : 'No se pudo completar el acceso.' })
     } finally { setBusy(false) }
@@ -109,7 +112,7 @@ export function WelcomePage() {
           </div>
           {!isSupabaseConfigured && <div className="access-demo">
             <span>Prueba administrativa</span>
-            <button className="button button-quiet button-wide" disabled={busy} onClick={async () => { setBusy(true); try { await authRepository.loginAsDemoAdmin() } catch { await notify({ type: 'error', title: 'No se pudo iniciar la sesión', message: 'No se pudo iniciar la sesión de demostración.' }) } finally { setBusy(false) } }} type="button"><ShieldCheck size={18} /> Entrar como ADMIN de demostración</button>
+            <button className="button button-quiet button-wide" disabled={busy} onClick={async () => { setBusy(true); try { await authRepository.loginAsDemoAdmin(); navigate(roleHome('ADMIN'), { replace: true }) } catch { await notify({ type: 'error', title: 'No se pudo iniciar la sesión', message: 'No se pudo iniciar la sesión de demostración.' }) } finally { setBusy(false) } }} type="button"><ShieldCheck size={18} /> Entrar como ADMIN de demostración</button>
             <small>Los registros creados desde el formulario siempre reciben el rol USER.</small>
           </div>}
           <p className="access-disclaimer">{isSupabaseConfigured ? 'Ingresá con tu correo y contraseña. El acceso de administración depende de los permisos de tu cuenta.' : 'Los datos de la cuenta se guardan localmente en el navegador.'}</p>
@@ -117,7 +120,6 @@ export function WelcomePage() {
       </div>
       <footer className="access-footer">
         <span><strong>CocinAPP</strong> · © 2026 — Planificación inteligente de comidas</span>
-        <span>{isSupabaseConfigured ? 'Tu cocina, organizada en un solo lugar' : 'Privacidad simulada　·　Términos de demo　·　Ayuda rápida'}</span>
       </footer>
     </main>
   )

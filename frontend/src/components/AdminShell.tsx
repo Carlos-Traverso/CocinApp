@@ -2,7 +2,7 @@ import { BookOpen, Boxes, FolderTree, History, LayoutDashboard, LogOut, Menu, Ru
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { authRepository, useAuth } from '../features/auth/data/AuthRepository'
-import { adminNavigation, getAdminNavigationItem, type AdminNavigationKey } from '../features/admin/ui/adminNavigation'
+import { availableAdminNavigation, getAdminNavigationItem, type AdminNavigationKey } from '../features/admin/ui/adminNavigation'
 import { BrandLogo } from './BrandLogo'
 import { useNotifications } from '../shared/notifications/NotificationProvider'
 import '../features/admin/ui/AdminLayout.css'
@@ -68,7 +68,7 @@ export function AdminShell() {
       </div>
       <p className="sidebar-label">ADMINISTRACIÓN</p>
       <nav aria-label="Navegación de administración" className="primary-nav">
-        {adminNavigation.map((item) => {
+        {availableAdminNavigation.map((item) => {
           const Icon = icons[item.key]
           return <NavLink className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} end={item.end} key={item.path} onClick={() => { if (drawerOpen) closeDrawer() }} to={item.path}>
             <Icon size={19} aria-hidden="true" /><span>{item.label}</span>

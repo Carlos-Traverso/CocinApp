@@ -11,7 +11,7 @@ import type {
 interface ProfileFieldsProps {
   profile: ProfileDraft
   onChange: (changes: Partial<ProfileDraft>) => void
-  showEmail?: boolean
+  emailReadOnly?: boolean
 }
 
 const preferences = [
@@ -26,7 +26,7 @@ function readNumber(event: ChangeEvent<HTMLInputElement>): number | undefined {
   return event.currentTarget.value === '' ? undefined : event.currentTarget.valueAsNumber
 }
 
-export function ProfileFields({ profile, onChange, showEmail = false }: ProfileFieldsProps) {
+export function ProfileFields({ profile, onChange, emailReadOnly = false }: ProfileFieldsProps) {
   function togglePreference(preference: DietaryPreference) {
     const selected = profile.preferences ?? []
     onChange({
@@ -49,7 +49,7 @@ export function ProfileFields({ profile, onChange, showEmail = false }: ProfileF
           required
         />
       </label>
-      {showEmail && <label className="field">
+      <label className="field">
         <span>Correo electrónico</span>
         <input
           name="email"
@@ -57,9 +57,11 @@ export function ProfileFields({ profile, onChange, showEmail = false }: ProfileF
           onChange={(event) => onChange({ email: event.currentTarget.value })}
           autoComplete="email"
           inputMode="email"
+          readOnly={emailReadOnly}
           type="email"
         />
-      </label>}
+        {emailReadOnly && <small className="field-help">Correo de inicio de sesión.</small>}
+      </label>
       <label className="field">
         <span>Fecha de nacimiento</span>
         <input

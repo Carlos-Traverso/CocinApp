@@ -571,16 +571,14 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
 .text-link { display: inline-flex; align-items: center; gap: 6px; color: var(--green); font-size: 13px; font-weight: 700; }
 
 .access-page { position: relative; min-height: 100vh; overflow: hidden; background: radial-gradient(circle at 12% 16%, #e8f1df 0, #e8f1df00 32%), linear-gradient(135deg, #fbf8ef 0%, #f4f6ec 58%, #edf4e8 100%); isolation: isolate; }
-.setup-page { min-height: 100vh; background: #f7f8f4; }
 .access-decoration { position: absolute; z-index: -1; border: 1px solid #a9c59c66; border-radius: 50%; pointer-events: none; }
 .access-decoration-one { top: -190px; right: -150px; width: 520px; height: 520px; }
 .access-decoration-two { bottom: -230px; left: -150px; width: 450px; height: 450px; }
-.access-header, .setup-header { display: flex; width: min(1260px, 100%); align-items: center; justify-content: space-between; margin: 0 auto; padding: 20px clamp(22px, 5vw, 58px); }
+.access-header { display: flex; width: min(1260px, 100%); align-items: center; justify-content: space-between; margin: 0 auto; padding: 20px clamp(22px, 5vw, 58px); }
 .access-header { position: relative; z-index: 1; border-bottom: 1px solid #dbe4d580; }
 .access-primary-logo { width: 105px; }
 .access-header-note { margin: 0; border: 1px solid #cfddc8; border-radius: 999px; background: #ffffffa8; padding: 7px 12px; color: #55705c; font-size: 11px; font-weight: 700; letter-spacing: .03em; }
 .access-wordmark { display: flex; align-items: center; }
-.setup-header > span { border-radius: 999px; background: var(--green-soft); color: var(--green-dark); padding: 6px 10px; font-size: 12px; font-weight: 700; }
 .access-layout { display: grid; width: min(1260px, 100%); grid-template-areas: 'intro form'; grid-template-columns: minmax(0, 1.12fr) minmax(390px, .88fr); gap: clamp(38px, 6vw, 86px); align-items: center; margin: 0 auto; padding: clamp(24px, 4vh, 46px) clamp(22px, 5vw, 58px) 52px; }
 .access-intro { grid-area: intro; min-width: 0; max-width: 680px; }
 .access-intro h1 { max-width: 650px; margin: 9px 0 17px; color: #173923; font-family: Georgia, 'Times New Roman', serif; font-size: clamp(43px, 4.8vw, 64px); font-weight: 500; letter-spacing: -.035em; line-height: 1.02; }
@@ -671,14 +669,6 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
 .access-page-login .access-footer { width: min(1200px, 100%); padding: 16px 36px 20px; }
 .access-footer { display: flex; width: min(1260px, 100%); align-items: center; justify-content: space-between; gap: 20px; margin: 0 auto; border-top: 1px solid #dfe5db; padding: 20px clamp(22px, 5vw, 58px) 24px; color: #788079; font-size: 10px; }
 .access-footer strong { color: #075f34; font-family: Georgia, 'Times New Roman', serif; letter-spacing: .04em; }
-.setup-page { padding-bottom: 55px; }
-.setup-card { width: min(780px, calc(100% - 34px)); margin: 44px auto 0; border: 1px solid #e0e6de; border-radius: 8px; background: #fff; padding: clamp(25px, 5vw, 50px); box-shadow: 0 14px 48px #24452c10; }
-.setup-card h1 { margin-bottom: 8px; font-size: 37px; }
-.setup-lead { max-width: 620px; color: var(--muted); line-height: 1.6; }
-.setup-progress { display: grid; grid-template-columns: 1fr auto; gap: 5px 16px; margin-bottom: 35px; color: var(--muted); font-size: 13px; }
-.setup-progress strong { color: var(--green); }
-.setup-progress div { grid-column: 1 / -1; height: 7px; overflow: hidden; border-radius: 99px; background: #e8ede7; }
-.setup-progress i { display: block; width: 100%; height: 100%; border-radius: inherit; background: #42bd71; }
 .form-grid { display: grid; gap: 16px; }
 .form-grid.two-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 27px 0; }
 .choice-group { margin: 27px 0 0; border: 0; padding: 0; }
@@ -692,14 +682,13 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
 .choice-card:has(input:checked) { border-color: #73b68b; background: #eff8f0; color: var(--green-dark); }
 .choice-card input { accent-color: var(--green); }
 .field-help { margin: -2px 0 12px; color: var(--muted); font-size: 12px; font-weight: 400; line-height: 1.5; }
-.calculated-age { margin: 17px 0 0; color: #596658; font-size: 13px; }
 .energy-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; overflow: hidden; margin-top: 20px; border: 1px solid #d5e6d8; border-radius: 7px; background: #d5e6d8; }
 .energy-summary div { display: grid; gap: 4px; background: #f1f8f2; padding: 14px; }
 .energy-summary span { color: #5a6d59; font-size: 12px; }
 .energy-summary strong { color: #255b3e; font-size: 14px; }
 .medical-note { display: flex; gap: 8px; align-items: flex-start; margin: 19px 0 0; color: #6a7169; font-size: 12px; line-height: 1.5; }
 .medical-note svg { flex: 0 0 auto; margin-top: 1px; color: #a46c20; }
-.setup-actions, .profile-save-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 30px; }
+.profile-save-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 30px; }
 .button-quiet { border-color: #d5ddd3; background: #fff; color: #3f5142; }
 .button-quiet:hover { background: #f3f7f1; }
 .profile-layout { display: grid; grid-template-columns: minmax(0, 1fr) 315px; gap: 20px; align-items: start; }
@@ -973,7 +962,7 @@ html:has(.profile-password-dialog[open]), body:has(.profile-password-dialog[open
   .recipe-grid { grid-template-columns: 1fr; }
   .recipe-art { height: 115px; }
   .data-badge { margin-top: 1px; }
-  .access-header, .setup-header { padding: 18px 18px; }
+  .access-header { padding: 18px; }
   .access-primary-logo { width: 92px; }
   .access-header-note { display: none; }
   .access-layout { gap: 29px; padding: 18px 16px 42px; }
@@ -982,11 +971,9 @@ html:has(.profile-password-dialog[open]), body:has(.profile-password-dialog[open
   .access-highlights { grid-template-columns: 1fr; }
   .access-visual { height: 145px; border-radius: 15px; }
   .access-card { border-radius: 18px; padding: 27px 18px 22px; }
-  .setup-card { width: calc(100% - 28px); margin-top: 20px; padding: 25px 18px; }
-  .setup-card h1 { font-size: 29px; }
   .form-grid.two-columns, .choice-grid.three-columns, .choice-grid.four-columns, .preference-grid, .energy-summary { grid-template-columns: 1fr; }
-  .setup-actions, .profile-save-row { align-items: stretch; flex-direction: column-reverse; }
-  .setup-actions .button, .profile-save-row .button { width: 100%; }
+  .profile-save-row { align-items: stretch; flex-direction: column-reverse; }
+  .profile-save-row .button { width: 100%; }
   .surface { padding: 19px; }
 }
 

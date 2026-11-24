@@ -9,7 +9,7 @@ import { EnergySummary } from '../features/profile/ui/EnergySummary'
 import { ChangePasswordDialog } from '../features/profile/ui/ChangePasswordDialog'
 import { ProfileFields } from '../features/profile/ui/ProfileFields'
 import { profileHeaderActions } from '../features/profile/ui/profileHeaderActions'
-import { isRelationalProfilesEnabled } from '../shared/data/supabaseClient'
+import { isRelationalProfilesEnabled, isSupabaseConfigured } from '../shared/data/supabaseClient'
 import { writeFailureMessage } from '../shared/data/writeFailure'
 import { useNotifications } from '../shared/notifications/NotificationProvider'
 
@@ -29,20 +29,25 @@ export function ProfilePage() {
   const [loggingOut, setLoggingOut] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
   const [passwordChanged, setPasswordChanged] = useState(false)
+  const [savedProfile, setSavedProfile] = useState<ProfileDraft>()
   const [validationError, setValidationError] = useState('')
   const invalidFieldRef = useRef<HTMLInputElement | HTMLSelectElement | null>(null)
   const { notify } = useNotifications()
   useEffect(() => {
     let current = true
-    setLoading(true)
     void profileRepository.getProfile()
       .then((loadedProfile) => { if (current) { setProfile(loadedProfile); setReloadRequired(false) } })
-      .catch(() => { if (current) void notify({ type: 'error', title: 'No se pudo cargar el perfil', message: 'No se pudo cargar el perfil.' }) })
+      .catch(() => {
+        if (!current) return
+        setReloadRequired(true)
+        void notify({ type: 'error', title: 'No se pudo cargar el perfil', message: 'Recargá el perfil para volver a intentarlo.' })
+      })
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false }
   }, [loadAttempt, notify])
   const age = profile.birthDate ? calculateAge(profile.birthDate) : undefined
   const estimate = estimateForProfile(profile)
+  const relationalProfile = isSupabaseConfigured && isRelationalProfilesEnabled
 
   async function logout() {
     setLoggingOut(true)
@@ -64,14 +69,22 @@ export function ProfilePage() {
       showValidationError(invalidField, invalidField ? profileFieldValidationMessage(invalidField) : 'Revisá los datos ingresados.')
       return
     }
-    if (!profileIsComplete(profile) || age === undefined || age < 18 || age > 100) {
-      const field = form.querySelector<HTMLInputElement>('[name="birthDate"]') ?? null
+    if (!profile.name?.trim() || age === undefined || age < 18 || age > 100) {
+      const emptyName = !profile.name?.trim()
+      const field = form.querySelector<HTMLInputElement>(emptyName ? '[name="name"]' : '[name="birthDate"]')
       field?.focus()
-      showValidationError(field, 'Completá los datos requeridos con valores válidos antes de guardar el perfil.')
+      showValidationError(field, emptyName ? 'Ingresá tu nombre.' : 'Ingresá una fecha de nacimiento que corresponda a una edad entre 18 y 100 años.')
+      return
+    }
+    if (!profileIsComplete(profile)) {
+      showValidationError(null, 'Completá los datos requeridos con valores válidos antes de guardar el perfil.')
       return
     }
     setSaving(true)
-    try { await profileRepository.saveProfile(profile); void notify({ type: 'success', title: 'Perfil guardado', message: 'Tus datos y preferencias se guardaron correctamente.' }) }
+    try {
+      await profileRepository.saveProfile(profile)
+      setSavedProfile(profile)
+    }
     catch (error) {
       const message = writeFailureMessage(error, 'Recargá el perfil antes de volver a guardar.')
         ?? (error instanceof Error && /Recargá el perfil/.test(error.message) ? error.message : 'No se confirmó el guardado. Recargá el perfil antes de volver a intentar.')
@@ -120,11 +133,12 @@ export function ProfilePage() {
     <div className="profile-layout">
       <form className="profile-form surface" noValidate onInput={clearValidationError} onChange={clearValidationError} onSubmit={save}>
         {validationError && <p className="form-message error" id="profile-validation-error" role="alert">{validationError}</p>}
-        <div className="section-heading"><div><h2>Datos y objetivos</h2><p>{isRelationalProfilesEnabled ? 'Guardados en tu cuenta.' : 'Guardados solo en este navegador durante esta etapa.'}</p></div></div>
-        {loading ? <LoadingScreen message="Cargando perfil…" variant="section" /> : <><ProfileFields profile={profile} showEmail onChange={(changes) => { setProfile({ ...profile, ...changes }); clearValidationError() }} />
+        <div className="section-heading"><div><h2>Datos y objetivos</h2><p>{isSupabaseConfigured ? 'Guardados en tu cuenta.' : 'Guardados en este navegador.'}</p></div></div>
+        {loading ? <LoadingScreen message="Cargando perfil…" variant="section" /> : <><ProfileFields profile={profile} emailReadOnly={relationalProfile} onChange={(changes) => { setProfile((current) => ({ ...current, ...changes })); clearValidationError() }} />
         <p className="medical-note compact">Las etiquetas dietéticas son informativas y no garantizan ausencia de contaminación cruzada.</p></>}
+        <div role="status">{savedProfile === profile && !reloadRequired && !saving && <p className="form-message success">Perfil guardado.</p>}</div>
         <div className="profile-save-row">
-          {reloadRequired && <button className="button button-quiet" disabled={loading} onClick={() => setLoadAttempt((attempt) => attempt + 1)} type="button">Recargar perfil</button>}
+          {reloadRequired && <button className="button button-quiet" disabled={loading} onClick={() => { setLoading(true); setLoadAttempt((attempt) => attempt + 1) }} type="button">Recargar perfil</button>}
           <button className="button button-primary" disabled={loading || saving || reloadRequired} type="submit"><Save size={17} /> {saving ? 'Guardando…' : 'Guardar perfil'}</button>
         </div>
       </form>
@@ -138,7 +152,7 @@ export function ProfilePage() {
         </dl>
         {age !== undefined && <p className="summary-detail">Edad calculada: <strong>{age} años</strong></p>}
         {estimate && <EnergySummary estimate={estimate} />}
-        {isRelationalProfilesEnabled && profile.nutritionConfig === null && <p className="medical-note compact">Estimación nutricional no disponible: todavía no hay una configuración publicada vigente.</p>}
+        {relationalProfile && profile.nutritionConfig === null && <p className="medical-note compact">Estimación nutricional no disponible: todavía no hay una configuración publicada vigente.</p>}
         <p className="medical-note compact">Las referencias son estimativas y no reemplazan indicaciones profesionales.</p>
       </aside>
     </div>

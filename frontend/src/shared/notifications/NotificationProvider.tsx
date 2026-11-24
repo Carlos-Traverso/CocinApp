@@ -169,8 +169,6 @@ function NotificationDialog({
     const dialog = dialogRef.current
     if (!dialog) return
     if (!dialog.open) dialog.showModal()
-    const initialFocus = request.cancelLabel ? cancelRef.current : confirmRef.current
-    initialFocus?.focus()
     return () => {
       if (dialog.open) dialog.close()
     }

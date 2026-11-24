@@ -16,14 +16,13 @@ body:has(:is([data-page-background='recipes'], [data-page-background='recipe-det
   --canvas-origin: 85% 14%;
 }
 
-body:has(:is([data-page-background='planner'], [data-page-background='profile'], .setup-page))::before {
+body:has(:is([data-page-background='planner'], [data-page-background='profile']))::before {
   --canvas-origin: 20% 8%;
 }
 
 /* Keep the shared canvas visible behind full-screen layouts. */
 .admin-shell,
 .access-page,
-.access-page-login,
-.setup-page {
+.access-page-login {
   background: transparent;
 }

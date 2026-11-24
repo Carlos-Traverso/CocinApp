@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { authenticateUser, changeLocalPassword, clearStoredUserSession, endSession, getSession, getSessionRevision, registerAccount, startDemoAdminSession, startSupabaseUserSession, startUserSession, type SessionInfo } from './localAuthStore'
-import { createIsolatedAuthClient, isRelationalProfilesEnabled, supabase } from '../../../shared/data/supabaseClient'
+import { createIsolatedAuthClient, isRelationalAdminEnabled, isRelationalProfilesEnabled, supabase } from '../../../shared/data/supabaseClient'
 import type { UserRole } from './localAuthStore'
 import { adminRepository } from '../../admin/data/AdminRepository'
 import { assertAuthenticationConfigured } from '../domain/security'
@@ -56,10 +56,9 @@ function requireConfiguredAuthentication() {
   assertAuthenticationConfigured(import.meta.env?.PROD === true, Boolean(supabase))
 }
 
-// Catalog loading is useful during sign-in, but it is separate from verifying
-// credentials and the account role. A catalog migration or network issue must
-// not turn a valid authentication into a failed login.
-async function preloadCatalog(): Promise<void> {
+// The legacy readers use this browser cache for shared recipes and units.
+async function refreshLegacyCatalog(): Promise<void> {
+  if (isRelationalAdminEnabled) return
   try {
     await adminRepository.getCatalog()
   } catch {
@@ -95,10 +94,21 @@ async function getCanonicalProfileName(fallback: string, session: Session): Prom
   return typeof name === 'string' && name.trim() ? name.trim() : fallback
 }
 
+async function resolveRemoteSession(session: Session, email: string, name: string, revision: number, startPolicy = false): Promise<SessionInfo | null> {
+  assertRemoteSessionCurrent(session.user.id, revision)
+  const role = await getRemoteRole(session, revision)
+  const canonicalName = await getCanonicalProfileName(name, session)
+  if (!isRemoteSessionCurrent(session.user.id, revision)) return null
+  const verified = startSupabaseUserSession(session.user.id, email, canonicalName, role)
+  if (startPolicy) beginSessionPolicy(verified)
+  await refreshLegacyCatalog()
+  return isRemoteSessionCurrent(session.user.id, revision) ? verified : null
+}
+
 export interface AuthRepository {
   session(): Promise<SessionInfo | null>
-  login(email: string, password: string): Promise<void>
-  register(name: string, email: string, password: string): Promise<void>
+  login(email: string, password: string): Promise<SessionInfo>
+  register(name: string, email: string, password: string): Promise<SessionInfo | null>
   verifyCurrentPassword(currentPassword: string): Promise<void>
   changePassword(currentPassword: string, newPassword: string): Promise<void>
   loginAsDemoAdmin(): Promise<void>
@@ -137,32 +147,33 @@ export const authRepository: AuthRepository = {
     if (!user?.email || user.id !== session.user.id || !isRemoteSessionCurrent(user.id, revision)) return null
     const metadataName = user.user_metadata.name ?? user.user_metadata.full_name
     const name = typeof metadataName === 'string' && metadataName.trim() ? metadataName : user.email.split('@')[0]
-    const remoteRole = await getRemoteRole(session, revision)
-    const canonicalName = await getCanonicalProfileName(name, session)
-    if (!isRemoteSessionCurrent(user.id, revision)) return null
-    const verified = startSupabaseUserSession(user.id, user.email, canonicalName, remoteRole)
-    await preloadCatalog()
-    return isRemoteSessionCurrent(user.id, revision) ? verified : null
+    return resolveRemoteSession(session, user.email, name, revision)
   },
   async login(email, password) {
     requireConfiguredAuthentication()
-    if (!supabase) { await Promise.resolve(); startUserSession(authenticateUser(email, password)); beginSessionPolicy(getSession()!); return }
+    if (!supabase) {
+      startUserSession(authenticateUser(email, password))
+      const session = getSession()!
+      beginSessionPolicy(session)
+      return session
+    }
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
     if (error) throw mapAuthError(error.message)
     if (!data.user?.email || !data.session) throw new Error('Supabase no devolvió los datos de la cuenta.')
     const metadataName = data.user.user_metadata.name ?? data.user.user_metadata.full_name
     const name = typeof metadataName === 'string' && metadataName.trim() ? metadataName : data.user.email.split('@')[0]
-    const revision = sessionRevision
-    assertRemoteSessionCurrent(data.user.id, revision)
-    const remoteRole = await getRemoteRole(data.session, revision)
-    const canonicalName = await getCanonicalProfileName(name, data.session)
-    assertRemoteSessionCurrent(data.user.id, revision)
-    beginSessionPolicy(startSupabaseUserSession(data.user.id, data.user.email, canonicalName, remoteRole))
-    await preloadCatalog()
+    const verified = await resolveRemoteSession(data.session, data.user.email, name, sessionRevision, true)
+    if (!verified) throw new Error('La sesión cambió. Volvé a intentarlo.')
+    return verified
   },
   async register(name, email, password) {
     requireConfiguredAuthentication()
-    if (!supabase) { await Promise.resolve(); startUserSession(registerAccount(name, email, password)); beginSessionPolicy(getSession()!); return }
+    if (!supabase) {
+      startUserSession(registerAccount(name, email, password))
+      const session = getSession()!
+      beginSessionPolicy(session)
+      return session
+    }
     const cleanName = name.trim()
     const cleanEmail = email.trim().toLocaleLowerCase('es')
     if (!cleanName) throw new Error('Ingresá tu nombre.')
@@ -175,16 +186,11 @@ export const authRepository: AuthRepository = {
       options: { data: { name: cleanName }, emailRedirectTo: window.location.origin },
     })
     if (error) throw mapAuthError(error.message)
-    if (!data.session || !data.user?.email) {
-      throw new Error('La cuenta se creó. Confirmá tu correo desde el mensaje de Supabase y después iniciá sesión.')
-    }
-    const revision = sessionRevision
-    assertRemoteSessionCurrent(data.user.id, revision)
-    const remoteRole = await getRemoteRole(data.session, revision)
-    const canonicalName = await getCanonicalProfileName(cleanName, data.session)
-    assertRemoteSessionCurrent(data.user.id, revision)
-    beginSessionPolicy(startSupabaseUserSession(data.user.id, data.user.email, canonicalName, remoteRole))
-    await preloadCatalog()
+    if (!data.session) return null
+    if (!data.user?.email) throw new Error('Supabase no devolvió los datos de la cuenta.')
+    const verified = await resolveRemoteSession(data.session, data.user.email, cleanName, sessionRevision, true)
+    if (!verified) throw new Error('La sesión cambió. Volvé a intentarlo.')
+    return verified
   },
   async loginAsDemoAdmin() {
     requireConfiguredAuthentication()

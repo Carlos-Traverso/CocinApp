@@ -1,3 +1,5 @@
+import { isRelationalAdminEnabled, isSupabaseConfigured } from '../../../shared/data/supabaseClient'
+
 export type AdminNavigationKey = 'dashboard' | 'recipes' | 'ingredients' | 'categories' | 'units' | 'users' | 'audit' | 'nutrition'
 
 export type AdminNavigationItem = {
@@ -17,6 +19,15 @@ export const adminNavigation: AdminNavigationItem[] = [
   { key: 'nutrition', label: 'Nutrición', path: '/admin/nutrition' },
   { key: 'audit', label: 'Historial', path: '/admin/history' },
 ]
+
+export const adminAuditAvailable = isSupabaseConfigured
+export const adminNutritionAvailable = isSupabaseConfigured && isRelationalAdminEnabled
+
+export const availableAdminNavigation = adminNavigation.filter(({ key }) => {
+  if (key === 'audit') return adminAuditAvailable
+  if (key === 'nutrition') return adminNutritionAvailable
+  return true
+})
 
 export function getAdminNavigationItem(pathname: string) {
   return [...adminNavigation]
