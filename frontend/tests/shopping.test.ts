@@ -18,6 +18,8 @@ import { readPantryItems, writePantryItems } from '../src/features/pantry/data/l
 import type { PantryItem } from '../src/features/pantry/domain/pantry'
 import type { Recipe } from '../src/features/recipes/domain/Recipe'
 import { getKnownRecipes } from '../src/features/recipes/data/availableRecipes'
+import { writeMealPlan } from '../src/features/planner/data/localMealPlanStore'
+import { mockShoppingRepository } from '../src/features/shopping/data/MockShoppingRepository'
 
 const today = new Date(2026, 8, 23)
 beforeEach(() => localStorageEntries.clear())
@@ -67,6 +69,19 @@ test('planned portions scale each scheduled recipe and consolidate equivalent un
   assert.equal(needs.length, 1)
   assert.equal(needs[0].unit, 'g')
   assert.equal(needs[0].quantity, 1900)
+})
+
+test('weekly suggestions sum separate servings for repeated recipes across plan slots', async () => {
+  const recipe = sampleRecipes.find((item) => item.id === 'chicken-rice')!
+  writeMealPlan([
+    { date: '2026-11-23', meal: 'Almuerzo', recipeId: recipe.id, portions: 3 },
+    { date: '2026-11-24', meal: 'Cena', recipeId: recipe.id, portions: 5 },
+  ])
+
+  const suggestions = await mockShoppingRepository.suggestionsFromWeek(['2026-11-23', '2026-11-24'])
+  const baseIngredient = recipe.ingredients[0]!
+
+  assert.equal(suggestions.find((item) => item.name === baseIngredient.name)?.quantity, baseIngredient.quantity * 8 / recipe.portions)
 })
 
 test('share copy is plain text and combines equivalent units', () => {
