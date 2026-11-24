@@ -7,6 +7,11 @@
 - Pendiente desplegar/verificar admin-users actualizado y COCINAPP_RELATIONAL_PROFILES=true, recorrer guardados/transacciones de todos los módulos y comprobar aislamiento con dos usuarios y administrador.
 - Las auditorías fechadas y los runbooks previos describen etapas anteriores. Este documento actualiza su estado, sin convertir los pendientes en pruebas aprobadas.
 
+## Cambios locales posteriores al corte (24 de noviembre de 2026)
+
+- Se añadieron `202611200001_legacy_shopping_transfer.sql`, `202611200002_bound_rpc_lock_waits.sql` y `202611200003_isolate_private_recipes.sql`. El runner local de migraciones las aplica después del renombre 009; las etapas `legacy_shopping_transfer.stage.sql` y `private_recipe_access.stage.sql` cubren transferencia legacy y aislamiento de recetas.
+- Validación local: `tests/run_table_rename_local.ps1 -Port 55451` completó PASS en PostgreSQL 18, incluidas las tres migraciones nuevas y todas las etapas rollback-only. Esto no confirma su instalación en Supabase ni resuelve los pendientes de despliegue indicados arriba.
+
 ## Ramas
 
 Frontend y backend se publican por separado, ambas basadas en main. Para validar el sistema completo deben integrarse las dos ramas. Los tests frontend incluyen pruebas del handler Edge de backend y requieren la versión backend correspondiente.

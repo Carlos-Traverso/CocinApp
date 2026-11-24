@@ -4,6 +4,8 @@ Crear una función por integración u operación que requiera credenciales priva
 
 ## `admin-users`
 
+Las instrucciones fechadas de este archivo documentan etapas anteriores. Consultá el [estado de integración](../CURRENT_STATUS.md) para confirmar qué migraciones ya se aplicaron y qué falta verificar de la función en Supabase.
+
 La función `admin-users/index.ts` crea cuentas, cambia nombres y activa/desactiva cuentas de Supabase Auth. Cada solicitud valida el JWT, consulta `current_app_role()` y requiere el rol `ADMIN`. La clave privilegiada solo se lee dentro de la Edge Function.
 
 Para publicarla desde el Dashboard:
