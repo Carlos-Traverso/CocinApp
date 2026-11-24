@@ -67,6 +67,13 @@ test('archive and restore are versioned soft-delete writes', async () => {
   assert.equal(archive?.args?.p_expected_version, 3)
   assert.deepEqual(archive?.args?.p_entity, { id: 'cat-1', name: 'Verduras', active: false, is_deleted: true })
   assert.equal(await repo.deleteCategory('missing'), 'not-found')
+
+  const archived = { ...category, active: false, is_deleted: true, version: 4 }
+  const restored = harness({ categorias: [archived] })
+  await restored.repo.getCatalogCore()
+  await restored.repo.restoreCategory('cat-1')
+  const restore = restored.calls.find(({ name }) => name === 'admin_put_category')
+  assert.deepEqual(restore?.args, { p_entity: { id: 'cat-1', name: 'Verduras', active: true, is_deleted: false }, p_expected_version: 4 })
 })
 
 test('role is validated and SQL version conflicts are surfaced as reload guidance', async () => {

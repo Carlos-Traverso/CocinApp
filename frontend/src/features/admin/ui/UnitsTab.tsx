@@ -5,16 +5,13 @@ import { normalizePantryName } from '../../pantry/domain/pantry'
 import { SearchFeedback } from '../../../shared/search/SearchFeedback'
 import { useDebouncedSearch } from '../../../shared/search/useDebouncedSearch'
 import { adminRepository } from '../data/AdminRepository'
-import type { DeleteResult } from '../data/AdminRepository'
 import { countAdminUsage } from '../domain/adminUsage'
 import { useAdminCatalog } from './useAdminCatalog'
-import { useNotifications } from '../../../shared/notifications/NotificationProvider'
 
 const BASE_UNIT_NONE = '__base_unit__'
 
 export function UnitsTab() {
-  const { notify } = useNotifications()
-  const { data: snapshot, knownRecipes, loading, error, setError, reload } = useAdminCatalog()
+  const { data: snapshot, knownRecipes, loading, pending, error, setError, reload, save, remove } = useAdminCatalog()
   const data = snapshot ?? { categories: [], units: [], ingredients: [], recipes: [] }
   const units = data.units
   const [editor, setEditor] = useState<{
@@ -26,7 +23,6 @@ export function UnitsTab() {
     equivalenceMultiplier: string
     active: boolean | null
   } | null>(null)
-  const [pending, setPending] = useState(false)
   const [search, setSearch] = useState('')
   const [dimensionFilter, setDimensionFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
@@ -43,91 +39,24 @@ export function UnitsTab() {
       return
     }
     const dimension = editor.dimension
-    const active = editor.active
-    try {
-      setPending(true)
-      setError('')
-      const baseUnitId = editor.baseUnitId === BASE_UNIT_NONE ? '' : editor.baseUnitId
-      const multiplier = baseUnitId ? parseFloat(editor.equivalenceMultiplier) : undefined
-      if (baseUnitId && (!multiplier || multiplier <= 0)) {
-        setError('Debe especificar un multiplicador válido mayor a 0.')
-        e.currentTarget.querySelector<HTMLElement>('input[type="number"]')?.focus()
-        return
-      }
-
-      if (editor.id) {
-        await adminRepository.updateUnit(editor.id, editor.name.trim(), editor.abbreviation.trim(), dimension, baseUnitId || undefined, multiplier, active)
-      } else {
-        await adminRepository.createUnit(editor.name.trim(), editor.abbreviation.trim(), dimension, baseUnitId || undefined, multiplier, active)
-      }
-      await reload()
-      setEditor(null)
-      setError('')
-      void notify({ type: 'success', title: editor.id ? 'Unidad actualizada' : 'Unidad creada', message: editor.id ? 'Unidad actualizada.' : 'Unidad creada.' })
-    } catch (err: any) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar la unidad. Probá nuevamente.')
-      void notify({ type: 'error', title: 'No se pudo guardar la unidad', message: err.message })
-    } finally {
-      setPending(false)
+    const baseUnitId = editor.baseUnitId === BASE_UNIT_NONE ? undefined : editor.baseUnitId || undefined
+    const multiplier = baseUnitId ? Number(editor.equivalenceMultiplier) : undefined
+    if (baseUnitId && (!Number.isFinite(multiplier) || (multiplier ?? 0) <= 0)) {
+      setError('Ingresá un multiplicador mayor a cero.')
+      e.currentTarget.querySelector<HTMLElement>('input[type="number"]')?.focus()
+      return
     }
+    const args = [editor.name.trim(), editor.abbreviation.trim(), dimension, baseUnitId, multiplier, editor.active] as const
+    await save(() => editor.id
+      ? adminRepository.updateUnit(editor.id, ...args)
+      : adminRepository.createUnit(...args),
+    'No se pudo guardar la unidad.', () => setEditor(null))
   }
 
   const usage = countAdminUsage(data, knownRecipes)
   const visibleUnits = units.filter((unit) => debouncedSearch.status !== 'waiting' && normalizePantryName(`${unit.name} ${unit.abbreviation}`).includes(normalizePantryName(debouncedSearch.query))
     && (!dimensionFilter || unit.dimension === dimensionFilter)
     && (statusFilter === 'all' || (statusFilter === 'active') === (unit.active && !unit.isDeleted)))
-
-  const handleDelete = async (id: string, name: string) => {
-    if (!await notify({ type: 'warning', title: 'Eliminar unidad', message: `¿Eliminar la unidad "${name}"? Si tiene referencias, se conservará como baja lógica.`, confirmLabel: 'Eliminar', cancelLabel: 'Cancelar' })) return
-    await runDelete(() => adminRepository.deleteUnit(id), 'No se pudo eliminar la unidad.')
-  }
-
-  const runMutation = async (action: () => Promise<unknown>, fallback: string) => {
-    setPending(true); setError('')
-    try {
-      await action()
-    } catch (cause) {
-      void notify({ type: 'error', title: 'No se pudieron guardar los cambios', message: cause instanceof Error ? cause.message : fallback })
-      setPending(false)
-      return
-    }
-
-    try {
-      await reload()
-      void notify({ type: 'success', title: 'Cambios guardados', message: 'Cambios guardados.' })
-    } catch {
-      void notify({ type: 'error', title: 'Cambios guardados, lista desactualizada', message: 'La acción se completó, pero no se pudo actualizar el catálogo. Volvé a cargar la pantalla.' })
-    } finally {
-      setPending(false)
-    }
-  }
-
-  const runDelete = async (action: () => Promise<DeleteResult>, fallback: string) => {
-    setPending(true); setError('')
-    let result: DeleteResult
-    try {
-      result = await action()
-    } catch (cause) {
-      void notify({ type: 'error', title: 'No se pudo eliminar la unidad', message: cause instanceof Error ? cause.message : fallback })
-      setPending(false)
-      return
-    }
-
-    let reloadFailed = false
-    try {
-      await reload()
-    } catch {
-      reloadFailed = true
-    } finally {
-      setPending(false)
-    }
-
-    if (result === 'not-found') {
-      void notify({ type: 'error', title: 'No se encontró la unidad', message: reloadFailed ? 'La unidad ya no existe y tampoco se pudo actualizar el catálogo.' : 'La unidad ya no existe. El catálogo se actualizó.' })
-    } else if (reloadFailed) {
-      void notify({ type: 'error', title: 'No se pudo actualizar el catálogo', message: 'La acción de eliminación se completó, pero no se pudo actualizar la lista. Volvé a cargar la pantalla.' })
-    }
-  }
 
   return (
     <div className="panel">
@@ -149,7 +78,7 @@ export function UnitsTab() {
                 <strong>{u.name} ({u.abbreviation})</strong>
                 <small>Dimensión: {u.dimension} {base ? `· Equivale a ${u.equivalenceMultiplier} ${base.abbreviation}` : '· Unidad base'} · {usage.units[u.id] ?? 0} usos</small>
                 <span className={`admin-entity-status ${u.active && !u.isDeleted ? 'active' : 'inactive'}`}>{u.active && !u.isDeleted ? 'Activo' : 'Inactivo'}</span>
-                {u.isDeleted && <small className="error">Baja lógica por referencias existentes</small>}
+                {u.isDeleted && <small className="error">Archivada</small>}
               </div>
               <div className="record-actions">
                 {!u.isDeleted ? (
@@ -157,11 +86,11 @@ export function UnitsTab() {
                     <button aria-label={`Editar unidad ${u.name}`} className="pantry-icon-button" disabled={pending} onClick={() => setEditor({ id: u.id, name: u.name, abbreviation: u.abbreviation, dimension: u.dimension, baseUnitId: u.baseUnitId || BASE_UNIT_NONE, equivalenceMultiplier: String(u.equivalenceMultiplier || ''), active: u.active })} type="button">
                       <Pencil size={17} />
                     </button>
-                    <button aria-label={`Eliminar unidad ${u.name}`} className="pantry-icon-button" disabled={pending} onClick={() => void handleDelete(u.id, u.name)} type="button">
+                    <button aria-label={`Eliminar unidad ${u.name}`} className="pantry-icon-button" disabled={pending} onClick={() => void remove('unidad', u.name, () => adminRepository.deleteUnit(u.id))} type="button">
                       <Trash2 size={17} />
                     </button>
                   </>
-                ) : <button className="button button-quiet" disabled={pending} onClick={() => void runMutation(() => adminRepository.restoreUnit(u.id), 'No se pudo reactivar la unidad.')} type="button"><RotateCcw size={15} /> Reactivar</button>}
+                ) : <button className="button button-quiet" disabled={pending} onClick={() => void save(() => adminRepository.restoreUnit(u.id), 'No se pudo reactivar la unidad.')} type="button"><RotateCcw size={15} /> Reactivar</button>}
               </div>
             </article>
           )

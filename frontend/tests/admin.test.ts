@@ -15,7 +15,7 @@ import { findActiveIngredient, getActiveCategories, getActiveUnits, getAdminData
 import { createCategory, deleteCategory, restoreCategory, setCategoryActive, updateCategory } from '../src/features/admin/data/categoriesStore'
 import { createUnit, deleteUnit, restoreUnit, setUnitActive } from '../src/features/admin/data/unitsStore'
 import { createIngredient, deleteIngredient, restoreIngredient, setIngredientActive, updateIngredient } from '../src/features/admin/data/ingredientsStore'
-import { createRecipe, createSeedRecipeOverride, deleteRecipe, duplicateRecipe, setRecipeActive, setRecipeFeatured, updateRecipe } from '../src/features/admin/data/recipesStore'
+import { createRecipe, createSeedRecipeOverride, deleteRecipe, duplicateRecipe, prepareSeedRecipeOverride, setRecipeActive, setRecipeFeatured, updateRecipe } from '../src/features/admin/data/recipesStore'
 import { getAvailableRecipes } from '../src/features/recipes/data/availableRecipes'
 import { getKnownRecipes, getRecipeById } from '../src/features/recipes/data/availableRecipes'
 import { adminNavigation, getAdminNavigationItem } from '../src/features/admin/ui/adminNavigation'
@@ -177,10 +177,13 @@ describe('local admin catalog', () => {
 
   test('seed recipes can be adopted, edited and deactivated without duplication', () => {
     const seeded = getRecipeById('quinoa-bowl')!
-    const override = createSeedRecipeOverride(seeded)
+    const override = prepareSeedRecipeOverride(getAdminData(), seeded)
+    assert.equal(getAdminData().recipes.length, 0)
+    assert.throws(() => updateRecipe(seeded.id, { ...override, title: '' }), /título/i)
+    assert.equal(getAdminData().recipes.length, 0)
+    updateRecipe(override.id, { ...override, title: 'Bowl administrado', status: 'published' })
     assert.equal(getAdminData().recipes.filter((recipe) => recipe.id === seeded.id).length, 1)
     assert.equal(createSeedRecipeOverride(seeded).id, seeded.id)
-    updateRecipe(override.id, { ...override, title: 'Bowl administrado', status: 'published' })
     assert.equal(getRecipeById(seeded.id)?.name, 'Bowl administrado')
     assert.equal(deleteRecipe(seeded.id), 'deactivated')
     assert.equal(getRecipeById(seeded.id), undefined)

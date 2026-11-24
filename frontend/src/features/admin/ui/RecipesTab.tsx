@@ -12,6 +12,7 @@ import { useNotifications } from '../../../shared/notifications/NotificationProv
 import { isRelationalAdminEnabled } from '../../../shared/data/supabaseClient'
 import type { Recipe } from '../../recipes/domain/Recipe'
 import { listRelationalDietaryTags, type RelationalDietaryTag } from '../data/relationalDietaryTags'
+import { prepareSeedRecipeOverride } from '../data/recipesStore'
 
 const pageSize = 8
 
@@ -71,7 +72,11 @@ export function RecipesTab() {
     setPending(true)
     setError('')
     try {
-      const record = recipe?.record ?? (recipe ? await adminRepository.createSeedRecipeOverride(recipe.recipe) : undefined)
+      const record = recipe?.record ?? (recipe
+        ? isRelationalAdminEnabled
+          ? await adminRepository.createSeedRecipeOverride(recipe.recipe)
+          : prepareSeedRecipeOverride(structuredClone(data), recipe.recipe)
+        : undefined)
       const next = recipe ? cloneRecipe(record!) : emptyRecipe()
       setEditor(next)
       setEditorBaseline(JSON.stringify(next))

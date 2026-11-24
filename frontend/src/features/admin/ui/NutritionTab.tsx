@@ -32,7 +32,8 @@ export function NutritionTab() {
       const result = await nutritionRepository.list()
       setVersions(result)
       setReloadRequired(false)
-      if (!draft.source && result[0]) setDraft(toDraft(result[0]))
+      const latest = result[0]
+      if (latest) setDraft((current) => current.source || current.effectiveAt || Object.keys(current.factors).length || Object.keys(current.goals).length ? current : toDraft(latest))
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'No se pudieron cargar las versiones.') }
     finally { setLoading(false) }
   }, [])
@@ -73,7 +74,7 @@ export function NutritionTab() {
   }
 
   return <section className="admin-form-stack" aria-label="Configuración nutricional">
-    <div className="section-heading"><div><h2>Configuración nutricional</h2><p>Las estimaciones son informativas y usan únicamente una versión vigente publicada.</p></div><button className="button button-quiet" disabled={loading} onClick={() => void reload()} type="button">Actualizar versiones</button></div>
+    <div className="section-heading"><div><h2>Configuración nutricional</h2><p>Las estimaciones son informativas y usan únicamente una versión vigente publicada.</p></div><button className="button button-quiet" disabled={loading || publishing} onClick={() => void reload()} type="button">Actualizar versiones</button></div>
     {error && <p className="form-message error" role="alert">{error}</p>}
     {!loading && (currentlyEffective ? <p>Configuración vigente: versión {currentlyEffective.configVersion} desde {versionDate.format(new Date(currentlyEffective.effectiveAt))}</p> : <p>No hay configuración vigente; la estimación nutricional está desactivada.</p>)}
     {!loading && versions[0] && Date.parse(versions[0].effectiveAt) > Date.now() && <p>La versión más reciente ({versions[0].configVersion}) todavía es futura; continúa vigente la versión anterior indicada arriba.</p>}

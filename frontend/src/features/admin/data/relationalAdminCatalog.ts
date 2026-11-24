@@ -7,8 +7,13 @@ type Kind = 'category' | 'unit' | 'ingredient'
 type Row = Record<string, unknown>
 type Core = { categories: AdminCategory[]; units: AdminUnit[]; ingredients: AdminIngredient[] }
 
+const entityFields = {
+  category: ['name'],
+  unit: ['name', 'abbreviation', 'dimension', 'base_unit_id', 'equivalence_multiplier'],
+  ingredient: ['name', 'category_id', 'base_unit_id'],
+} satisfies Record<Kind, string[]>
+
 function fail(message: string): never { throw new Error(message) }
-function uuid(): string { return globalThis.crypto.randomUUID() }
 function dimension(value: string): 'mass' | 'volume' | 'count' {
   const mapped = ({ masa: 'mass', volumen: 'volume', conteo: 'count' } as const)[value as 'masa' | 'volumen' | 'conteo']
   if (!mapped) return fail('La dimensión de la unidad no es válida.')
@@ -44,20 +49,13 @@ export function createRelationalAdminCatalog(options: RelationalAdminOptions = {
   const pendingCreateIds = new Map<string, string>()
   let baselineToken: string | undefined
   let readGeneration = 0
-  function createId(kind: Kind, payload: Row, token: string): string {
-    const key = `${token}:${kind}:${JSON.stringify(payload)}`
-    const existing = pendingCreateIds.get(key)
-    if (existing) return existing
-    const id = uuid()
-    pendingCreateIds.set(key, id)
-    return id
-  }
   async function create(kind: Kind, payload: Row): Promise<string> {
     const { token, verify } = await authorized()
     const key = `${token}:${kind}:${JSON.stringify(payload)}`
     await verify()
-    const id = createId(kind, payload, token)
-    await save(kind, { id, ...payload }, 0, token)
+    const id = pendingCreateIds.get(key) ?? crypto.randomUUID()
+    pendingCreateIds.set(key, id)
+    await save(kind, { id, ...payload, is_deleted: false }, 0, token)
     pendingCreateIds.delete(key)
     return id
   }
@@ -114,31 +112,55 @@ export function createRelationalAdminCatalog(options: RelationalAdminOptions = {
     if (!data || typeof data !== 'object') fail('Supabase devolvió una respuesta de guardado inválida.')
     return data as Row
   }
-  async function current(kind: Kind, id: string): Promise<{ row: Row | undefined; version: number }> {
-    const found = baselines.get(kind)?.get(id)
-    return { row: found?.row, version: found?.version ?? 0 }
+  async function update(kind: Kind, id: string, fields: Row, active?: boolean): Promise<void> {
+    const current = baselines.get(kind)?.get(id)
+    if (!current) throw new Error('No se encontró el registro en el catálogo cargado. Volvé a cargarlo.')
+    await save(kind, { id, ...fields, active: active ?? current.row.active, is_deleted: current.row.is_deleted }, current.version)
   }
-  async function putExisting(kind: Kind, id: string, updates: Row): Promise<void> {
-    const found = await current(kind, id)
-    if (!found.row) return
-    await save(kind, { ...updates, id }, found.version)
+
+  async function archive(kind: Kind, id: string, archived: boolean): Promise<DeleteResult> {
+    const current = baselines.get(kind)?.get(id)
+    if (!current) return 'not-found'
+    if (archived && current.row.is_deleted) return 'deactivated'
+    const fields = Object.fromEntries(entityFields[kind].map((field) => [field, current.row[field]]))
+    await save(kind, { id, ...fields, active: !archived, is_deleted: archived }, current.version)
+    return 'deactivated'
   }
-  const repo = {
-    async getCatalog() { return { ...(await getCatalogCore()), recipes: [] } },
-    async createCategory(name: string, active = true) { return create('category', { name: name.trim(), active, is_deleted: false }) },
-    async updateCategory(id: string, name: string, active?: boolean) { const found = await current('category', id); if (!found.row) return; await save('category', { id, name: name.trim(), active: active ?? found.row.active, is_deleted: found.row.is_deleted }, found.version) },
-    async deleteCategory(id: string): Promise<DeleteResult> { const found = await current('category', id); if (!found.row) return 'not-found'; if (found.row.is_deleted) return 'deactivated'; await save('category', { id, name: found.row.name, active: false, is_deleted: true }, found.version); return 'deactivated' },
-    async restoreCategory(id: string) { const found = await current('category', id); if (found.row) await save('category', { id, name: found.row.name, active: true, is_deleted: false }, found.version) },
-    async createUnit(name: string, abbreviation: string, dim: string, baseUnitId?: string, multiplier?: number, active = true) { return create('unit', { name: name.trim(), abbreviation, dimension: dimension(dim), base_unit_id: baseUnitId ?? null, equivalence_multiplier: multiplier ?? null, active, is_deleted: false }) },
-    async updateUnit(id: string, name: string, abbreviation: string, dim: string, baseUnitId?: string, multiplier?: number, active?: boolean) { const found = await current('unit', id); if (!found.row) return; await save('unit', { id, name: name.trim(), abbreviation, dimension: dimension(dim), base_unit_id: baseUnitId ?? null, equivalence_multiplier: multiplier ?? null, active: active ?? found.row.active, is_deleted: found.row.is_deleted }, found.version) },
-    async deleteUnit(id: string): Promise<DeleteResult> { const f = await current('unit', id); if (!f.row) return 'not-found'; if (f.row.is_deleted) return 'deactivated'; await save('unit', { id, name: f.row.name, abbreviation: f.row.abbreviation, dimension: f.row.dimension, base_unit_id: f.row.base_unit_id, equivalence_multiplier: f.row.equivalence_multiplier, active: false, is_deleted: true }, f.version); return 'deactivated' },
-    async restoreUnit(id: string) { const f = await current('unit', id); if (f.row) await save('unit', { id, name: f.row.name, abbreviation: f.row.abbreviation, dimension: f.row.dimension, base_unit_id: f.row.base_unit_id, equivalence_multiplier: f.row.equivalence_multiplier, active: true, is_deleted: false }, f.version) },
-    async createIngredient(name: string, categoryId: string, baseUnitId: string, active = true) { return create('ingredient', { name: name.trim(), category_id: categoryId, base_unit_id: baseUnitId, active, is_deleted: false }) },
-    async updateIngredient(id: string, name: string, categoryId: string, baseUnitId: string, active?: boolean) { const f = await current('ingredient', id); if (!f.row) return; await save('ingredient', { id, name: name.trim(), category_id: categoryId, base_unit_id: baseUnitId, active: active ?? f.row.active, is_deleted: f.row.is_deleted }, f.version) },
-    async deleteIngredient(id: string): Promise<DeleteResult> { const f = await current('ingredient', id); if (!f.row) return 'not-found'; if (f.row.is_deleted) return 'deactivated'; await save('ingredient', { id, name: f.row.name, category_id: f.row.category_id, base_unit_id: f.row.base_unit_id, active: false, is_deleted: true }, f.version); return 'deactivated' },
-    async restoreIngredient(id: string) { const f = await current('ingredient', id); if (f.row) await save('ingredient', { id, name: f.row.name, category_id: f.row.category_id, base_unit_id: f.row.base_unit_id, active: true, is_deleted: false }, f.version) },
+
+  async function restore(kind: Kind, id: string): Promise<void> {
+    if (await archive(kind, id, false) === 'not-found') throw new Error('No se encontró el registro en el catálogo cargado. Volvé a cargarlo.')
   }
-  return { ...repo, getCatalogCore, putExisting } satisfies Pick<AdminRepository, 'getCatalog' | 'createCategory' | 'updateCategory' | 'deleteCategory' | 'restoreCategory' | 'createUnit' | 'updateUnit' | 'deleteUnit' | 'restoreUnit' | 'createIngredient' | 'updateIngredient' | 'deleteIngredient' | 'restoreIngredient'> & { getCatalogCore: () => Promise<Core>; putExisting: typeof putExisting }
+
+  const unitFields = (name: string, abbreviation: string, dim: string, baseUnitId?: string, multiplier?: number) => ({
+    name: name.trim(), abbreviation, dimension: dimension(dim), base_unit_id: baseUnitId ?? null, equivalence_multiplier: multiplier ?? null,
+  })
+  const ingredientFields = (name: string, categoryId: string, baseUnitId: string) => ({
+    name: name.trim(), category_id: categoryId, base_unit_id: baseUnitId,
+  })
+
+  return {
+    getCatalogCore,
+    createCategory(name, active = true) { return create('category', { name: name.trim(), active }) },
+    updateCategory(id, name, active) { return update('category', id, { name: name.trim() }, active) },
+    deleteCategory(id) { return archive('category', id, true) },
+    restoreCategory(id) { return restore('category', id) },
+    async createUnit(name, abbreviation, dim, baseUnitId, multiplier, active = true) {
+      return create('unit', { ...unitFields(name, abbreviation, dim, baseUnitId, multiplier), active })
+    },
+    async updateUnit(id, name, abbreviation, dim, baseUnitId, multiplier, active) {
+      return update('unit', id, unitFields(name, abbreviation, dim, baseUnitId, multiplier), active)
+    },
+    deleteUnit(id) { return archive('unit', id, true) },
+    restoreUnit(id) { return restore('unit', id) },
+    createIngredient(name, categoryId, baseUnitId, active = true) {
+      return create('ingredient', { ...ingredientFields(name, categoryId, baseUnitId), active })
+    },
+    updateIngredient(id, name, categoryId, baseUnitId, active) {
+      return update('ingredient', id, ingredientFields(name, categoryId, baseUnitId), active)
+    },
+    deleteIngredient(id) { return archive('ingredient', id, true) },
+    restoreIngredient(id) { return restore('ingredient', id) },
+  } satisfies Pick<AdminRepository, 'createCategory' | 'updateCategory' | 'deleteCategory' | 'restoreCategory' | 'createUnit' | 'updateUnit' | 'deleteUnit' | 'restoreUnit' | 'createIngredient' | 'updateIngredient' | 'deleteIngredient' | 'restoreIngredient'> & { getCatalogCore: () => Promise<Core> }
 }
 
 export const relationalAdminCatalog = createRelationalAdminCatalog()

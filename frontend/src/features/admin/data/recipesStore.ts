@@ -1,4 +1,4 @@
-import { getAdminData, saveAdminData } from './localAdminStore'
+import { getAdminData, saveAdminData, type AdminStorageData } from './localAdminStore'
 import type { AdminRecipe } from '../domain/adminModels'
 import { hasAdminReferences } from './adminReferences'
 import { validateRecipe } from '../domain/adminValidation'
@@ -11,6 +11,14 @@ import type { DeleteResult } from './deleteResult'
 
 export function createSeedRecipeOverride(recipe: Recipe, now = new Date()): AdminRecipe {
   const data = getAdminData()
+  const existing = data.recipes.find((entry) => entry.id === recipe.id)
+  if (existing) return existing
+  const record = prepareSeedRecipeOverride(data, recipe, now)
+  saveAdminData(data)
+  return record
+}
+
+export function prepareSeedRecipeOverride(data: AdminStorageData, recipe: Recipe, now = new Date()): AdminRecipe {
   const existing = data.recipes.find((entry) => entry.id === recipe.id)
   if (existing) return existing
   const ensureCategory = (name: string) => {
@@ -59,7 +67,6 @@ export function createSeedRecipeOverride(recipe: Recipe, now = new Date()): Admi
     createdAt: now.toISOString(), updatedAt: now.toISOString(),
   }
   data.recipes.push(override)
-  saveAdminData(data)
   return override
 }
 
@@ -76,12 +83,14 @@ export function createRecipe(recipe: AdminRecipeInput, now = new Date()): string
 
 export function updateRecipe(id: string, recipe: AdminRecipeInput, now = new Date()): void {
   const data = getAdminData()
-  const index = data.recipes.findIndex(r => r.id === id)
-  const validRecipe = validateRecipe({ ...recipe, active: recipe.active ?? data.recipes[index]?.active ?? true }, data.recipes, data.ingredients, data.units, id)
-  if (index !== -1) {
-    data.recipes[index] = { ...validRecipe, id, isDeleted: data.recipes[index].isDeleted, createdAt: data.recipes[index].createdAt ?? now.toISOString(), updatedAt: now.toISOString() }
-    saveAdminData(data)
-  }
+  const seed = recipeSeed.find((entry) => entry.id === id)
+  if (seed) prepareSeedRecipeOverride(data, seed, now)
+  const index = data.recipes.findIndex((entry) => entry.id === id)
+  if (index === -1) throw new Error('La receta ya no está disponible en el catálogo.')
+  const previous = data.recipes[index]!
+  const validRecipe = validateRecipe({ ...recipe, active: recipe.active ?? previous.active }, data.recipes, data.ingredients, data.units, id)
+  data.recipes[index] = { ...validRecipe, id, isDeleted: previous.isDeleted, createdAt: previous.createdAt ?? now.toISOString(), updatedAt: now.toISOString() }
+  saveAdminData(data)
 }
 
 export function deleteRecipe(id: string): DeleteResult {

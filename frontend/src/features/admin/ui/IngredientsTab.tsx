@@ -7,11 +7,9 @@ import { useDebouncedSearch } from '../../../shared/search/useDebouncedSearch'
 import { adminRepository } from '../data/AdminRepository'
 import { countAdminUsage } from '../domain/adminUsage'
 import { useAdminCatalog } from './useAdminCatalog'
-import { useNotifications } from '../../../shared/notifications/NotificationProvider'
 
 export function IngredientsTab() {
-  const { notify } = useNotifications()
-  const { data: snapshot, knownRecipes, loading, error, setError, reload } = useAdminCatalog()
+  const { data: snapshot, knownRecipes, loading, pending, error, setError, reload, save, remove } = useAdminCatalog()
   const data = snapshot ?? { categories: [], units: [], ingredients: [], recipes: [] }
   const ingredients = data.ingredients
   const [editor, setEditor] = useState<{
@@ -21,7 +19,6 @@ export function IngredientsTab() {
     baseUnitId: string
     active: boolean | null
   } | null>(null)
-  const [pending, setPending] = useState(false)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
@@ -38,30 +35,16 @@ export function IngredientsTab() {
       ;(invalidField ?? e.currentTarget.querySelector<HTMLElement>('input'))?.focus()
       return
     }
-    const active = editor.active
-    try {
-      setPending(true)
-      setError('')
-      if (!editor.categoryId || !editor.baseUnitId) {
-        setError('Debe seleccionar categoría y unidad base.')
-        e.currentTarget.querySelector<HTMLElement>('select:invalid')?.focus()
-        return
-      }
-      if (editor.id) {
-        await adminRepository.updateIngredient(editor.id, editor.name.trim(), editor.categoryId, editor.baseUnitId, active)
-      } else {
-        await adminRepository.createIngredient(editor.name.trim(), editor.categoryId, editor.baseUnitId, active)
-      }
-      await reload()
-      setEditor(null)
-      setError('')
-      void notify({ type: 'success', title: editor.id ? 'Ingrediente actualizado' : 'Ingrediente creado', message: editor.id ? 'Ingrediente actualizado.' : 'Ingrediente creado.' })
-    } catch (err: any) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar el ingrediente. Probá nuevamente.')
-      void notify({ type: 'error', title: 'No se pudo guardar el ingrediente', message: err.message })
-    } finally {
-      setPending(false)
+    if (!editor.categoryId || !editor.baseUnitId) {
+      setError('Seleccioná una categoría y una unidad base.')
+      e.currentTarget.querySelector<HTMLElement>('select:invalid')?.focus()
+      return
     }
+    const args = [editor.name.trim(), editor.categoryId, editor.baseUnitId, editor.active] as const
+    await save(() => editor.id
+      ? adminRepository.updateIngredient(editor.id, ...args)
+      : adminRepository.createIngredient(...args),
+    'No se pudo guardar el ingrediente.', () => setEditor(null))
   }
 
   const usage = countAdminUsage(data, knownRecipes)
@@ -72,35 +55,6 @@ export function IngredientsTab() {
     if (statusFilter === 'inactive' && ingredient.active && !ingredient.isDeleted) return false
     return true
   })
-
-  const handleDelete = async (id: string, name: string) => {
-    if (!await notify({ type: 'warning', title: 'Eliminar ingrediente', message: `¿Eliminar el ingrediente "${name}"? Si tiene referencias, se conservará como baja lógica.`, confirmLabel: 'Eliminar', cancelLabel: 'Cancelar' })) return
-    setPending(true)
-    setError('')
-    try {
-      const result = await adminRepository.deleteIngredient(id)
-      if (result === 'not-found') {
-        void notify({ type: 'error', title: 'Ingrediente no encontrado', message: 'No se aplicaron cambios. Actualizá el catálogo e intentá nuevamente.' })
-        return
-      }
-      try {
-        await reload()
-      } catch {
-        void notify({ type: 'error', title: 'No se pudo actualizar el catálogo', message: 'La acción sobre el ingrediente se completó, pero la lista no pudo actualizarse. Recargá el catálogo para ver el estado actual.' })
-      }
-    } catch (cause) {
-      void notify({ type: 'error', title: 'No se pudo eliminar el ingrediente', message: cause instanceof Error ? cause.message : 'Ocurrió un error al eliminar el ingrediente.' })
-    } finally {
-      setPending(false)
-    }
-  }
-
-  const runMutation = async (action: () => Promise<unknown>, fallback: string) => {
-    setPending(true); setError('')
-    try { await action(); await reload(); void notify({ type: 'success', title: 'Cambios guardados', message: 'Cambios guardados.' }) }
-    catch (cause) { void notify({ type: 'error', title: 'No se pudieron guardar los cambios', message: cause instanceof Error ? cause.message : fallback }) }
-    finally { setPending(false) }
-  }
 
   return (
     <div className="panel">
@@ -123,7 +77,7 @@ export function IngredientsTab() {
                 <strong>{i.name}</strong>
                 <small>{cat?.name || 'Categoría desconocida'} · Unidad base: {unit?.abbreviation || 'Desconocida'} · {usage.ingredients[i.id] ?? 0} recetas</small>
                 <span className={`admin-entity-status ${i.active && !i.isDeleted ? 'active' : 'inactive'}`}>{i.active && !i.isDeleted ? 'Activo' : 'Inactivo'}</span>
-                {i.isDeleted && <small className="error">Baja lógica por referencias existentes</small>}
+                {i.isDeleted && <small className="error">Archivado</small>}
               </div>
               <div className="record-actions">
                 {!i.isDeleted ? (
@@ -131,11 +85,11 @@ export function IngredientsTab() {
                     <button aria-label={`Editar ingrediente ${i.name}`} className="pantry-icon-button" disabled={pending} onClick={() => setEditor({ id: i.id, name: i.name, categoryId: i.categoryId, baseUnitId: i.baseUnitId, active: i.active })} type="button">
                       <Pencil size={17} />
                     </button>
-                    <button aria-label={`Eliminar ingrediente ${i.name}`} className="pantry-icon-button" disabled={pending} onClick={() => void handleDelete(i.id, i.name)} type="button">
+                    <button aria-label={`Eliminar ingrediente ${i.name}`} className="pantry-icon-button" disabled={pending} onClick={() => void remove('ingrediente', i.name, () => adminRepository.deleteIngredient(i.id))} type="button">
                       <Trash2 size={17} />
                     </button>
                   </>
-                ) : <button className="button button-quiet" disabled={pending} onClick={() => void runMutation(() => adminRepository.restoreIngredient(i.id), 'No se pudo reactivar el ingrediente.')} type="button"><RotateCcw size={15} /> Reactivar</button>}
+                ) : <button className="button button-quiet" disabled={pending} onClick={() => void save(() => adminRepository.restoreIngredient(i.id), 'No se pudo reactivar el ingrediente.')} type="button"><RotateCcw size={15} /> Reactivar</button>}
               </div>
             </article>
           )
