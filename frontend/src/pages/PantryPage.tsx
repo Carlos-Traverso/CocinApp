@@ -28,6 +28,7 @@ type SortOrder = 'name' | 'expiry' | 'quantity'
 
 const emptyFilters: PantryFilters = { search: '', category: '', status: '' }
 const useRelationalPantry = isRelationalPantryEnabled && Boolean(supabase)
+const receiptDemoEnabled = !supabase
 
 function activeCategories(catalog: AdminStorageData) {
   const custom = catalog.categories.filter((item) => item.active && !item.isDeleted).map((item) => item.name)
@@ -278,7 +279,7 @@ export function PantryPage() {
     receiptAbort.current = null
     setReceiptBusy(false)
     setReceiptLines(null)
-    if (!file) return
+    if (!file || !receiptDemoEnabled) return
     if (!isValidReceiptImage(file)) {
       await notify({ type: 'error', title: 'Imagen no válida', message: 'Elegí una imagen JPG, PNG, WebP o HEIC de hasta 5 MB.' })
       return
@@ -297,19 +298,20 @@ export function PantryPage() {
   }
 
   async function confirmReceipt() {
+    if (!receiptDemoEnabled) return
     if (!receiptLines?.length || receiptLines.some((line) => {
       const ingredient = catalog.ingredients.find((entry) => entry.active && !entry.isDeleted && entry.name === line.ingredientName)
       const base = catalog.units.find((unit) => unit.id === ingredient?.baseUnitId)
       return !ingredient || !base || !Number.isFinite(line.quantity) || line.quantity <= 0 || line.quantity > 1_000_000
         || !compatibleUnitAbbreviations(base.id, catalog.units).includes(line.unit)
     })) {
-      await notify({ type: 'error', title: 'Revisá los productos detectados', message: 'Asociá cada producto con un ingrediente activo y una unidad compatible; la cantidad debe ser positiva y no superar 1.000.000.' })
+      await notify({ type: 'error', title: 'Revisá los productos de ejemplo', message: 'Asociá cada producto con un ingrediente activo y una unidad compatible; la cantidad debe ser positiva y no superar 1.000.000.' })
       return
     }
     const additions = receiptLines.map((line): PantryItem => {
       const ingredient = catalog.ingredients.find((item) => item.active && !item.isDeleted && item.name === line.ingredientName)
       const category = catalog.categories.find((item) => item.id === ingredient?.categoryId)?.name ?? 'Otros'
-      return { id: crypto.randomUUID(), ...(ingredient ? { ingredientId: ingredient.id, ...(useRelationalPantry ? { ingredientRef: (ingredient as typeof ingredient & { relationalId?: string }).relationalId } : {}) } : {}), name: ingredient?.name ?? line.name, category, quantity: line.quantity, unit: line.unit, minimum: 0, expiry: null }
+      return { id: crypto.randomUUID(), ingredientId: ingredient?.id, name: ingredient?.name ?? line.name, category, quantity: line.quantity, unit: line.unit, minimum: 0, expiry: null }
     })
     const next = [...items]
     for (const addition of additions) {
@@ -321,13 +323,29 @@ export function PantryPage() {
         next[duplicateIndex] = { ...next[duplicateIndex]!, quantity: combined, ingredientId: addition.ingredientId }
       }
     }
-    if (await persist(next)) { setReceiptLines(null); await notify({ type: 'success', title: 'Productos añadidos', message: 'Los productos de la factura se añadieron a la despensa.' }) }
+    if (await persist(next)) { setReceiptLines(null); await notify({ type: 'success', title: 'Ejemplos añadidos', message: 'Los productos de ejemplo se añadieron a la despensa local.' }) }
   }
 
   return <div className="page pantry-page">
     <header className="page-heading pantry-heading">
       <div><p className="eyebrow">TUS INGREDIENTES</p><h1>Mi despensa</h1><p className="page-lead">Registrá cantidades y vencimientos para saber qué tenés disponible.</p></div>
-      <div className="pantry-head-actions">{mustReloadPantry && <button className="button button-quiet" onClick={() => window.location.reload()} type="button">Recargar despensa</button>}<button className="button button-quiet" disabled={receiptBusy} onClick={() => receiptInputRef.current?.click()} type="button"><ImagePlus size={17} /> {receiptBusy ? 'Leyendo…' : 'Escanear factura'}</button><input accept="image/jpeg,image/png,image/webp,image/heic,image/heif" aria-label="Seleccionar imagen de factura" capture="environment" disabled={receiptBusy} onChange={(event) => { void processReceipt(event.currentTarget.files?.[0]); event.currentTarget.value = '' }} ref={receiptInputRef} style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }} tabIndex={-1} type="file" /><button className="button button-quiet" onClick={() => void sendRestockToShopping()} type="button"><ShoppingCart size={17} /> Reponer</button><button className="button button-quiet" onClick={(event) => { focusBeforeDialog.current = event.currentTarget; setConfirmExamples(true) }} type="button"><ClipboardList size={17} /> Kit de ejemplo</button><button className="button button-primary" onClick={(event) => { focusBeforeDialog.current = event.currentTarget; setEditor({ id: crypto.randomUUID(), name: '', category: categories[0] ?? 'Otros', quantity: Number.NaN, unit: activeUnits(catalog)[0] ?? 'g', minimum: 0, expiry: '' }) }} ref={addButtonRef} type="button"><Plus size={18} /> Añadir ingrediente</button></div>
+      <div className="pantry-head-actions">
+        {mustReloadPantry && <button className="button button-quiet" onClick={() => window.location.reload()} type="button">Recargar despensa</button>}
+        {receiptDemoEnabled && <>
+          <button className="button button-quiet" disabled={receiptBusy} onClick={() => receiptInputRef.current?.click()} type="button">
+            <ImagePlus size={17} /> {receiptBusy ? 'Preparando ejemplos…' : 'Probar lectura de ejemplo'}
+          </button>
+          <input accept="image/jpeg,image/png,image/webp,image/heic,image/heif" capture="environment" disabled={receiptBusy} hidden
+            onChange={(event) => { void processReceipt(event.currentTarget.files?.[0]); event.currentTarget.value = '' }}
+            ref={receiptInputRef} type="file" />
+        </>}
+        <button className="button button-quiet" onClick={() => void sendRestockToShopping()} type="button"><ShoppingCart size={17} /> Reponer</button>
+        <button className="button button-quiet" onClick={(event) => { focusBeforeDialog.current = event.currentTarget; setConfirmExamples(true) }} type="button"><ClipboardList size={17} /> Kit de ejemplo</button>
+        <button className="button button-primary" onClick={(event) => {
+          focusBeforeDialog.current = event.currentTarget
+          setEditor({ id: crypto.randomUUID(), name: '', category: categories[0] ?? 'Otros', quantity: Number.NaN, unit: activeUnits(catalog)[0] ?? 'g', minimum: 0, expiry: '' })
+        }} ref={addButtonRef} type="button"><Plus size={18} /> Añadir ingrediente</button>
+      </div>
     </header>
 
     <section aria-label="Resumen de la despensa" className="pantry-summary">
@@ -345,9 +363,9 @@ export function PantryPage() {
     </section>
 
     <div className="pantry-results"><span><SearchFeedback resultCount={visibleItems.length} status={search.status} />{search.status === 'empty' && ` · ${visibleItems.length} ${visibleItems.length === 1 ? 'ingrediente visible' : 'ingredientes visibles'}`}</span><button disabled={!filters.search && !filters.category && !filters.status} onClick={() => setFilters(emptyFilters)} type="button">Limpiar filtros</button></div>
-    {receiptBusy && <p className="form-message" role="status">Procesando imagen de muestra… <button className="button button-quiet" onClick={() => receiptAbort.current?.abort()} type="button">Cancelar lectura</button></p>}
-    <p className="pantry-footnote">La lectura de facturas es una demostración local: la imagen no se sube ni se guarda. En una etapa futura, el reconocimiento se realizará mediante un servicio externo.</p>
-    {receiptLines && <section aria-label="Revisar productos detectados" className="surface"><h2>Revisar productos detectados</h2><p>Verificá los datos y confirmá para agregarlos.</p>{receiptLines.map((line) => {
+    {receiptBusy && <p className="form-message" role="status">Preparando productos de ejemplo; la imagen no se analiza… <button className="button button-quiet" onClick={() => receiptAbort.current?.abort()} type="button">Cancelar</button></p>}
+    {receiptDemoEnabled && <p className="pantry-footnote">La demostración carga productos de ejemplo. Del archivo solo se comprueban el formato y el tamaño.</p>}
+    {receiptLines && <section aria-label="Revisar productos de ejemplo" className="surface"><h2>Revisar productos de ejemplo</h2><p>Son datos de muestra, no se extrajeron de tu factura. Verificalos antes de agregarlos a la despensa local.</p>{receiptLines.map((line) => {
       const ingredient = catalog.ingredients.find((item) => item.active && !item.isDeleted && item.name === line.ingredientName)
       const base = catalog.units.find((item) => item.id === ingredient?.baseUnitId)
       const units = base ? compatibleUnitAbbreviations(base.id, catalog.units) : []
@@ -367,7 +385,7 @@ export function PantryPage() {
       })}
     </section>)}
 
-    <p className="pantry-footnote">Los datos se guardan en este navegador y se usan para indicar la disponibilidad de ingredientes en recetas.</p>
+    <p className="pantry-footnote">{supabase ? 'Los datos se guardan en tu cuenta y se usan para indicar la disponibilidad de ingredientes en recetas.' : 'Los datos se guardan en este navegador y se usan para indicar la disponibilidad de ingredientes en recetas.'}</p>
     {editor && <PantryEditor item={editor} items={items} catalog={catalog} categories={categories} onClose={closeDialog} onSave={saveItem} />}
     {deleting && <PantryConfirmation actionLabel="Eliminar" danger message={`¿Querés eliminar ${deleting.name} de tu despensa?`} onClose={closeDialog} onConfirm={deleteItem} title="Eliminar ingrediente" />}
     {confirmExamples && <PantryConfirmation actionLabel="Cargar ejemplos" message="Se añadirán productos de muestra sin reemplazar tus ingredientes actuales ni duplicar productos del mismo nombre y unidad." onClose={closeDialog} onConfirm={addExamples} title="Cargar kit de ejemplo" />}
