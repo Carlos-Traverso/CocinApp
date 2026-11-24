@@ -161,9 +161,9 @@ export function findActiveIngredient(name: string) {
   return getAdminData().ingredients.find((ingredient) => ingredient.active && !ingredient.isDeleted && normalizePantryName(ingredient.name) === normalized)
 }
 
-export function resolveIngredientCategory(name: string): string {
-  const data = getAdminData()
-  const ingredient = data.ingredients.find((item) => normalizePantryName(item.name) === normalizePantryName(name))
+export function resolveIngredientCategory(name: string, data = getAdminData()): string {
+  const normalized = normalizePantryName(name)
+  const ingredient = data.ingredients.find((item) => normalizePantryName(item.name) === normalized)
   const category = data.categories.find((item) => item.id === ingredient?.categoryId)
   if (category && category.name !== 'Otros') return category.name
   return inferIngredientCategory(name) ?? category?.name ?? 'Otros'

@@ -1,5 +1,5 @@
 import { isRelationalAdminEnabled } from '../shared/data/supabaseClient'
-import { mockRecipeRepository } from '../features/recipes/data/MockRecipeRepository'
+import { recipeRepository } from '../features/recipes/data/recipeData'
 import { LoadingScreen } from '../components/LoadingScreen'
 import { useEffect, useState, type ReactNode } from 'react'
 import { AlertTriangle, ArrowRight, BookOpen, Boxes, CircleCheck, FolderTree, Ruler, Sparkles } from 'lucide-react'
@@ -74,7 +74,7 @@ function OverviewTab() {
     let current = true
     const load = isRelationalAdminEnabled
       ? adminRepository.getCatalog().then((catalog) => createAdminDashboard(catalog))
-      : Promise.all([adminRepository.getCatalog(), mockRecipeRepository.listKnown(), mockRecipeRepository.list()]).then(([catalog, known, available]) => createAdminDashboard(catalog, known, available))
+      : Promise.all([adminRepository.getCatalog(), recipeRepository.listKnown(), recipeRepository.list()]).then(([catalog, known, available]) => createAdminDashboard(catalog, known, available))
     void load.then((summary) => { if (current) { setDashboard(summary); setLoadFailed(false) } })
       .catch(() => { if (current) { setLoadFailed(true); void notify({ type: 'error', title: 'No se pudo cargar el resumen', message: 'No se pudo cargar el resumen del catálogo.' }) } })
     return () => { current = false }

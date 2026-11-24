@@ -4,7 +4,7 @@ import { getAdminData } from '../../admin/data/localAdminStore'
 import { readPantryItems, writePantryItems } from '../../pantry/data/localPantryStore'
 import { personalStorage } from '../../auth/data/personalStorage'
 import { supabasePantryRepository, toRelationalPantrySnapshot } from '../../pantry/data/supabasePantryRepository'
-import { getFavoriteIds } from '../../recipes/data/localFavoritesStore'
+import { favoriteRepository } from '../../recipes/data/localFavoritesStore'
 import { getAvailableRecipes } from '../../recipes/data/availableRecipes'
 import { readMealPlan } from '../../planner/data/localMealPlanStore'
 import { suggestForRecipes, suggestPantryRestock } from '../domain/shopping'
@@ -67,7 +67,7 @@ const legacyShoppingRepository: ShoppingRepository = {
   },
   async load() { const session = capturePersonalDataSession(); const items = await loadShoppingItems(session); assertPersonalDataSessionCurrent(session); return { items, catalog: getAdminData() } },
   async suggestionsFromFavorites() {
-    const ids = await getFavoriteIds()
+    const ids = await favoriteRepository.listIds()
     return suggestForRecipes(getAvailableRecipes().filter((recipe) => ids.includes(recipe.id)), readPantryItems(), 'favorites', new Date(), getAdminData().units)
   },
   async suggestionsFromWeek(dates) {

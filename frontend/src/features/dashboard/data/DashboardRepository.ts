@@ -4,13 +4,13 @@ import type { PreparationEvent } from '../../cooking/domain/cooking'
 import type { PlannedMeal } from '../../planner/domain/planner'
 import type { ProfileDraft } from '../../profile/domain/profile'
 import type { AdminUnit } from '../../admin/domain/adminModels'
-import { mockRecipeRepository } from '../../recipes/data/MockRecipeRepository'
+import { recipeRepository } from '../../recipes/data/recipeData'
 import { supabaseRecipeRepository, mapRecipe } from '../../recipes/data/SupabaseRecipeRepository'
 import { getPantryItems } from '../../pantry/data/localPantryStore'
 import { supabasePantryRepository } from '../../pantry/data/supabasePantryRepository'
 import { mockCookingRepository } from '../../cooking/data/MockCookingRepository'
 import { recipeFromSnapshot } from '../../cooking/data/supabaseCookingRepository'
-import { getFavoriteIds } from '../../recipes/data/localFavoritesStore'
+import { favoriteRepository } from '../../recipes/data/localFavoritesStore'
 import { supabaseFavoriteRepository } from '../../recipes/data/supabaseFavoriteRepository'
 import { mockPlannerRepository } from '../../planner/data/MockPlannerRepository'
 import { getAdminData } from '../../admin/data/localAdminStore'
@@ -43,7 +43,7 @@ export interface DashboardRepository { loadHome(): Promise<DashboardHomeData> }
 export const mockDashboardRepository: DashboardRepository = {
   async loadHome() {
     const [recipes, knownRecipes, pantry, history, favoriteIds, plannedMeals, profile] = await Promise.all([
-      mockRecipeRepository.list(), mockRecipeRepository.listKnown(), getPantryItems(), mockCookingRepository.getHistory(), getFavoriteIds(), mockPlannerRepository.list(), mockRecipeRepository.getProfile(),
+      recipeRepository.list(), recipeRepository.listKnown(), getPantryItems(), mockCookingRepository.getHistory(), favoriteRepository.listIds(), mockPlannerRepository.list(), recipeRepository.getProfile(),
     ])
     return { recipes, knownRecipes, pantry, history, favoriteIds, plannedMeals, profile, units: getAdminData().units }
   },

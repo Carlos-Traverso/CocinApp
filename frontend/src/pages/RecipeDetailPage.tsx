@@ -6,10 +6,8 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { getPantryItems } from '../features/pantry/data/localPantryStore'
 import { formatPantryAmount } from '../features/pantry/domain/pantry'
 import { estimateForProfile, recipeGoalPercentageRange } from '../features/profile/domain/profile'
-import { mockFavoriteRepository } from '../features/recipes/data/localFavoritesStore'
-import { mockRecipeRepository } from '../features/recipes/data/MockRecipeRepository'
-import { supabaseRecipeRepository, isRelationalRecipeRepositoryEnabled } from '../features/recipes/data/SupabaseRecipeRepository'
-import { supabaseFavoriteRepository } from '../features/recipes/data/supabaseFavoriteRepository'
+import { favoriteRepository } from '../features/recipes/data/localFavoritesStore'
+import { recipeRepository } from '../features/recipes/data/recipeData'
 import { matchesDietaryPreferences, parseRecipePortions, recipeMealShifts } from '../features/recipes/domain/recipeRules'
 import type { IngredientDeficit } from '../features/recipes/domain/recipeRules'
 import type { Recipe } from '../features/recipes/domain/Recipe'
@@ -22,8 +20,6 @@ import { useNotifications } from '../shared/notifications/NotificationProvider'
 const preferenceLabels: Record<DietaryPreference, string> = {
   'gluten-free': 'Sin TACC', vegetarian: 'Vegetariana', vegan: 'Vegana', 'lactose-free': 'Sin lactosa', 'nut-free': 'Sin frutos secos',
 }
-const recipeRepository = isRelationalRecipeRepositoryEnabled() ? supabaseRecipeRepository : mockRecipeRepository
-const favoriteRepository = isRelationalRecipeRepositoryEnabled() ? supabaseFavoriteRepository : mockFavoriteRepository
 
 export function RecipeDetailPage() {
   const { id = '' } = useParams()
@@ -34,28 +30,32 @@ export function RecipeDetailPage() {
   const [portions, setPortions] = useState(1)
   const [pantry, setPantry] = useState<Awaited<ReturnType<typeof getPantryItems>>>([])
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
-  const [preferences, setPreferences] = useState<Awaited<ReturnType<typeof mockRecipeRepository.getDietaryPreferences>>>([])
-  const [profile, setProfile] = useState<Awaited<ReturnType<typeof mockRecipeRepository.getProfile>>>({})
-  const [readiness, setReadiness] = useState<{ percentage: number; label: string; ingredients: IngredientDeficit[] }>()
+  const [profile, setProfile] = useState<Awaited<ReturnType<typeof recipeRepository.getProfile>>>({})
+  const [readinessResult, setReadinessResult] = useState<{ key: string; value: { percentage: number; label: string; ingredients: IngredientDeficit[] } | undefined } | null>(null)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [loadOutcome, setLoadOutcome] = useState<{ key: string; status: 'success' | 'error' } | null>(null)
   const loadKey = `${id}:${loadAttempt}`
   const loading = loadOutcome?.key !== loadKey
   const loadFailed = loadOutcome?.key === loadKey && loadOutcome.status === 'error'
+  const readinessKey = recipe ? `${recipe.id}:${portions}` : ''
+  const readiness = readinessResult?.key === readinessKey ? readinessResult.value : undefined
 
   useEffect(() => {
     let current = true
     // Preferences belong to the same profile snapshot; parallel profile reads
-    // invalidate each other in the versioned profile repository.
-    void Promise.all([recipeRepository.getById(id, true), recipeRepository.list(), getPantryItems(), favoriteRepository.listIds(), recipeRepository.getProfile()])
-      .then(([found, activeRecipes, stock, favorites, profileData]) => {
+    // invalidate each other in the versioned profile repository. Resolve the
+    // active detail directly instead of loading the full recipe catalog just
+    // to determine whether this one recipe is active.
+    void Promise.all([recipeRepository.getById(id), getPantryItems(), favoriteRepository.listIds(), recipeRepository.getProfile()])
+      .then(async ([activeRecipe, stock, favorites, profileData]) => {
+        if (!current) return
+        const found = activeRecipe ?? await recipeRepository.getById(id, true)
         if (!current) return
         setRecipe(found ?? null)
-        setActive(Boolean(found && activeRecipes.some((item) => item.id === found.id)))
+        setActive(Boolean(activeRecipe))
         setPortions(found ? parseRecipePortions(searchParams.get('portions')) ?? found.portions : 1)
         setPantry(stock)
         setFavoriteIds(favorites)
-        setPreferences(profileData.preferences ?? [])
         setProfile(profileData)
         setLoadOutcome({ key: loadKey, status: 'success' })
       })
@@ -67,7 +67,7 @@ export function RecipeDetailPage() {
     if (!recipe) return
     let current = true
     void recipeRepository.getReadiness(recipe.id, pantry, portions, true)
-      .then((value) => { if (current) setReadiness(value) })
+      .then((value) => { if (current) setReadinessResult({ key: `${recipe.id}:${portions}`, value }) })
       .catch(() => { if (current) void notify({ type: 'error', title: 'No se pudo consultar el stock', message: 'No se pudo actualizar la disponibilidad para esta cantidad.' }) })
     return () => { current = false }
   }, [recipe, pantry, portions, notify])
@@ -82,7 +82,7 @@ export function RecipeDetailPage() {
   const favorite = favoriteIds.includes(recipe.id)
   const estimate = estimateForProfile(profile)
   const proportion = recipe.calories !== undefined && estimate ? recipeGoalPercentageRange(recipe.calories, estimate) : undefined
-  const excludedPreferences = preferences.filter((preference) => !matchesDietaryPreferences(recipe, [preference]))
+  const excludedPreferences = (profile.preferences ?? []).filter((preference) => !matchesDietaryPreferences(recipe, [preference]))
   const preferenceMatch = excludedPreferences.length === 0
   const totalCalories = recipe.calories === undefined ? undefined : Math.round(recipe.calories * portions)
   const ingredientRows = readiness?.ingredients ?? []

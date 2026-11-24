@@ -1,15 +1,13 @@
-import { getAdminData, resolveIngredientCategory } from '../../admin/data/localAdminStore'
+import { getAdminData, resolveIngredientCategory, type AdminStorageData } from '../../admin/data/localAdminStore'
 import type { AdminRecipe } from '../../admin/domain/adminModels'
 import type { Recipe } from '../domain/Recipe'
 import { mergeRecipeSeed, recipeSeed } from './recipeSeed'
 
-function fromAdminRecipe(recipe: AdminRecipe): Recipe {
-  const data = getAdminData()
-  const seededRecipe = recipeSeed.find((entry) => entry.id === recipe.id)
+function fromAdminRecipe(recipe: AdminRecipe, data: AdminStorageData, seededRecipe = recipeSeed.find((entry) => entry.id === recipe.id)): Recipe {
   const ingredients = recipe.ingredients.flatMap((entry) => {
     const ingredient = data.ingredients.find((item) => item.id === entry.ingredientId)
     const unit = data.units.find((item) => item.id === entry.unitId)
-    return ingredient && unit ? [{ name: ingredient.name, quantity: entry.quantity, unit: unit.abbreviation, category: resolveIngredientCategory(ingredient.name) }] : []
+    return ingredient && unit ? [{ name: ingredient.name, quantity: entry.quantity, unit: unit.abbreviation, category: resolveIngredientCategory(ingredient.name, data) }] : []
   })
   return {
     id: recipe.id,
@@ -48,32 +46,36 @@ function fromAdminRecipe(recipe: AdminRecipe): Recipe {
   }
 }
 
-export function getAvailableRecipes(): Recipe[] {
-  const data = getAdminData()
-  return getKnownRecipes().filter((recipe) => {
-    const record = data.recipes.find((entry) => entry.id === recipe.id)
-    if (!record) return true
-    if (!record.active || record.isDeleted || record.status !== 'published') return false
-    return record.steps.length > 0 && record.ingredients.length > 0 && record.ingredients.every((entry) => {
-      const ingredient = data.ingredients.find((item) => item.id === entry.ingredientId && item.active && !item.isDeleted)
-      const unit = data.units.find((item) => item.id === entry.unitId && item.active && !item.isDeleted)
-      const base = ingredient && data.units.find((item) => item.id === ingredient.baseUnitId && item.active && !item.isDeleted)
-      return Boolean(ingredient && unit && base && unit.dimension === base.dimension)
-    })
+function isAvailable(record: AdminRecipe, data: AdminStorageData): boolean {
+  if (!record.active || record.isDeleted || record.status !== 'published') return false
+  return record.steps.length > 0 && record.ingredients.length > 0 && record.ingredients.every((entry) => {
+    const ingredient = data.ingredients.find((item) => item.id === entry.ingredientId && item.active && !item.isDeleted)
+    const unit = data.units.find((item) => item.id === entry.unitId && item.active && !item.isDeleted)
+    const base = ingredient && data.units.find((item) => item.id === ingredient.baseUnitId && item.active && !item.isDeleted)
+    return Boolean(ingredient && unit && base && unit.dimension === base.dimension)
   })
 }
 
-export function getKnownRecipes(): Recipe[] {
-  const data = getAdminData()
-  return mergeRecipeSeed(recipeSeed, data.recipes.map(fromAdminRecipe)).map((recipe) => ({
+function withIngredientCategories(recipe: Recipe, data: AdminStorageData): Recipe {
+  return {
     ...recipe,
-    ingredients: recipe.ingredients.map((ingredient) => ({ ...ingredient, category: ingredient.category ?? resolveIngredientCategory(ingredient.name) })),
-  }))
+    ingredients: recipe.ingredients.map((ingredient) => ({ ...ingredient, category: ingredient.category ?? resolveIngredientCategory(ingredient.name, data) })),
+  }
 }
 
-export function getRecipeById(id: string, includeInactive = false): Recipe | undefined {
-  if (!includeInactive) return getAvailableRecipes().find((recipe) => recipe.id === id)
-  const record = getAdminData().recipes.find((recipe) => recipe.id === id)
-  if (record) return fromAdminRecipe(record)
-  return recipeSeed.find((recipe) => recipe.id === id)
+export function getAvailableRecipes(data = getAdminData()): Recipe[] {
+  const unavailable = new Set(data.recipes.filter((record) => !isAvailable(record, data)).map((record) => record.id))
+  return getKnownRecipes(data).filter((recipe) => !unavailable.has(recipe.id))
+}
+
+export function getKnownRecipes(data = getAdminData()): Recipe[] {
+  return mergeRecipeSeed(recipeSeed, data.recipes.map((recipe) => fromAdminRecipe(recipe, data)))
+    .map((recipe) => withIngredientCategories(recipe, data))
+}
+
+export function getRecipeById(id: string, includeInactive = false, data = getAdminData()): Recipe | undefined {
+  const record = data.recipes.find((recipe) => recipe.id === id)
+  const seed = recipeSeed.find((recipe) => recipe.id === id)
+  if (record) return includeInactive || isAvailable(record, data) ? fromAdminRecipe(record, data, seed) : undefined
+  return seed && withIngredientCategories(seed, data)
 }

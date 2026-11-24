@@ -7,7 +7,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { formatPantryAmount } from '../features/pantry/domain/pantry'
 import { mockCookingRepository } from '../features/cooking/data/MockCookingRepository'
 import { advanceStep, completeStep, cookingCompletionPath, createSession, getStepGuidance, moveStep, pauseStepTimer, remainingRecipeMinutes, remainingTimerMs, resetStepTimer, scaleIngredients, startStepTimer, type CookingSession } from '../features/cooking/domain/cooking'
-import { mockRecipeRepository } from '../features/recipes/data/MockRecipeRepository'
+import { recipeRepository } from '../features/recipes/data/recipeData'
 import type { IngredientDeficit } from '../features/recipes/domain/recipeRules'
 import type { Recipe } from '../features/recipes/domain/Recipe'
 import { RecipeImage } from '../features/recipes/ui/RecipeImage'
@@ -80,8 +80,8 @@ function CookingRecipePage({ id, requestedPortions, setSearchParams }: { id: str
   useEffect(() => {
     let current = true
     const load = isRelationalCookingEnabled
-      ? mockCookingRepository.getSession(id).then(async (saved) => [saved?.recipeSnapshot ?? await mockRecipeRepository.getById(id), saved] as const)
-      : Promise.all([mockRecipeRepository.getById(id), mockCookingRepository.getSession(id)] as const)
+      ? mockCookingRepository.getSession(id).then(async (saved) => [saved?.recipeSnapshot ?? await recipeRepository.getById(id), saved] as const)
+      : Promise.all([recipeRepository.getById(id), mockCookingRepository.getSession(id)] as const)
     void load.then(async ([found, saved]) => {
       if (!current) return
       setLoadFailed(false)

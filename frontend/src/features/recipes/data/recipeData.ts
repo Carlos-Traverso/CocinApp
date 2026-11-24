@@ -1,5 +1,5 @@
 import type { RecipeRepository } from './RecipeRepository'
-import { isRelationalRecipesEnabled } from '../../../shared/data/supabaseClient'
+import { isRelationalRecipesEnabled, isSupabaseConfigured } from '../../../shared/data/supabaseClient'
 import { supabaseRecipeRepository } from './SupabaseRecipeRepository'
 import { getAvailableRecipes, getKnownRecipes, getRecipeById } from './availableRecipes'
 import { filterRecipes, getRecipeReadiness, type RecipeFilters } from '../domain/recipeRules'
@@ -12,23 +12,26 @@ const legacyRecipeRepository: RecipeRepository = {
   async listKnown() { return getKnownRecipes() },
   async getById(id: string, includeInactive = false) { return getRecipeById(id, includeInactive) },
   async match(pantry: PantryItem[], filters: Partial<RecipeFilters> = {}, portions?: number) {
-    const recipes = filterRecipes(getAvailableRecipes(), {
+    const catalog = getAdminData()
+    const today = new Date()
+    const recipes = filterRecipes(getAvailableRecipes(catalog), {
       search: '', category: '', maxMinutes: null, difficulty: '', pantryOnly: false, ...filters,
-    }, pantry, new Date(), getAdminData().units)
+    }, pantry, today, catalog.units)
     return recipes.map((recipe) => {
-      const { percentage, label, ingredients } = getRecipeReadiness(recipe, pantry, portions ?? recipe.portions, new Date(), getAdminData().units.length ? getAdminData().units : undefined)
+      const { percentage, label, ingredients } = getRecipeReadiness(recipe, pantry, portions ?? recipe.portions, today, catalog.units.length ? catalog.units : undefined)
       return { recipe, percentage, label, ingredients }
     })
   },
   async getReadiness(id, pantry, portions, includeInactive = false) {
-    const recipe = getRecipeById(id, includeInactive)
+    const catalog = getAdminData()
+    const recipe = getRecipeById(id, includeInactive, catalog)
     if (!recipe) return undefined
-    const { percentage, label, ingredients } = getRecipeReadiness(recipe, pantry, portions ?? recipe.portions, new Date(), getAdminData().units.length ? getAdminData().units : undefined)
+    const { percentage, label, ingredients } = getRecipeReadiness(recipe, pantry, portions ?? recipe.portions, new Date(), catalog.units.length ? catalog.units : undefined)
     return { percentage, label, ingredients }
   },
   async getDietaryPreferences() { return (await profileRepository.getProfile()).preferences ?? [] },
   async getProfile() { return profileRepository.getProfile() },
 }
 
-// Preserve the shared entry point used by dashboard, planning and cooking.
-export const mockRecipeRepository: RecipeRepository = isRelationalRecipesEnabled ? supabaseRecipeRepository : legacyRecipeRepository
+export const recipeRepository: RecipeRepository = isSupabaseConfigured && isRelationalRecipesEnabled
+  ? supabaseRecipeRepository : legacyRecipeRepository

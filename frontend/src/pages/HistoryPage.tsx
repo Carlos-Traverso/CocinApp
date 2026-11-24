@@ -4,7 +4,7 @@ import { ArrowLeft, CookingPot, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { mockCookingRepository } from '../features/cooking/data/MockCookingRepository'
 import type { PreparationEvent } from '../features/cooking/domain/cooking'
-import { mockRecipeRepository } from '../features/recipes/data/MockRecipeRepository'
+import { recipeRepository } from '../features/recipes/data/recipeData'
 import type { Recipe } from '../features/recipes/domain/Recipe'
 import { RecipeImage } from '../features/recipes/ui/RecipeImage'
 import { useNotifications } from '../shared/notifications/NotificationProvider'
@@ -24,7 +24,7 @@ export function HistoryPage() {
     let current = true
     const load = isRelationalCookingEnabled
       ? mockCookingRepository.getHistory().then((events) => [events, [] as Recipe[], [] as Recipe[]] as const)
-      : Promise.all([mockCookingRepository.getHistory(), mockRecipeRepository.listKnown(), mockRecipeRepository.list()] as const)
+      : Promise.all([mockCookingRepository.getHistory(), recipeRepository.listKnown(), recipeRepository.list()] as const)
     void load
       .then(([events, known, active]) => { if (current) { setHistory(events); setRecipes(known); setActiveRecipes(active) } })
       .catch(() => { if (current) { setLoadFailed(true); void notify({ type: 'error', title: 'No se pudo cargar el historial', message: 'Intentá volver a abrir el historial.' }) } })

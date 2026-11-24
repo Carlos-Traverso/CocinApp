@@ -4,11 +4,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ArrowRight, Clock3, Heart, Search, UsersRound } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { getPantryItems } from '../features/pantry/data/localPantryStore'
-import { mockFavoriteRepository } from '../features/recipes/data/localFavoritesStore'
-import { supabaseFavoriteRepository } from '../features/recipes/data/supabaseFavoriteRepository'
-import { isRelationalRecipeRepositoryEnabled, supabaseRecipeRepository } from '../features/recipes/data/SupabaseRecipeRepository'
+import { favoriteRepository } from '../features/recipes/data/localFavoritesStore'
 import { recipeMealShifts, type RecipeFilters } from '../features/recipes/domain/recipeRules'
-import { mockRecipeRepository } from '../features/recipes/data/MockRecipeRepository'
+import { recipeRepository } from '../features/recipes/data/recipeData'
 import { meals } from '../features/planner/domain/planner'
 import type { Recipe } from '../features/recipes/domain/Recipe'
 import { RecipeImage } from '../features/recipes/ui/RecipeImage'
@@ -23,8 +21,6 @@ const dietOptions: Array<{ id: DietaryPreference; label: string }> = [
   { id: 'gluten-free', label: 'Sin TACC' }, { id: 'vegetarian', label: 'Vegetariana' }, { id: 'vegan', label: 'Vegana' },
   { id: 'lactose-free', label: 'Sin lactosa' }, { id: 'nut-free', label: 'Sin frutos secos' },
 ]
-const recipeRepository = isRelationalRecipeRepositoryEnabled() ? supabaseRecipeRepository : mockRecipeRepository
-const favoriteRepository = isRelationalRecipeRepositoryEnabled() ? supabaseFavoriteRepository : mockFavoriteRepository
 const recipesPerPage = 12
 
 function scrollToFirstRecipe(recipe: HTMLElement | null) {
@@ -59,7 +55,7 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
   const [activePreferences, setActivePreferences] = useState<DietaryPreference[]>([])
   const [catalogCount, setCatalogCount] = useState(0)
-  const [matches, setMatches] = useState<Array<Awaited<ReturnType<typeof mockRecipeRepository.match>>[number]>>([])
+  const [matches, setMatches] = useState<Array<Awaited<ReturnType<typeof recipeRepository.match>>[number]>>([])
   const [loading, setLoading] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)

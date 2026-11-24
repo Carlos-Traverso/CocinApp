@@ -5,7 +5,7 @@ import type { DietaryPreference } from '../../profile/domain/profile'
 import type { ProfileDraft } from '../../profile/domain/profile'
 import { profileRepository } from '../../profile/data/ProfileRepository'
 import { assertPersonalDataOwner, assertPersonalDataSessionCurrent, capturePersonalDataSession, type PersonalDataSession } from '../../../shared/data/personalDataSession'
-import { isRelationalRecipesEnabled, supabase } from '../../../shared/data/supabaseClient'
+import { supabase } from '../../../shared/data/supabaseClient'
 
 type JsonRow = Record<string, unknown>
 interface RecipeReadEnvelope { recipe?: JsonRow | null; stock?: JsonRow | null; percentage?: number | null; label?: string }
@@ -211,5 +211,3 @@ export const supabaseRecipeRepository = createSupabaseRecipeRepository({
   },
   getProfile: () => profileRepository.getProfile(),
 })
-
-export function isRelationalRecipeRepositoryEnabled(): boolean { return isRelationalRecipesEnabled && supabase !== null }

@@ -1,3 +1,3 @@
 # Recipes
 
-`RecipeRepository` exposes async listing, detail, matching, and readiness contracts. `MockRecipeRepository` maps curated mock and admin data into recipe models and applies pantry availability, unit conversion, and profile dietary preferences. No AI generated recipe service is part of this frontend.
+`RecipeRepository` exposes async listing, detail, matching, and readiness contracts. The shared repository in `data/recipeData.ts` selects the Supabase adapter or the catalog backed by browser storage. Stock checks and dietary filters use the pantry and profile data.

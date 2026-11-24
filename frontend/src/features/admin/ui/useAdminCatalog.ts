@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AdminStorageData } from '../data/localAdminStore'
 import { adminRepository } from '../data/AdminRepository'
-import { mockRecipeRepository } from '../../recipes/data/MockRecipeRepository'
+import { recipeRepository } from '../../recipes/data/recipeData'
 import type { Recipe } from '../../recipes/domain/Recipe'
 
 export function useAdminCatalog() {
@@ -15,7 +15,7 @@ export function useAdminCatalog() {
     const request = ++requestId.current
     setLoading(true)
     try {
-      const [catalog, recipes] = await Promise.all([adminRepository.getCatalog(), mockRecipeRepository.listKnown()])
+      const [catalog, recipes] = await Promise.all([adminRepository.getCatalog(), recipeRepository.listKnown()])
       if (!mounted.current || request !== requestId.current) return
       setData(catalog)
       setKnownRecipes(recipes)

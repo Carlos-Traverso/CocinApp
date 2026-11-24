@@ -1,10 +1,9 @@
 import { getKnownRecipes } from './availableRecipes'
 import { personalStorage } from '../../auth/data/personalStorage'
 import type { FavoriteRepository } from './FavoriteRepository'
-import { isSupabaseConfigured } from '../../../shared/data/supabaseClient'
+import { isRelationalRecipesEnabled, isSupabaseConfigured } from '../../../shared/data/supabaseClient'
 import { loadPersonalData, savePersonalData } from '../../../shared/data/personalDataRepository'
 import { assertPersonalDataSessionCurrent, capturePersonalDataSession } from '../../../shared/data/personalDataSession'
-import { isRelationalRecipesEnabled, supabase } from '../../../shared/data/supabaseClient'
 import { supabaseFavoriteRepository } from './supabaseFavoriteRepository'
 
 const key = 'cocinapp.favorites.v1'
@@ -23,7 +22,7 @@ export function writeFavoriteIds(ids: string[], storage: StorageLike = personalS
   storage.setItem(key, JSON.stringify(ids))
 }
 
-export const mockFavoriteRepository: FavoriteRepository = {
+const legacyFavoriteRepository: FavoriteRepository = {
   async listIds() {
     const session = capturePersonalDataSession()
     if (!isSupabaseConfigured) return readFavoriteIds()
@@ -48,9 +47,5 @@ export const mockFavoriteRepository: FavoriteRepository = {
   },
 }
 
-// Backward-compatible async methods delegate to the repository contract.
-function activeFavoriteRepository(): FavoriteRepository {
-  return isRelationalRecipesEnabled && supabase ? supabaseFavoriteRepository : mockFavoriteRepository
-}
-
-export async function getFavoriteIds(): Promise<string[]> { return activeFavoriteRepository().listIds() }
+export const favoriteRepository: FavoriteRepository = isSupabaseConfigured && isRelationalRecipesEnabled
+  ? supabaseFavoriteRepository : legacyFavoriteRepository
