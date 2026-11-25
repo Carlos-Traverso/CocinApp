@@ -22,6 +22,10 @@ const dietOptions: Array<{ id: DietaryPreference; label: string }> = [
   { id: 'lactose-free', label: 'Sin lactosa' }, { id: 'nut-free', label: 'Sin frutos secos' },
 ]
 const recipesPerPage = 12
+type RecipeMatches = Awaited<ReturnType<typeof recipeRepository.match>>
+type MatchResult = { filters: RecipeFilters } & (
+  { status: 'ready'; matches: RecipeMatches } | { status: 'error' }
+)
 
 function scrollToFirstRecipe(recipe: HTMLElement | null) {
   if (!recipe) return
@@ -55,8 +59,8 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
   const [activePreferences, setActivePreferences] = useState<DietaryPreference[]>([])
   const [catalogCount, setCatalogCount] = useState(0)
-  const [matches, setMatches] = useState<Array<Awaited<ReturnType<typeof recipeRepository.match>>[number]>>([])
-  const [loading, setLoading] = useState(true)
+  const [matchResult, setMatchResult] = useState<MatchResult | null>(null)
+  const [loadingInputs, setLoadingInputs] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [requestedPage, setRequestedPage] = useState(1)
@@ -68,8 +72,15 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
   })
   const search = useDebouncedSearch(filters.search)
   const selectedDiet = filters.preferences ?? []
-  const effectivePreferences = useMemo(() => [...new Set([...activePreferences, ...(filters.preferences ?? [])])], [activePreferences, filters.preferences])
-  const visibleMatches = (search.status === 'waiting' ? [] : matches)
+  const matchFilters = useMemo(() => ({
+    ...filters,
+    search: search.query,
+    preferences: [...new Set([...activePreferences, ...(filters.preferences ?? [])])],
+  }), [activePreferences, filters, search.query])
+  const currentResult = search.status !== 'waiting' && matchResult?.filters === matchFilters ? matchResult : null
+  const failed = loadFailed || currentResult?.status === 'error'
+  const loading = !failed && (loadingInputs || !currentResult)
+  const visibleMatches = (currentResult?.status === 'ready' ? currentResult.matches : [])
     .filter(({ recipe }) => !favoritesOnly || favoriteIds.includes(recipe.id))
   const pageCount = Math.ceil(visibleMatches.length / recipesPerPage)
   const currentPage = Math.min(requestedPage, Math.max(1, pageCount))
@@ -102,22 +113,27 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
     void Promise.all([recipeRepository.list(), getPantryItems(), favoriteRepository.listIds(), recipeRepository.getDietaryPreferences()])
       .then(([catalog, stock, favorites, preferences]) => { if (current) { setCatalogCount(catalog.length); setPantry(stock); setFavoriteIds(favorites); setActivePreferences(preferences) } })
       .catch(() => { if (current) { setLoadFailed(true); void notify({ type: 'error', title: 'No se pudieron cargar las recetas', message: 'Intentá de nuevo.' }) } })
-      .finally(() => { if (current) setLoading(false) })
+      .finally(() => { if (current) setLoadingInputs(false) })
     return () => { current = false }
   }, [loadAttempt, notify])
 
   useEffect(() => {
-    if (loading || loadFailed) return
+    if (loadingInputs || loadFailed || search.status === 'waiting') return
     let current = true
-    void recipeRepository.match(pantry, { ...filters, search: search.query, preferences: effectivePreferences })
-      .then((result) => { if (current) setMatches(result) })
-      .catch(() => { if (current) void notify({ type: 'error', title: 'No se pudieron filtrar las recetas', message: 'Intentá de nuevo.' }) })
+    void recipeRepository.match(pantry, matchFilters)
+      .then((matches) => { if (current) setMatchResult({ filters: matchFilters, status: 'ready', matches }) })
+      .catch(() => {
+        if (!current) return
+        setMatchResult({ filters: matchFilters, status: 'error' })
+        void notify({ type: 'error', title: 'No se pudieron filtrar las recetas', message: 'Intentá de nuevo.' })
+      })
     return () => { current = false }
-  }, [loading, loadFailed, pantry, filters, search.query, search.status, effectivePreferences, notify])
+  }, [loadingInputs, loadFailed, pantry, matchFilters, search.status, notify])
 
   function retryLoad() {
-    setLoading(true)
+    setLoadingInputs(true)
     setLoadFailed(false)
+    setMatchResult(null)
     setLoadAttempt((attempt) => attempt + 1)
   }
 
@@ -143,8 +159,8 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
       <div className="recipe-catalog-heading">
         <h1 id="recipe-catalog-title">{favoritesOnly ? 'Todas tus favoritas' : 'Explorá el catálogo'}</h1>
         {!favoritesOnly && <div>
-          <p aria-live="polite" className="recipe-result-count">{visibleMatches.length} de {candidateCount} recetas</p>
-          <SearchFeedback resultCount={visibleMatches.length} status={search.status} />
+          {currentResult?.status === 'ready' && <p aria-live="polite" className="recipe-result-count">{visibleMatches.length} de {candidateCount} recetas</p>}
+          <SearchFeedback resultCount={visibleMatches.length} status={failed ? 'error' : loading && search.status !== 'empty' ? 'waiting' : search.status} />
         </div>}
       </div>
       <div aria-label="Filtros de recetas" className="recipe-controls with-search">
@@ -163,8 +179,8 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
         </div>
       </div>
     </section>
-    {!loading && search.status !== 'waiting' && candidateCount > visibleMatches.length && <p className="recipe-filter-exclusions" role="status">{candidateCount - visibleMatches.length} {candidateCount - visibleMatches.length === 1 ? 'receta no coincide' : 'recetas no coinciden'} con la búsqueda, los filtros y las preferencias dietéticas.</p>}
-    {loading ? <LoadingScreen message="Cargando recetas…" variant="section" /> : loadFailed ? <section className="pantry-empty"><h2>No se pudieron cargar las recetas</h2><p>Volvé a intentarlo para consultar el recetario.</p><button className="button button-primary" onClick={retryLoad} type="button">Reintentar</button></section> : search.status !== 'waiting' && (visibleMatches.length === 0 ? <section className="pantry-empty"><h2>{favoritesOnly && favoriteIds.length === 0 ? 'Todavía no guardaste recetas' : 'No encontramos recetas'}</h2><p>{favoritesOnly && favoriteIds.length === 0 ? 'Explorá el catálogo y tocá el corazón de una receta.' : 'Probá limpiar filtros o revisar tus preferencias dietéticas y la despensa.'}</p></section> : <>
+    {currentResult?.status === 'ready' && candidateCount > visibleMatches.length && <p className="recipe-filter-exclusions" role="status">{candidateCount - visibleMatches.length} {candidateCount - visibleMatches.length === 1 ? 'receta no coincide' : 'recetas no coinciden'} con la búsqueda, los filtros y las preferencias dietéticas.</p>}
+    {loading ? <LoadingScreen message="Cargando recetas…" variant="section" /> : failed ? <section className="pantry-empty"><h2>No se pudieron cargar las recetas</h2><p>Volvé a intentarlo para consultar el recetario.</p><button className="button button-primary" onClick={retryLoad} type="button">Reintentar</button></section> : visibleMatches.length === 0 ? <section className="pantry-empty"><h2>{favoritesOnly && favoriteIds.length === 0 ? 'Todavía no guardaste recetas' : 'No encontramos recetas'}</h2><p>{favoritesOnly && favoriteIds.length === 0 ? 'Explorá el catálogo y tocá el corazón de una receta.' : 'Probá limpiar filtros o revisar tus preferencias dietéticas y la despensa.'}</p></section> : <>
     <RecipePagination currentPage={currentPage} onPageChange={changePage} pageCount={pageCount} position="superior" />
     <section aria-label="Listado de recetas" className="recipe-grid">
       {pageMatches.map(({ recipe, percentage, label }, index) => {
@@ -173,6 +189,6 @@ export function RecipesPage({ favoritesOnly = false }: { favoritesOnly?: boolean
       })}
     </section>
     <RecipePagination currentPage={currentPage} onPageChange={changePage} pageCount={pageCount} position="inferior" />
-    </>)}
+    </>}
   </div>
 }
