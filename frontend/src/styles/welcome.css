@@ -312,6 +312,11 @@
 }
 
 @media (max-width: 1024px) {
+  .welcome-page {
+    overflow: clip;
+    background: #102b20;
+  }
+
   .welcome-layout {
     --welcome-gutter: clamp(16px, 5vw, 28px);
 
@@ -324,7 +329,6 @@
   }
 
   .welcome-hero {
-    --hero-photo-width: 100vw;
     position: relative;
     display: grid;
     grid-area: hero;
@@ -337,33 +341,34 @@
     row-gap: 16px;
     justify-items: center;
     isolation: isolate;
-    background: #102b20 url('/assets/branding/cocinapp-hero-mobile.webp') center top / 100% auto no-repeat;
+    background: #102b20;
     padding: clamp(24px, 5svh, 52px) var(--welcome-gutter) clamp(24px, 6svh, 64px);
     text-align: center;
   }
 
   .welcome-hero picture {
     position: relative;
-    isolation: isolate;
+    z-index: -2;
     display: block;
     grid-area: photo;
-    width: var(--hero-photo-width);
-    aspect-ratio: 1.4;
+    width: 100vw;
+    aspect-ratio: 1 / .88;
   }
 
   .welcome-photo {
-    inset: -25% auto auto 0;
-    width: 100%;
+    inset: calc(-.4 * 100vw) auto auto -23%;
+    width: 146%;
     height: auto;
     max-width: none;
-    mask-image: linear-gradient(180deg, #000 70%, transparent 94%);
+    mask-image: linear-gradient(180deg, #000 68%, transparent 90%);
   }
 
   .welcome-hero::before {
     position: absolute;
     z-index: -1;
     inset: 0;
-    content: none;
+    background: linear-gradient(180deg, transparent 55%, #102b2033 68%, #102b20 94%);
+    content: '';
   }
 
   .welcome-brand {
@@ -372,31 +377,21 @@
   }
 
   .welcome-brand .brand-logo-name {
-    font-size: clamp(25px, 4vw, 32px);
+    font-size: clamp(30px, 5vw, 38px);
   }
 
   .welcome-brand .brand-logo-mark {
-    width: 38px;
+    width: 46px;
   }
 
   .welcome-brand .brand-logo-subtitle {
-    font-size: 9px;
+    font-size: 10px;
   }
 
   .welcome-intro {
     position: relative;
     isolation: isolate;
     max-width: 440px;
-  }
-
-  .welcome-intro::before {
-    position: absolute;
-    z-index: -1;
-    inset: -12px calc(-1 * var(--welcome-gutter)) -24px;
-    background: linear-gradient(180deg, #102b2000, #102b20a6 28%, #102b20d9);
-    backdrop-filter: blur(6px);
-    mask-image: linear-gradient(180deg, transparent, #000 24%);
-    content: '';
   }
 
   .welcome-intro h1 {
