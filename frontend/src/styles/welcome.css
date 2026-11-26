@@ -21,23 +21,9 @@
   object-position: 35% center;
 }
 
-.welcome-page::before {
-  z-index: -1;
-  background:
-    linear-gradient(180deg, #102b20eb, #102b2099 112px, transparent 210px),
-    linear-gradient(0deg, #102b20f5, #102b20a6 37%, transparent 70%);
-  content: '';
-}
-
 .welcome-layout {
   display: grid;
-  width: min(100%, 1560px);
-  grid-template-areas: 'brand access' 'intro access';
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
-  grid-template-rows: auto 1fr;
-  gap: 36px clamp(32px, 6vw, 96px);
   margin-inline: auto;
-  padding: clamp(30px, 5vh, 60px) clamp(28px, 6vw, 96px) clamp(40px, 7vh, 88px);
 }
 
 .welcome-hero {
@@ -97,10 +83,8 @@
 }
 
 .welcome-intro h1 {
-  max-width: 14ch;
   margin: 0 0 14px;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(40px, 4.8vw, 76px);
   font-weight: 500;
   letter-spacing: -.045em;
   line-height: 1.02;
@@ -229,6 +213,85 @@
   padding-top: 16px;
 }
 
+@media (width > 760px) {
+  .welcome-page::before {
+    z-index: -1;
+    background: linear-gradient(90deg, transparent 31%, #102b2080 52%, #102b20eb 76%);
+    content: '';
+  }
+
+  .welcome-layout {
+    width: min(100%, 1440px);
+    grid-template-areas: '. brand' '. intro' '. access';
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 410px);
+    align-content: center;
+    row-gap: 16px;
+    padding: clamp(24px, 4vh, 52px) clamp(42px, 11vw, 180px);
+  }
+
+  .welcome-brand .brand-logo-mark {
+    width: 42px;
+  }
+
+  .welcome-brand .brand-logo-name {
+    font-size: 30px;
+  }
+
+  .welcome-intro h1 {
+    max-width: 22ch;
+    margin-bottom: 8px;
+    font-size: clamp(30px, 3.1vw, 42px);
+    line-height: 1.1;
+  }
+
+  .welcome-intro p {
+    font-size: 15px;
+  }
+
+  .welcome-access {
+    padding: clamp(22px, 2.3vw, 30px);
+  }
+
+  .welcome-access .access-form {
+    gap: 12px;
+    margin-top: 16px;
+  }
+}
+
+@media (min-width: 1180px) {
+  .welcome-page {
+    background: #102b20;
+  }
+
+  .welcome-photo {
+    width: 82%;
+    object-position: 75% center;
+  }
+
+  .welcome-page::before {
+    background: linear-gradient(90deg, transparent 28%, #102b20c9 44%, #102b20 82%);
+  }
+
+  .welcome-layout {
+    grid-template-areas: '. hero access';
+    grid-template-columns: minmax(0, 1fr) clamp(255px, 21vw, 310px) clamp(340px, 27vw, 410px);
+    column-gap: clamp(24px, 3vw, 46px);
+    padding-inline: clamp(118px, 10vw, 180px);
+  }
+
+  .welcome-hero {
+    display: grid;
+    grid-area: hero;
+    grid-template-areas: 'brand' 'intro';
+    align-self: center;
+    gap: 18px;
+  }
+
+  .welcome-intro h1 {
+    font-size: clamp(32px, 2.55vw, 38px);
+  }
+}
+
 @media (max-width: 760px) {
   .welcome-layout {
     --welcome-gutter: clamp(16px, 5vw, 28px);
@@ -239,10 +302,6 @@
     grid-template-rows: auto 1fr;
     gap: 14px;
     padding: 0 0 28px;
-  }
-
-  .welcome-page::before {
-    content: none;
   }
 
   .welcome-hero {
