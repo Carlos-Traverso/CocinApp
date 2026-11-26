@@ -417,7 +417,13 @@
     grid-area: access;
     min-height: 100vh;
     min-height: 100dvh;
-    padding: 14px var(--welcome-gutter) 28px;
+    align-items: center;
+    overflow-anchor: none;
+    padding: 24px var(--welcome-gutter);
+  }
+
+  .welcome-access-stage > .welcome-access {
+    align-self: center;
   }
 
   .welcome-access {
