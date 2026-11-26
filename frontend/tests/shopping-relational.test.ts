@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { createSupabasePlannerRepository } from '../src/features/planner/data/SupabasePlannerRepository'
+import { weekDates } from '../src/features/planner/domain/planner'
+import type { Recipe } from '../src/features/recipes/domain/Recipe'
 import { createSupabaseShoppingRepository } from '../src/features/shopping/data/supabaseShoppingRepository'
+import type { ShoppingSuggestion } from '../src/features/shopping/domain/shopping'
 
 const session = { token: 'supabase-user:user-1', localRevision: 1, supabaseRevision: 1 }
 const unit = { id: 'unit-uuid', name: 'Kilogramo', abbreviation: 'kg', dimension: 'masa' as const, active: true, isDeleted: false }
@@ -114,6 +118,62 @@ test('week suggestions send every selected date and preserve relational provenan
   assert.equal(suggestions[0]?.unit, 'kg')
   assert.equal(suggestions[0]?.ingredientRef, 'ingredient-uuid')
   assert.deepEqual(suggestions[0]?.sourceLinks, [{ source: 'plan', plan_id: 'plan-uuid' }])
+})
+
+test('adding a recipe and generating weekly purchases creates a pending item for a previously transferred ingredient', async () => {
+  const dates = weekDates(new Date(2026, 10, 26, 12))
+  const recipe: Recipe = { id: 'rice-recipe', relationalId: 'recipe-uuid', name: 'Arroz', description: '', category: 'Almuerzo', minutes: 20, portions: 2, difficulty: 'Fácil', ingredients: [], steps: [], symbol: '🍚', color: 'green' }
+  const transferred = row('transferred-rice', true, '2026-11-26T12:00:00Z')
+  const items = [transferred]
+  let plan: { id: string; week_start: string; version: number } | null = null
+  let slots: Array<Record<string, unknown>> = []
+  let version = 1
+  const fake = {
+    auth: { getUser: async () => ({ data: { user: { id: 'user-1' } }, error: null }) },
+    rpc: async (name: string, args: Record<string, unknown>) => {
+      const list = { id: 'list-uuid', version, status: 'active' }
+      if (name === 'get_my_shopping_list') return { data: { list, items, total: items.length }, error: null }
+      if (name === 'get_my_meal_plan') return { data: { plan, slots }, error: null }
+      if (name === 'save_my_meal_plan') {
+        plan = { id: 'plan-uuid', week_start: dates[0], version: 1 }
+        slots = (args.p_slots as Array<Record<string, unknown>>).map((slot) => ({ ...slot, available: true }))
+        return { data: plan, error: null }
+      }
+      if (name === 'suggest_my_shopping_for_dates') {
+        assert.deepEqual(args.p_dates, dates)
+        assert.equal(slots[0]?.recipe_id, recipe.relationalId)
+        assert.equal(slots[0]?.portions, 3)
+        return { data: [{ ...row(), quantity: 3, sources: [{ source: 'plan', plan_id: plan?.id }] }], error: null }
+      }
+      assert.equal(name, 'put_my_shopping_item')
+      const item = args.p_item as Omit<ReturnType<typeof row>, 'transferred_at' | 'unit_detail'>
+      if (item.id === transferred.id) return { data: null, error: new Error('No se puede modificar un artículo ya transferido.') }
+      const index = items.findIndex((entry) => entry.id === item.id)
+      const saved = { ...item, transferred_at: null, unit_detail: { abbreviation: 'kg' } }
+      if (index === -1) items.push(saved)
+      else items[index] = saved
+      return { data: { ...list, version: ++version }, error: null }
+    },
+  }
+  const repo = createSupabaseShoppingRepository({ getClient: () => fake as never, captureSession: () => session,
+    assertOwner: () => {}, assertSession: () => {}, getCatalog: async () => catalog })
+  const planner = createSupabasePlannerRepository({ getClient: () => fake as never, capture: () => session,
+    assertOwner: () => {}, assertCurrent: () => {}, knownRecipes: async () => [recipe],
+    suggestions: (selectedDates) => repo.suggestionsFromWeek(selectedDates),
+    appendSuggestions: (suggestions) => repo.append(suggestions as ShoppingSuggestion[]) })
+  await planner.list(dates[0])
+  await planner.assign(dates[3], 'Almuerzo', recipe.id, 3)
+  await planner.generateShopping(dates)
+  const first = await repo.list()
+  const pending = first.find((item) => !item.transferredToPantry)
+  assert.equal(first.length, 2)
+  assert.deepEqual(items[0], transferred)
+  assert.equal(pending?.quantity, 3)
+  assert.equal(pending?.checked, false)
+  assert.deepEqual(pending?.sourceLinks, [{ source: 'plan', plan_id: 'plan-uuid' }])
+  await planner.generateShopping(dates)
+  assert.deepEqual(await repo.list(), first)
+  assert.equal(version, 2)
 })
 
 test('a session change while the catalog loads rejects the pending shopping read', async () => {

@@ -159,7 +159,7 @@ export function mergeShoppingSuggestions(items: ShoppingItem[], suggestions: Sho
   const merged = items.map((item) => ({ ...item, sources: [...item.sources] }))
   for (const suggestion of suggestions) {
     const key = shoppingKey(suggestion.name, suggestion.unit, units)
-    const existing = merged.find((item) => shoppingKey(item.name, item.unit, units) === key)
+    const existing = merged.find((item) => !item.transferredToPantry && shoppingKey(item.name, item.unit, units) === key)
     if (existing) {
       const converted = convertQuantity(suggestion.quantity, suggestion.unit, existing.unit, units)
       if (converted !== null) existing.quantity = Math.max(existing.quantity, converted)

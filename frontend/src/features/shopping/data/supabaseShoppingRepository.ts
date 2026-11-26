@@ -117,7 +117,8 @@ export function createSupabaseShoppingRepository(dependencies: { getClient: type
       for (const suggestion of suggestions) {
         const base = await read(), catalog = await getCatalog(), merged = mergeShoppingSuggestions(base, [suggestion], catalog.units)
         assertSession(operationSession)
-        const item = merged.find((entry) => shoppingKey(entry.name, entry.unit, catalog.units) === shoppingKey(suggestion.name, suggestion.unit, catalog.units))
+        const keyForSuggestion = shoppingKey(suggestion.name, suggestion.unit, catalog.units)
+        const item = merged.find((entry) => !entry.transferredToPantry && shoppingKey(entry.name, entry.unit, catalog.units) === keyForSuggestion)
         if (!item) continue
         if (suggestion.source === 'recipe' && !suggestion.sourceLinks?.some((entry) => entry.source === 'recipe' && entry.recipe_id)) throw new Error('No se puede guardar una sugerencia de receta sin su referencia relacional.')
         const previous = base.find((entry) => entry.id === item.id)
