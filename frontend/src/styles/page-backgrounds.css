@@ -22,7 +22,6 @@ body:has(:is([data-page-background='planner'], [data-page-background='profile'])
 
 /* Keep the shared canvas visible behind full-screen layouts. */
 .admin-shell,
-.access-page,
-.access-page-login {
+.access-page {
   background: transparent;
 }

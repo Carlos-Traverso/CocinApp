@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowRight, Refrigerator, ShieldCheck, Sparkles, UtensilsCrossed } from 'lucide-react'
+import { ArrowRight, ShieldCheck } from 'lucide-react'
 import { authRepository } from '../features/auth/data/AuthRepository'
 import { handleTabListKeyDown } from '../components/tabKeyboard'
 import { BrandLogo } from '../components/BrandLogo'
 import { useNotifications } from '../shared/notifications/NotificationProvider'
 import { isSupabaseConfigured } from '../shared/data/supabaseClient'
 import { roleHome } from '../features/auth/domain/routeAccess'
+import '../styles/welcome.css'
 
 type AccessMode = 'login' | 'register'
 
@@ -59,43 +60,20 @@ export function WelcomePage() {
   }
 
   return (
-    <main className="access-page access-page-login">
-      <div aria-hidden="true" className="access-decoration access-decoration-one" />
-      <div aria-hidden="true" className="access-decoration access-decoration-two" />
-      <header className="access-header">
-        <div className="access-login-brand">
-          <BrandLogo className="access-primary-logo" />
-          <small>COCINA &amp; DESPENSA</small>
-        </div>
-      </header>
-      <div className="access-layout">
-        <section className="access-intro" aria-labelledby="access-title">
-          <div className="access-kicker">
-            <p className="eyebrow">TU COCINA, MÁS ORGANIZADA</p>
-            <span>Ahorrá tiempo y dinero cada semana</span>
-          </div>
-          <h1 id="access-title">Planeá tus comidas y aprovechá lo que ya tenés.</h1>
-          <p>Recetas, despensa, menú semanal y compras en un único lugar, pensado para el ritmo de todos los días.</p>
-          <div className="access-highlights">
-            <div><span className="highlight-icon"><Refrigerator size={20} /></span><span><strong>Despensa clara</strong><small>Stock, vencimientos y faltantes siempre al día sin esfuerzo.</small></span><span aria-hidden="true" className="access-highlight-number">01</span></div>
-            <div><span className="highlight-icon warm"><UtensilsCrossed size={20} /></span><span><strong>Recetas óptimas</strong><small>Sugerencias al instante según ingredientes disponibles.</small></span><span aria-hidden="true" className="access-highlight-number">02</span></div>
-            <div><span className="highlight-icon mint"><Sparkles size={20} /></span><span><strong>Semana resuelta</strong><small>Menú equilibrado para comprar justo y evitar desperdicios.</small></span><span aria-hidden="true" className="access-highlight-number">03</span></div>
-          </div>
-          <figure className="access-visual">
-            <img alt="Bowl de quinoa con verduras frescas" src="/assets/recipes/quinoa-bowl.webp" />
-            <div aria-hidden="true" className="access-visual-chips">
-              <span>Tomates cherry</span><span>Zucchini asado</span><span>Palta</span>
-            </div>
-            <figcaption>
-              <strong>Comé rico. Organizate mejor.</strong>
-              <span>Todo lo que necesitás para decidir el próximo plato.</span>
-            </figcaption>
-          </figure>
+    <main className="welcome-page">
+      <img alt="" className="welcome-photo" fetchPriority="high" src="/assets/branding/cocinapp-hero.webp" />
+      <div className="welcome-layout">
+        <header className="welcome-brand">
+          <BrandLogo />
+        </header>
+        <section className="welcome-intro" aria-labelledby="welcome-title">
+          <h1 id="welcome-title">Planeá tus comidas y aprovechá lo que ya tenés.</h1>
+          <p>Organizá tu despensa, encontrá recetas y armá tu menú semanal.</p>
         </section>
-        <section className="access-card" aria-labelledby="access-form-title">
-          <p className="eyebrow">{mode === 'register' || isSupabaseConfigured ? 'TU CUENTA DE COCINAPP' : 'CUENTA LOCAL DE DEMOSTRACIÓN'}</p>
+        <section className="welcome-access" aria-labelledby="access-form-title">
+          {!isSupabaseConfigured && <p className="eyebrow">Modo de demostración</p>}
           <h2 id="access-form-title">{mode === 'login' ? 'Ingresá a tu cocina' : 'Creá tu cuenta'}</h2>
-          <p className="field-help">{mode === 'register' ? 'Completá tus datos para empezar a planificar tus comidas.' : isSupabaseConfigured ? 'Ingresá con tu cuenta de CocinAPP para continuar.' : 'Las cuentas y los permisos se simulan en este navegador. No es autenticación segura.'}</p>
+          {!isSupabaseConfigured && <p className="field-help">Las cuentas y los permisos se simulan y se guardan en este navegador.</p>}
           <div className="tabs access-tabs" role="tablist" aria-label="Tipo de acceso" onKeyDown={(event) => { handleTabListKeyDown(event); if (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'Home' || event.key === 'End') { setValidationError(''); setInvalidFieldName('') } }}>
             <button id="access-tab-login" aria-controls="access-panel" type="button" role="tab" aria-selected={mode === 'login'} tabIndex={mode === 'login' ? 0 : -1} onClick={() => { setMode('login'); setValidationError(''); setInvalidFieldName('') }}>Iniciar sesión</button>
             <button id="access-tab-register" aria-controls="access-panel" type="button" role="tab" aria-selected={mode === 'register'} tabIndex={mode === 'register' ? 0 : -1} onClick={() => { setMode('register'); setValidationError(''); setInvalidFieldName('') }}>Registrarme</button>
@@ -111,16 +89,10 @@ export function WelcomePage() {
             </form>
           </div>
           {!isSupabaseConfigured && <div className="access-demo">
-            <span>Prueba administrativa</span>
             <button className="button button-quiet button-wide" disabled={busy} onClick={async () => { setBusy(true); try { await authRepository.loginAsDemoAdmin(); navigate(roleHome('ADMIN'), { replace: true }) } catch { await notify({ type: 'error', title: 'No se pudo iniciar la sesión', message: 'No se pudo iniciar la sesión de demostración.' }) } finally { setBusy(false) } }} type="button"><ShieldCheck size={18} /> Entrar como ADMIN de demostración</button>
-            <small>Los registros creados desde el formulario siempre reciben el rol USER.</small>
           </div>}
-          <p className="access-disclaimer">{isSupabaseConfigured ? 'Ingresá con tu correo y contraseña. El acceso de administración depende de los permisos de tu cuenta.' : 'Los datos de la cuenta se guardan localmente en el navegador.'}</p>
         </section>
       </div>
-      <footer className="access-footer">
-        <span><strong>CocinAPP</strong> · © 2026 — Planificación inteligente de comidas</span>
-      </footer>
     </main>
   )
 }

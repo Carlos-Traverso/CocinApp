@@ -142,17 +142,6 @@
     font-size: 16px;
   }
 
-  .access-page-login .field input {
-    min-height: 44px;
-    font-size: 16px;
-  }
-
-  .access-page-login .access-tabs button,
-  .access-page-login .access-card .button {
-    min-height: 44px;
-    font-size: 13px;
-  }
-
   .password-forgot-link,
   .recovery-back-link {
     display: inline-flex;
