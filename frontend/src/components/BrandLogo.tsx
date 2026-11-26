@@ -1,10 +1,11 @@
 type BrandLogoProps = {
   alt?: string
   className?: string
+  subtitle?: string
   variant?: 'complete' | 'compact'
 }
 
-export function BrandLogo({ alt = 'CocinAPP', className = '', variant = 'compact' }: BrandLogoProps) {
+export function BrandLogo({ alt = 'CocinAPP', className = '', subtitle, variant = 'compact' }: BrandLogoProps) {
   const classes = `brand-logo brand-logo-${variant}${className ? ` ${className}` : ''}`
 
   if (variant === 'complete') {
@@ -15,6 +16,7 @@ export function BrandLogo({ alt = 'CocinAPP', className = '', variant = 'compact
     <span className={classes}>
       <img alt="" aria-hidden="true" className="brand-logo-mark" src="/assets/branding/cocinapp-marca.png" />
       <span className="brand-logo-name">CocinAPP</span>
+      {subtitle && <span className="brand-logo-subtitle">{subtitle}</span>}
     </span>
   )
 }

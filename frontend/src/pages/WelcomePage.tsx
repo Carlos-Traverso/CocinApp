@@ -64,30 +64,38 @@ export function WelcomePage() {
       <img alt="" className="welcome-photo" fetchPriority="high" src="/assets/branding/cocinapp-hero.webp" />
       <div className="welcome-layout">
         <header className="welcome-brand">
-          <BrandLogo />
+          <BrandLogo subtitle="Cocina y Despensa" />
         </header>
         <section className="welcome-intro" aria-labelledby="welcome-title">
           <h1 id="welcome-title">Planeá tus comidas y aprovechá lo que ya tenés.</h1>
           <p>Organizá tu despensa, encontrá recetas y armá tu menú semanal.</p>
         </section>
         <section className="welcome-access" aria-labelledby="access-form-title">
-          {!isSupabaseConfigured && <p className="eyebrow">Modo de demostración</p>}
+          <p className="eyebrow">{isSupabaseConfigured ? 'Tu cuenta de CocinAPP' : 'Cuenta local de demostración'}</p>
           <h2 id="access-form-title">{mode === 'login' ? 'Ingresá a tu cocina' : 'Creá tu cuenta'}</h2>
-          {!isSupabaseConfigured && <p className="field-help">Las cuentas y los permisos se simulan y se guardan en este navegador.</p>}
+          <p className="field-help">{mode === 'register'
+            ? 'Completá tus datos para empezar a planificar tus comidas.'
+            : isSupabaseConfigured
+              ? 'Ingresá con tu cuenta de CocinAPP para continuar.'
+              : 'Las cuentas y los permisos se simulan en este navegador.'}</p>
           <div className="tabs access-tabs" role="tablist" aria-label="Tipo de acceso" onKeyDown={(event) => { handleTabListKeyDown(event); if (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'Home' || event.key === 'End') { setValidationError(''); setInvalidFieldName('') } }}>
             <button id="access-tab-login" aria-controls="access-panel" type="button" role="tab" aria-selected={mode === 'login'} tabIndex={mode === 'login' ? 0 : -1} onClick={() => { setMode('login'); setValidationError(''); setInvalidFieldName('') }}>Iniciar sesión</button>
             <button id="access-tab-register" aria-controls="access-panel" type="button" role="tab" aria-selected={mode === 'register'} tabIndex={mode === 'register' ? 0 : -1} onClick={() => { setMode('register'); setValidationError(''); setInvalidFieldName('') }}>Registrarme</button>
           </div>
           <div id="access-panel" aria-labelledby={`access-tab-${mode}`} role="tabpanel" tabIndex={0}>
             <form className="access-form" noValidate onInput={() => { setValidationError(''); setInvalidFieldName('') }} onSubmit={submit}>
-            {validationError && <p className="form-message error" id="access-validation-error" role="alert">{validationError}</p>}
-            {mode === 'register' && <label className="field"><span>Nombre</span><input aria-describedby={validationError && invalidFieldName === 'name' ? 'access-validation-error' : undefined} autoComplete="name" maxLength={80} name="name" onChange={(event) => setName(event.currentTarget.value)} required value={name} /></label>}
-            <label className="field"><span>Correo electrónico</span><input aria-describedby={validationError && invalidFieldName === 'email' ? 'access-validation-error' : undefined} autoComplete="email" name="email" onChange={(event) => setEmail(event.currentTarget.value)} required type="email" value={email} /></label>
-            <label className="field"><span>Contraseña</span><input aria-describedby={validationError && invalidFieldName === 'password' ? 'access-validation-error' : undefined} autoComplete={mode === 'register' ? 'new-password' : 'current-password'} minLength={8} name="password" onChange={(event) => setPassword(event.currentTarget.value)} required type="password" value={password} /></label>
-            {mode === 'login' && isSupabaseConfigured && <Link className="password-forgot-link" to="/recuperar-contrasena">¿Olvidaste tu contraseña?</Link>}
-            <button className="button button-primary button-wide" disabled={busy} type="submit">{busy ? 'Procesando…' : mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'} <ArrowRight size={15} /></button>
+              {validationError && <p className="form-message error" id="access-validation-error" role="alert">{validationError}</p>}
+              {mode === 'register' && <label className="field"><span>Nombre</span><input aria-describedby={validationError && invalidFieldName === 'name' ? 'access-validation-error' : undefined} autoComplete="name" maxLength={80} name="name" onChange={(event) => setName(event.currentTarget.value)} required value={name} /></label>}
+              <label className="field"><span>Correo electrónico</span><input aria-describedby={validationError && invalidFieldName === 'email' ? 'access-validation-error' : undefined} autoComplete="email" name="email" onChange={(event) => setEmail(event.currentTarget.value)} required type="email" value={email} /></label>
+              <div className="welcome-password">
+                <label className="field"><span>Contraseña</span><input aria-describedby={validationError && invalidFieldName === 'password' ? 'access-validation-error' : mode === 'register' ? 'access-password-help' : undefined} autoComplete={mode === 'register' ? 'new-password' : 'current-password'} minLength={8} name="password" onChange={(event) => setPassword(event.currentTarget.value)} required type="password" value={password} /></label>
+                {mode === 'register' && <p className="welcome-access-note" id="access-password-help">Usá al menos 8 caracteres.</p>}
+                {mode === 'login' && isSupabaseConfigured && <Link className="password-forgot-link" to="/recuperar-contrasena">¿Olvidaste tu contraseña?</Link>}
+              </div>
+              <button className="button button-primary button-wide" disabled={busy} type="submit">{busy ? 'Procesando…' : mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'} <ArrowRight size={15} /></button>
             </form>
           </div>
+          {mode === 'login' && isSupabaseConfigured && <p className="welcome-access-note">El acceso de administración depende de los permisos de tu cuenta.</p>}
           {!isSupabaseConfigured && <div className="access-demo">
             <button className="button button-quiet button-wide" disabled={busy} onClick={async () => { setBusy(true); try { await authRepository.loginAsDemoAdmin(); navigate(roleHome('ADMIN'), { replace: true }) } catch { await notify({ type: 'error', title: 'No se pudo iniciar la sesión', message: 'No se pudo iniciar la sesión de demostración.' }) } finally { setBusy(false) } }} type="button"><ShieldCheck size={18} /> Entrar como ADMIN de demostración</button>
           </div>}

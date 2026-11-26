@@ -23,7 +23,9 @@
 
 .welcome-page::before {
   z-index: -1;
-  background: linear-gradient(0deg, #102b20f5, #102b20a6 37%, transparent 70%);
+  background:
+    linear-gradient(180deg, #102b20eb, #102b2099 112px, transparent 210px),
+    linear-gradient(0deg, #102b20f5, #102b20a6 37%, transparent 70%);
   content: '';
 }
 
@@ -39,17 +41,41 @@
 }
 
 .welcome-brand {
-  display: flex;
   grid-area: brand;
   align-self: start;
   justify-self: start;
-  border-radius: 12px;
-  background: #fbfaf6;
-  padding: 8px 16px 8px 10px;
+}
+
+.welcome-brand .brand-logo {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+  row-gap: 4px;
+  color: #fbfaf6;
+}
+
+.welcome-brand .brand-logo-mark {
+  width: clamp(41px, 4vw, 56px);
+  height: auto;
+  aspect-ratio: 1;
+  grid-row: span 2;
+  filter: brightness(0) invert(98%) sepia(6%) saturate(320%) hue-rotate(353deg);
 }
 
 .welcome-brand .brand-logo-name {
-  font-size: 24px;
+  align-self: end;
+  color: inherit;
+  font-size: clamp(25px, 2.7vw, 38px);
+  letter-spacing: .055em;
+}
+
+.welcome-brand .brand-logo-subtitle {
+  align-self: start;
+  color: var(--green-soft);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
 }
 
 .welcome-intro {
@@ -78,28 +104,44 @@
 }
 
 .welcome-access {
+  position: relative;
   grid-area: access;
   align-self: center;
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 24px;
-  background: #fbfaf6;
+  background: var(--surface);
   padding: clamp(24px, 3vw, 38px);
   box-shadow: 0 24px 60px #102b204d;
 }
 
+.welcome-access::before {
+  position: absolute;
+  inset: 0 clamp(24px, 3vw, 38px) auto;
+  height: 3px;
+  border-radius: 0 0 4px 4px;
+  background: linear-gradient(90deg, #d6a31c, var(--green) 65%);
+  content: '';
+}
+
+.welcome-access .eyebrow {
+  margin-bottom: 8px;
+  color: var(--green);
+  text-transform: uppercase;
+}
+
 .welcome-access h2 {
-  margin-bottom: 20px;
-  color: var(--green-dark);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(27px, 3vw, 34px);
-  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: clamp(24px, 3vw, 30px);
+  font-weight: 750;
   letter-spacing: -.025em;
   line-height: 1.1;
 }
 
 .welcome-access .field-help {
-  margin: -10px 0 18px;
+  margin: 0 0 19px;
+  font-size: 13px;
 }
 
 .welcome-access .access-tabs {
@@ -109,7 +151,7 @@
   margin: 0;
   border-bottom: 0;
   border-radius: 10px;
-  background: var(--green-soft);
+  background: #eef1ed;
   padding: 4px;
 }
 
@@ -118,20 +160,50 @@
   border: 0;
   border-radius: 7px;
   background: transparent;
-  color: var(--green-dark);
+  color: var(--muted);
   font-size: 13px;
   font-weight: 700;
 }
 
 .welcome-access .access-tabs button[aria-selected='true'] {
+  border-bottom: 2px solid var(--green);
   background: var(--surface);
-  box-shadow: 0 2px 7px #23402217;
+  color: var(--green-dark);
+  box-shadow: 0 2px 6px #23402217;
+}
+
+.welcome-access .field > span {
+  color: var(--green-dark);
+  font-size: 11px;
+  letter-spacing: .045em;
+  text-transform: uppercase;
 }
 
 .welcome-access .field input {
   min-height: 46px;
   border-radius: 8px;
+  background: #f6f8f5;
   font-size: 16px;
+}
+
+.welcome-password .password-forgot-link {
+  display: flex;
+  width: fit-content;
+  min-height: 32px;
+  align-items: center;
+  margin-left: auto;
+  color: var(--green-dark);
+}
+
+.welcome-access-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.welcome-password .welcome-access-note {
+  margin-top: 6px;
 }
 
 .welcome-access .button-wide {
@@ -151,7 +223,7 @@
   }
 
   .welcome-page::before {
-    background: linear-gradient(180deg, #102b203d, #102b2099 100px, #102b20e6 65%);
+    background: linear-gradient(180deg, #102b20ba, #102b208c 110px, #102b20e6 65%);
   }
 
   .welcome-layout {
@@ -174,5 +246,9 @@
     align-self: start;
     border-radius: 18px;
     padding: 22px 18px;
+  }
+
+  .welcome-password .password-forgot-link {
+    min-height: 44px;
   }
 }
