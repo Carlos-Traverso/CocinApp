@@ -1,6 +1,6 @@
 import { LoadingScreen } from '../components/LoadingScreen'
 import { useEffect, useState } from 'react'
-import { ArrowLeft, CookingPot, Trash2 } from 'lucide-react'
+import { ArrowLeft, BookOpen, CookingPot, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { mockCookingRepository } from '../features/cooking/data/MockCookingRepository'
 import type { PreparationEvent } from '../features/cooking/domain/cooking'
@@ -18,14 +18,16 @@ export function HistoryPage() {
   const [loading, setLoading] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
-  const recent = [...history].sort((a, b) => b.cookedAt.localeCompare(a.cookedAt))
 
   useEffect(() => {
     let current = true
-    const load = isRelationalCookingEnabled
-      ? mockCookingRepository.getHistory().then((events) => [events, [] as Recipe[], [] as Recipe[]] as const)
-      : Promise.all([mockCookingRepository.getHistory(), recipeRepository.listKnown(), recipeRepository.list()] as const)
-    void load
+    void mockCookingRepository.getHistory()
+      .then(async (events) => {
+        const [known, active] = events.length && current
+          ? await Promise.all([recipeRepository.listKnown(), recipeRepository.list()])
+          : [[], []]
+        return [events, known, active] as const
+      })
       .then(([events, known, active]) => { if (current) { setHistory(events); setRecipes(known); setActiveRecipes(active) } })
       .catch(() => { if (current) { setLoadFailed(true); void notify({ type: 'error', title: 'No se pudo cargar el historial', message: 'Intentá volver a abrir el historial.' }) } })
       .finally(() => { if (current) setLoading(false) })
@@ -50,5 +52,64 @@ export function HistoryPage() {
     catch { await notify({ type: 'error', title: 'No se pudo actualizar el historial', message: 'Revisá el espacio disponible del navegador e intentá de nuevo.' }) }
   }
 
-  return <div className="page history-page"><header className="page-heading"><div><Link className="back-link" to="/recipes"><ArrowLeft size={16} /> Recetas</Link><p className="eyebrow">TU COCINA</p><h1>Historial de preparaciones</h1><p className="page-lead">Recetas que cocinaste en este navegador.</p></div>{history.length > 0 && <button className="button button-quiet" onClick={() => void clear()} type="button"><Trash2 size={17} /> Limpiar historial</button>}</header>{loading ? <LoadingScreen message="Cargando historial…" variant="section" /> : loadFailed ? <section className="pantry-empty"><h2>No se pudo cargar el historial</h2><p>Volvé a intentarlo para consultar tus preparaciones.</p><button className="button button-primary" onClick={retryLoad} type="button">Reintentar</button></section> : recent.length === 0 ? <section className="pantry-empty"><CookingPot size={34} aria-hidden="true" /><h2>Todavía no cocinaste una receta</h2><p>Elegí una receta y empezá el modo cocina.</p><Link className="button button-primary" to="/recipes">Explorar recetas</Link></section> : <section aria-label="Preparaciones recientes" className="history-list">{recent.map((event) => { const recipe = event.recipeSnapshot ?? recipes.find((item) => item.id === event.recipeId); if (!recipe) return null; const active = activeRecipes.some((item) => item.id === recipe.id); const count = history.filter((item) => item.recipeId === event.recipeId).length; return <article className="history-row" key={event.id}><RecipeImage className="history-symbol" recipe={recipe} /><div className="history-copy"><h2>{recipe.name}</h2><p>{new Date(event.cookedAt).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' })} · {event.portions} {event.portions === 1 ? 'porción' : 'porciones'} · {count} {count === 1 ? 'vez' : 'veces'} preparada{!active && ' · Inactiva'}</p></div><div className="history-actions">{recipes.some((item) => item.id === recipe.id) && <Link className="button button-quiet" to={`/recipes/${recipe.id}`}>Ver receta</Link>}{active && <Link className="button button-primary" to={`/recipes/${recipe.id}/cook`}>Cocinar otra vez</Link>}<button aria-label={`Eliminar preparación de ${recipe.name}`} className="pantry-icon-button" onClick={() => void remove(event)} type="button"><Trash2 size={17} /></button></div></article> })}</section>}</div>
+  const catalog = [...recipes, ...activeRecipes]
+  const recipesById = new Map(catalog.map((recipe) => [recipe.id, recipe]))
+  for (const recipe of catalog) {
+    if (recipe.relationalId && !recipesById.has(recipe.relationalId)) recipesById.set(recipe.relationalId, recipe)
+  }
+  const activeIds = new Set(activeRecipes.map((recipe) => recipe.id))
+  const recent = [...history].sort((a, b) => b.cookedAt.localeCompare(a.cookedAt)).map((event) => {
+    const currentRecipe = recipesById.get(event.recipeId)
+    return { event, currentRecipe, recipe: event.recipeSnapshot ?? currentRecipe }
+  })
+  const preparationCounts = new Map<string, number>()
+  for (const { event, currentRecipe } of recent) {
+    const id = currentRecipe?.id ?? event.recipeId
+    preparationCounts.set(id, (preparationCounts.get(id) ?? 0) + 1)
+  }
+
+  return <div className="page history-page">
+    <header className="page-heading">
+      <div>
+        <Link className="back-link" to="/recipes"><ArrowLeft size={16} aria-hidden="true" /> Recetas</Link>
+        <h1>Historial de preparaciones</h1>
+        <p className="page-lead">{isRelationalCookingEnabled ? 'Recetas que cocinaste con tu cuenta.' : 'Tus preparaciones guardadas.'}</p>
+      </div>
+      {history.length > 0 && <button className="button button-quiet" onClick={() => void clear()} type="button">
+        <Trash2 size={17} aria-hidden="true" /> Limpiar historial
+      </button>}
+    </header>
+
+    {loading ? <LoadingScreen message="Cargando historial…" variant="section" /> : loadFailed ? <section className="pantry-empty">
+      <h2>No se pudo cargar el historial</h2>
+      <p>Volvé a intentarlo para consultar tus preparaciones.</p>
+      <button className="button button-primary" onClick={retryLoad} type="button">Reintentar</button>
+    </section> : recent.length === 0 ? <section className="pantry-empty">
+      <CookingPot size={34} aria-hidden="true" />
+      <h2>Todavía no cocinaste una receta</h2>
+      <p>Elegí una receta y empezá el modo cocina.</p>
+      <Link className="button button-primary" to="/recipes">Explorar recetas</Link>
+    </section> : <section aria-label="Preparaciones recientes" className="history-list">
+      {recent.map(({ event, currentRecipe, recipe }) => {
+        const name = recipe?.name ?? 'Receta no disponible'
+        const count = preparationCounts.get(currentRecipe?.id ?? event.recipeId)
+        const active = currentRecipe && activeIds.has(currentRecipe.id)
+        const recipePath = currentRecipe && `/recipes/${encodeURIComponent(currentRecipe.id)}`
+        return <article className="history-row" key={event.id}>
+          {recipe ? <RecipeImage className="history-symbol" recipe={recipe} /> : <div aria-hidden="true" className="history-symbol green"><CookingPot size={26} /></div>}
+          <div className="history-copy">
+            <h2>{name}</h2>
+            <p><time dateTime={event.cookedAt}>{new Date(event.cookedAt).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' })}</time></p>
+            <p>{event.portions} {event.portions === 1 ? 'porción' : 'porciones'} · {count} {count === 1 ? 'vez preparada' : 'veces preparada'}</p>
+            {!active && recipe && <span className="history-status">{currentRecipe ? 'Inactiva' : 'Ya no disponible'}</span>}
+          </div>
+          <div className="history-actions">
+            {recipePath && <Link className="button button-quiet" to={recipePath}><BookOpen size={17} aria-hidden="true" /> Ver receta</Link>}
+            {active && <Link className="button button-primary" to={`${recipePath}/cook`}><CookingPot size={18} aria-hidden="true" /> Cocinar otra vez</Link>}
+            <button aria-label={`Eliminar preparación de ${name}`} className="pantry-icon-button" onClick={() => void remove(event)} type="button"><Trash2 size={17} aria-hidden="true" /></button>
+          </div>
+        </article>
+      })}
+    </section>}
+  </div>
 }
