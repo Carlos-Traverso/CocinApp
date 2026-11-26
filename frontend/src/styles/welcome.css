@@ -229,7 +229,7 @@
   padding-top: 16px;
 }
 
-@media (width > 760px) {
+@media (width > 1024px) {
   .welcome-page {
     overflow: clip;
     background: #102b20;
@@ -311,7 +311,7 @@
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1024px) {
   .welcome-layout {
     --welcome-gutter: clamp(16px, 5vw, 28px);
 
@@ -329,8 +329,10 @@
     grid-area: hero;
     min-height: 100vh;
     min-height: 100dvh;
-    grid-template-areas: 'brand' '.' 'intro' 'link';
-    grid-template-rows: auto minmax(140px, 1fr) auto auto;
+    grid-template-areas: 'brand' 'photo' 'intro' 'link';
+    grid-template-rows: auto auto auto auto;
+    align-content: space-between;
+    row-gap: 16px;
     justify-items: center;
     isolation: isolate;
     background: #102b20;
@@ -338,26 +340,38 @@
     text-align: center;
   }
 
+  .welcome-hero picture {
+    position: relative;
+    display: block;
+    grid-area: photo;
+    width: min(100%, 400px, 43svh);
+    aspect-ratio: 1;
+    overflow: hidden;
+    mask-image: radial-gradient(ellipse, #000 63%, transparent 74%);
+  }
+
   .welcome-photo {
-    width: min(100%, 460px);
-    height: min(100%, 660px);
-    margin-block: auto;
-    margin-inline: auto;
-    object-position: center 46%;
-    mask-image: linear-gradient(180deg, transparent, #000 10% 76%, transparent);
+    inset: -37% auto auto -25%;
+    width: 150%;
+    height: auto;
+    max-width: none;
   }
 
   .welcome-hero::before {
     position: absolute;
     z-index: -1;
     inset: 0;
-    background: linear-gradient(180deg, #102b20ac, transparent 23% 48%, #163628dc 72%, var(--green-dark) 100%);
+    background: linear-gradient(180deg, #102b20, var(--green-dark));
     content: '';
   }
 
   .welcome-brand {
     justify-self: center;
     text-align: start;
+  }
+
+  .welcome-brand .brand-logo-name {
+    font-size: clamp(25px, 4vw, 32px);
   }
 
   .welcome-brand .brand-logo-mark {
@@ -387,7 +401,7 @@
   }
 
   .welcome-access-link.button {
-    margin-top: 22px;
+    margin-top: 0;
   }
 
   .welcome-access {
@@ -422,14 +436,5 @@
 
   .welcome-password .password-forgot-link {
     min-height: 44px;
-  }
-}
-
-@media (460px < width <= 760px) {
-  .welcome-photo {
-    mask-image:
-      linear-gradient(180deg, transparent, #000 10% 76%, transparent),
-      linear-gradient(90deg, transparent, #000 15% 85%, transparent);
-    mask-composite: intersect;
   }
 }

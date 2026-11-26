@@ -11,7 +11,7 @@ import '../styles/welcome.css'
 
 type AccessMode = 'login' | 'register'
 
-const desktopMediaQuery = '(width > 760px)'
+const desktopMediaQuery = '(width > 1024px)'
 
 function subscribeToDesktopLayout(onChange: () => void) {
   const media = window.matchMedia(desktopMediaQuery)
@@ -111,7 +111,7 @@ export function WelcomePage() {
       <div className="welcome-layout">
         <div className="welcome-hero">
           <picture>
-            <source media="(max-width: 760px)" srcSet="/assets/branding/cocinapp-hero-mobile.webp" />
+            <source media="(max-width: 1024px)" srcSet="/assets/branding/cocinapp-hero-mobile.webp" />
             <img alt="" className="welcome-photo" fetchPriority="high" src="/assets/branding/cocinapp-hero.webp" />
           </picture>
           <header className="welcome-brand">
