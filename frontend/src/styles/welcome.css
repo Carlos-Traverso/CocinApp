@@ -415,8 +415,7 @@
   .welcome-access-stage {
     display: grid;
     grid-area: access;
-    min-height: 100vh;
-    min-height: 100dvh;
+    min-height: calc(100dvh - 180px);
     align-items: center;
     overflow-anchor: none;
     padding: 24px var(--welcome-gutter);
@@ -427,36 +426,25 @@
   }
 
   .welcome-access {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    min-height: min(820px, calc(100dvh - 64px));
     width: min(100%, 432px);
     grid-area: auto;
     align-self: start;
     justify-self: center;
     border-radius: 22px;
-    padding: clamp(26px, 4svh, 44px) clamp(20px, 6vw, 30px);
+    padding: 28px clamp(20px, 6vw, 30px);
   }
 
   .welcome-access::before {
     inset-inline: clamp(16px, 5vw, 24px);
   }
 
-  .welcome-access #access-panel {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    justify-content: center;
-  }
-
   .welcome-access .field-help {
-    margin-bottom: clamp(20px, 3svh, 32px);
+    margin-bottom: 20px;
   }
 
   .welcome-access .access-form {
-    gap: clamp(18px, 2.8svh, 30px);
-    margin-block: clamp(24px, 4svh, 40px);
+    gap: 18px;
+    margin: 24px 0 14px;
   }
 
   .welcome-access .field {
@@ -464,7 +452,7 @@
   }
 
   .welcome-access .field input {
-    min-height: clamp(48px, 6.5svh, 62px);
+    min-height: 50px;
   }
 
   .welcome-access .access-tabs button {
@@ -473,7 +461,7 @@
   }
 
   .welcome-access .button-primary {
-    min-height: clamp(50px, 6.5svh, 62px);
+    min-height: 50px;
   }
 
   .welcome-password .password-forgot-link {
