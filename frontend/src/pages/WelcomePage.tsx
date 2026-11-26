@@ -61,15 +61,20 @@ export function WelcomePage() {
 
   return (
     <main className="welcome-page">
-      <img alt="" className="welcome-photo" fetchPriority="high" src="/assets/branding/cocinapp-hero.webp" />
       <div className="welcome-layout">
-        <header className="welcome-brand">
-          <BrandLogo subtitle="Cocina y Despensa" />
-        </header>
-        <section className="welcome-intro" aria-labelledby="welcome-title">
-          <h1 id="welcome-title">Planeá tus comidas y aprovechá lo que ya tenés.</h1>
-          <p>Organizá tu despensa, encontrá recetas y armá tu menú semanal.</p>
-        </section>
+        <div className="welcome-hero">
+          <picture>
+            <source media="(max-width: 760px)" srcSet="/assets/branding/cocinapp-hero-mobile.webp" />
+            <img alt="" className="welcome-photo" fetchPriority="high" src="/assets/branding/cocinapp-hero.webp" />
+          </picture>
+          <header className="welcome-brand">
+            <BrandLogo subtitle="Cocina y Despensa" />
+          </header>
+          <section className="welcome-intro" aria-labelledby="welcome-title">
+            <h1 id="welcome-title">Planeá tus comidas y aprovechá lo que ya tenés.</h1>
+            <p>Organizá tu despensa, encontrá recetas y armá tu menú semanal.</p>
+          </section>
+        </div>
         <section className="welcome-access" aria-labelledby="access-form-title">
           <p className="eyebrow">{isSupabaseConfigured ? 'Tu cuenta de CocinAPP' : 'Cuenta local de demostración'}</p>
           <h2 id="access-form-title">{mode === 'login' ? 'Ingresá a tu cocina' : 'Creá tu cuenta'}</h2>

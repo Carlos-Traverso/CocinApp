@@ -40,6 +40,14 @@
   padding: clamp(30px, 5vh, 60px) clamp(28px, 6vw, 96px) clamp(40px, 7vh, 88px);
 }
 
+.welcome-hero {
+  display: contents;
+}
+
+.welcome-hero picture {
+  display: contents;
+}
+
 .welcome-brand {
   grid-area: brand;
   align-self: start;
@@ -218,31 +226,51 @@
 }
 
 @media (max-width: 760px) {
-  .welcome-photo {
-    height: min(100%, max(100vh, 620px));
-    height: min(100%, max(100svh, 620px));
-    object-position: 24% center;
-    transform: scaleX(-1);
+  .welcome-layout {
+    --welcome-gutter: clamp(16px, 5vw, 28px);
+
+    width: 100%;
+    grid-template-areas: 'hero' 'access';
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    gap: 14px;
+    padding: 0 0 28px;
   }
 
   .welcome-page::before {
-    background:
-      linear-gradient(180deg, #102b2080, transparent 130px, #102b2055 230px, var(--green-dark) max(610px, 90svh)),
-      linear-gradient(90deg, #102b20f5, #102b20c9 42%, #102b200d);
+    content: none;
   }
 
-  .welcome-layout {
-    width: min(100%, 480px);
-    grid-template-areas: 'brand' 'intro' 'access';
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto 1fr;
-    row-gap: clamp(18px, 5vw, 24px);
-    padding: clamp(20px, 4svh, 32px) clamp(16px, 5vw, 26px) 28px;
+  .welcome-hero {
+    position: relative;
+    display: grid;
+    grid-area: hero;
+    grid-template-areas: 'brand' '.' 'intro';
+    grid-template-rows: auto clamp(176px, 56vw, 244px) auto;
+    justify-items: center;
+    isolation: isolate;
+    background: #102b20;
+    padding: clamp(24px, 4svh, 38px) var(--welcome-gutter) 20px;
+    text-align: center;
   }
 
-  .welcome-brand,
-  .welcome-intro {
-    margin-inline: 2px;
+  .welcome-photo {
+    width: min(100%, 460px);
+    margin-inline: auto;
+    object-position: center 46%;
+  }
+
+  .welcome-hero::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    background: linear-gradient(180deg, #102b20ac, transparent 23% 48%, #163628dc 72%, var(--green-dark) 100%);
+    content: '';
+  }
+
+  .welcome-brand {
+    justify-self: center;
+    text-align: start;
   }
 
   .welcome-brand .brand-logo-mark {
@@ -254,24 +282,27 @@
   }
 
   .welcome-intro {
-    margin-top: clamp(0px, calc((100svh - 760px) / 4), 48px);
+    max-width: 440px;
   }
 
   .welcome-intro h1 {
     max-width: 21ch;
-    margin-bottom: 9px;
-    font-size: clamp(28px, 7.7vw, 38px);
+    margin: 0 auto 10px;
+    font-size: clamp(27px, 7.2vw, 37px);
     line-height: 1.08;
   }
 
   .welcome-intro p {
     max-width: 35ch;
+    margin-inline: auto;
     font-size: 14px;
     line-height: 1.45;
   }
 
   .welcome-access {
+    width: min(calc(100% - 2 * var(--welcome-gutter)), 432px);
     align-self: start;
+    justify-self: center;
     border-radius: 22px;
     padding: 22px clamp(16px, 5vw, 24px);
   }
@@ -299,5 +330,11 @@
 
   .welcome-password .password-forgot-link {
     min-height: 44px;
+  }
+}
+
+@media (460px < width <= 760px) {
+  .welcome-photo {
+    mask-image: linear-gradient(90deg, transparent, #000 15% 85%, transparent);
   }
 }
