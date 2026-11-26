@@ -324,45 +324,46 @@
   }
 
   .welcome-hero {
+    --hero-photo-width: 100vw;
     position: relative;
     display: grid;
     grid-area: hero;
     min-height: 100vh;
     min-height: 100dvh;
     grid-template-areas: 'brand' 'photo' 'intro' 'link';
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto auto;
     align-content: space-between;
     row-gap: 16px;
     justify-items: center;
     isolation: isolate;
-    background: #102b20;
+    background: #102b20 url('/assets/branding/cocinapp-hero-mobile.webp') center top / 100% auto no-repeat;
     padding: clamp(24px, 5svh, 52px) var(--welcome-gutter) clamp(24px, 6svh, 64px);
     text-align: center;
   }
 
   .welcome-hero picture {
     position: relative;
+    isolation: isolate;
     display: block;
     grid-area: photo;
-    width: min(100%, 400px, 43svh);
-    aspect-ratio: 1;
-    overflow: hidden;
-    mask-image: radial-gradient(ellipse, #000 63%, transparent 74%);
+    width: var(--hero-photo-width);
+    aspect-ratio: 1.4;
   }
 
   .welcome-photo {
-    inset: -37% auto auto -25%;
-    width: 150%;
+    inset: -25% auto auto 0;
+    width: 100%;
     height: auto;
     max-width: none;
+    mask-image: linear-gradient(180deg, #000 70%, transparent 94%);
   }
 
   .welcome-hero::before {
     position: absolute;
     z-index: -1;
     inset: 0;
-    background: linear-gradient(180deg, #102b20, var(--green-dark));
-    content: '';
+    content: none;
   }
 
   .welcome-brand {
@@ -383,7 +384,19 @@
   }
 
   .welcome-intro {
+    position: relative;
+    isolation: isolate;
     max-width: 440px;
+  }
+
+  .welcome-intro::before {
+    position: absolute;
+    z-index: -1;
+    inset: -12px calc(-1 * var(--welcome-gutter)) -24px;
+    background: linear-gradient(180deg, #102b2000, #102b20a6 28%, #102b20d9);
+    backdrop-filter: blur(6px);
+    mask-image: linear-gradient(180deg, transparent, #000 24%);
+    content: '';
   }
 
   .welcome-intro h1 {
