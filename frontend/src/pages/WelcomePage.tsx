@@ -145,9 +145,11 @@ export function WelcomePage() {
             {accessForm}
           </dialog>
         ) : (
-          <section className="welcome-access" id="ingreso" aria-labelledby="access-form-title" tabIndex={-1}>
-            {accessForm}
-          </section>
+          <div className="welcome-access-stage" id="ingreso" tabIndex={-1}>
+            <section className="welcome-access" aria-labelledby="access-form-title">
+              {accessForm}
+            </section>
+          </div>
         )}
       </div>
     </main>
