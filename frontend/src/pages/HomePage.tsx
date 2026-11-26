@@ -63,11 +63,6 @@ export function HomePage() {
       </div>
     </div>
 
-    {data.summary && <section aria-label="Resumen de tu cocina" className="dashboard-summary-counts">
-      <p>Despensa: {data.summary.pantry.total} productos · {data.summary.pantry.low} bajos · {data.summary.pantry.expired} vencidos · {data.summary.pantry.soon} por vencer</p>
-      <p>Favoritos: {data.summary.favorites.total} ({data.summary.favorites.available} disponibles) · Compras: {data.summary.shopping.pending} pendientes, {data.summary.shopping.checked} marcados, {data.summary.shopping.transferred} transferidos · Plan de hoy: {data.summary.todayPlanCount}</p>
-    </section>}
-
     {preferences.length > 0 && <p className="form-message" role="status">Sugerencias filtradas según tus {preferences.length} preferencias dietéticas activas. <Link to="/profile">Editar preferencias</Link></p>}
 
     {preferences.length > 0 && recipes.length === 0
