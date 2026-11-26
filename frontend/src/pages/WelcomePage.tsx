@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowRight, ShieldCheck } from 'lucide-react'
+import { ArrowDown, ArrowRight, ShieldCheck } from 'lucide-react'
 import { authRepository } from '../features/auth/data/AuthRepository'
 import { handleTabListKeyDown } from '../components/tabKeyboard'
 import { BrandLogo } from '../components/BrandLogo'
@@ -74,8 +74,11 @@ export function WelcomePage() {
             <h1 id="welcome-title">Planeá tus comidas y aprovechá lo que ya tenés.</h1>
             <p>Organizá tu despensa, encontrá recetas y armá tu menú semanal.</p>
           </section>
+          <a className="button welcome-access-link" href="#ingreso">
+            Acceder <ArrowDown aria-hidden="true" size={16} />
+          </a>
         </div>
-        <section className="welcome-access" aria-labelledby="access-form-title">
+        <section className="welcome-access" id="ingreso" aria-labelledby="access-form-title" tabIndex={-1}>
           <p className="eyebrow">{isSupabaseConfigured ? 'Tu cuenta de CocinAPP' : 'Cuenta local de demostración'}</p>
           <h2 id="access-form-title">{mode === 'login' ? 'Ingresá a tu cocina' : 'Creá tu cuenta'}</h2>
           <p className="field-help">{mode === 'register'
