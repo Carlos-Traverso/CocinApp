@@ -230,6 +230,19 @@
 }
 
 @media (width > 760px) {
+  .welcome-page {
+    overflow: clip;
+    background: #102b20;
+  }
+
+  .welcome-photo {
+    /* Match the bowl's top and bottom margins to the margin at its left rim. */
+    inset: -4.9% auto auto 0;
+    width: auto;
+    height: 114.3%;
+    mask-image: linear-gradient(90deg, #000 66%, transparent);
+  }
+
   .welcome-page::before {
     z-index: -1;
     background:
