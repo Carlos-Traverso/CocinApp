@@ -219,33 +219,82 @@
 
 @media (max-width: 760px) {
   .welcome-photo {
+    height: min(100%, max(100vh, 620px));
+    height: min(100%, max(100svh, 620px));
     object-position: 24% center;
+    transform: scaleX(-1);
   }
 
   .welcome-page::before {
-    background: linear-gradient(180deg, #102b20ba, #102b208c 110px, #102b20e6 65%);
+    background:
+      linear-gradient(180deg, #102b2080, transparent 130px, #102b2055 230px, var(--green-dark) max(610px, 90svh)),
+      linear-gradient(90deg, #102b20f5, #102b20c9 42%, #102b200d);
   }
 
   .welcome-layout {
-    width: min(100%, 500px);
+    width: min(100%, 480px);
     grid-template-areas: 'brand' 'intro' 'access';
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto 1fr;
-    gap: 20px;
-    padding: 20px 16px 28px;
+    row-gap: clamp(18px, 5vw, 24px);
+    padding: clamp(20px, 4svh, 32px) clamp(16px, 5vw, 26px) 28px;
+  }
+
+  .welcome-brand,
+  .welcome-intro {
+    margin-inline: 2px;
+  }
+
+  .welcome-brand .brand-logo-mark {
+    width: 38px;
+  }
+
+  .welcome-brand .brand-logo-subtitle {
+    font-size: 9px;
+  }
+
+  .welcome-intro {
+    margin-top: clamp(0px, calc((100svh - 760px) / 4), 48px);
   }
 
   .welcome-intro h1 {
-    max-width: 20ch;
-    margin-bottom: 8px;
-    font-size: clamp(30px, 6vw, 42px);
-    text-wrap: initial;
+    max-width: 21ch;
+    margin-bottom: 9px;
+    font-size: clamp(28px, 7.7vw, 38px);
+    line-height: 1.08;
+  }
+
+  .welcome-intro p {
+    max-width: 35ch;
+    font-size: 14px;
+    line-height: 1.45;
   }
 
   .welcome-access {
     align-self: start;
-    border-radius: 18px;
-    padding: 22px 18px;
+    border-radius: 22px;
+    padding: 22px clamp(16px, 5vw, 24px);
+  }
+
+  .welcome-access::before {
+    inset-inline: clamp(16px, 5vw, 24px);
+  }
+
+  .welcome-access .field-help {
+    margin-bottom: 14px;
+  }
+
+  .welcome-access .access-form {
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .welcome-access .access-tabs button {
+    padding-inline: 6px;
+  }
+
+  .welcome-access .button-primary {
+    min-height: 48px;
   }
 
   .welcome-password .password-forgot-link {
