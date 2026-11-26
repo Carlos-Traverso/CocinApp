@@ -579,7 +579,6 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
 .access-primary-logo { width: 105px; }
 .access-card { position: relative; grid-area: form; min-width: 0; border: 1px solid #d4dfcf; border-radius: 22px; background: #fffffff2; box-shadow: 0 26px 70px #183f2624; padding: 30px 32px; backdrop-filter: blur(12px); }
 .access-card::before { position: absolute; top: 0; left: 29px; width: 62px; height: 4px; border-radius: 0 0 6px 6px; background: #d49a3c; content: ''; }
-.access-card h2 { margin-bottom: 5px; font-size: 25px; }
 .access-form { display: grid; gap: 15px; margin-top: 22px; }
 .field { display: grid; gap: 6px; color: #3a4439; font-size: 13px; font-weight: 700; }
 .field input, .field select { width: 100%; min-height: 44px; border: 1px solid #d8ded5; border-radius: 5px; background: #fff; padding: 0 11px; color: var(--ink); }

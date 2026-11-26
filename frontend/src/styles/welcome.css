@@ -3,8 +3,9 @@
   display: grid;
   min-height: 100vh;
   min-height: 100dvh;
+  overflow: clip;
   isolation: isolate;
-  background: var(--green-dark);
+  background: #102b20;
 }
 
 .welcome-photo,
@@ -17,8 +18,6 @@
 
 .welcome-photo {
   z-index: -2;
-  object-fit: cover;
-  object-position: 35% center;
 }
 
 .welcome-layout {
@@ -99,11 +98,9 @@
 }
 
 .welcome-intro h1 {
-  margin: 0 0 14px;
   font-family: Georgia, 'Times New Roman', serif;
   font-weight: 500;
   letter-spacing: -.045em;
-  line-height: 1.02;
   text-wrap: balance;
 }
 
@@ -111,19 +108,16 @@
   max-width: 42ch;
   margin: 0;
   color: var(--green-soft);
-  font-size: clamp(15px, 1.3vw, 18px);
   line-height: 1.5;
 }
 
 .welcome-access {
   position: relative;
-  grid-area: access;
   align-self: center;
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 24px;
   background: var(--surface);
-  padding: clamp(24px, 3vw, 38px);
   box-shadow: 0 24px 60px #102b204d;
 }
 
@@ -230,11 +224,6 @@
 }
 
 @media (width > 1024px) {
-  .welcome-page {
-    overflow: clip;
-    background: #102b20;
-  }
-
   .welcome-photo {
     /* Match the bowl's top and bottom margins to the margin at its left rim. */
     inset: -4.9% auto auto 0;
@@ -312,11 +301,6 @@
 }
 
 @media (max-width: 1024px) {
-  .welcome-page {
-    overflow: clip;
-    background: #102b20;
-  }
-
   .welcome-layout {
     --welcome-gutter: clamp(16px, 5vw, 28px);
 
@@ -324,8 +308,6 @@
     grid-template-areas: 'hero' 'access';
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto 1fr;
-    gap: 0;
-    padding: 0;
   }
 
   .welcome-hero {
@@ -336,7 +318,6 @@
     min-height: 100dvh;
     grid-template-areas: 'brand' 'photo' 'intro' 'link';
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto;
     align-content: space-between;
     row-gap: 16px;
     justify-items: center;
@@ -384,13 +365,7 @@
     width: 46px;
   }
 
-  .welcome-brand .brand-logo-subtitle {
-    font-size: 10px;
-  }
-
   .welcome-intro {
-    position: relative;
-    isolation: isolate;
     max-width: 440px;
   }
 
@@ -408,10 +383,6 @@
     line-height: 1.45;
   }
 
-  .welcome-access-link.button {
-    margin-top: 0;
-  }
-
   .welcome-access-stage {
     display: grid;
     grid-area: access;
@@ -421,14 +392,8 @@
     padding: 24px var(--welcome-gutter);
   }
 
-  .welcome-access-stage > .welcome-access {
-    align-self: center;
-  }
-
   .welcome-access {
     width: min(100%, 432px);
-    grid-area: auto;
-    align-self: start;
     justify-self: center;
     border-radius: 22px;
     padding: 28px clamp(20px, 6vw, 30px);
