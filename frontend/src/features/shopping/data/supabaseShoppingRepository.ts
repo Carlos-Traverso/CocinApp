@@ -118,7 +118,7 @@ export function createSupabaseShoppingRepository(dependencies: { getClient: type
         const base = await read(), catalog = await getCatalog(), merged = mergeShoppingSuggestions(base, [suggestion], catalog.units)
         assertSession(operationSession)
         const keyForSuggestion = shoppingKey(suggestion.name, suggestion.unit, catalog.units)
-        const item = merged.find((entry) => !entry.transferredToPantry && shoppingKey(entry.name, entry.unit, catalog.units) === keyForSuggestion)
+        const item = merged.find((entry) => !entry.checked && !entry.transferredToPantry && shoppingKey(entry.name, entry.unit, catalog.units) === keyForSuggestion)
         if (!item) continue
         if (suggestion.source === 'recipe' && !suggestion.sourceLinks?.some((entry) => entry.source === 'recipe' && entry.recipe_id)) throw new Error('No se puede guardar una sugerencia de receta sin su referencia relacional.')
         const previous = base.find((entry) => entry.id === item.id)
@@ -131,7 +131,7 @@ export function createSupabaseShoppingRepository(dependencies: { getClient: type
         if (!previous && (!stableId || stableId.sessionKey !== key)) { stableId = { id: crypto.randomUUID(), sessionKey: key }; pendingSuggestions.set(sig, stableId) }
         const withMetadata: ShoppingItem = { ...item, id: previous?.id ?? stableId?.id ?? item.id,
           ingredientId: suggestion.ingredientRef ? catalog.ingredients.find((entry) => entry.relationalId === suggestion.ingredientRef)?.id : item.ingredientId,
-          ingredientRef: suggestion.ingredientRef ?? previous?.ingredientRef, unitRef: suggestion.unitRef ?? previous?.unitRef, sourceLinks }
+          ingredientRef: suggestion.ingredientRef ?? previous?.ingredientRef, unitRef: previous?.unitRef ?? suggestion.unitRef, sourceLinks }
         if (previous && JSON.stringify(previous) === JSON.stringify(withMetadata)) continue
         await save([...base.map((entry) => entry.id === item.id ? withMetadata : entry), ...(previous ? [] : [withMetadata])])
         pendingSuggestions.delete(sig)

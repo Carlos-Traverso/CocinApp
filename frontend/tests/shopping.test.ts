@@ -84,12 +84,13 @@ test('weekly suggestions sum separate servings for repeated recipes across plan 
   assert.equal(suggestions.find((item) => item.name === baseIngredient.name)?.quantity, baseIngredient.quantity * 8 / recipe.portions)
 })
 
-test('share copy is plain text and combines equivalent units', () => {
+test('share copy combines equivalent units only within the same purchase status', () => {
   const text = createShoppingShareText([
     shoppingItem({ id: 'g', name: 'Harina', quantity: 500, unit: 'g' }),
-    shoppingItem({ id: 'kg', name: 'harina', quantity: 1, unit: 'kg', checked: true }),
+    shoppingItem({ id: 'kg', name: 'harina', quantity: 1, unit: 'kg' }),
+    shoppingItem({ id: 'purchased', name: 'Harina', quantity: 2, unit: 'kg', checked: true }),
   ])
-  assert.equal(text, 'Lista de compras CocinAPP\n• Harina: 1.500 g (comprado)')
+  assert.equal(text, 'Lista de compras CocinAPP\n• Harina: 1.500 g\n• Harina: 2 kg (comprado)')
 })
 
 test('small positive recipe shortages survive consolidation and sharing', () => {
@@ -139,11 +140,14 @@ test('pantry restock suggests low, empty and expired products without duplicates
   assert.equal(suggestions.some((item) => item.name === 'Aceite de oliva'), false)
 })
 
-test('merging suggestions is idempotent and preserves edits and checked state', () => {
+test('merging suggestions leaves checked purchases intact and reuses the pending row on retry', () => {
   const current: ShoppingItem[] = [shoppingItem({ name: 'Arroz integral', category: 'Granos y legumbres', quantity: 80, note: 'Marca habitual', checked: true })]
   const suggestions = [{ name: ' arroz  INTEGRAL ', category: 'Granos y legumbres' as const, quantity: 120, unit: 'g' as const, source: 'plan' as const }]
   const merged = mergeShoppingSuggestions(current, suggestions)
-  assert.deepEqual(merged, [{ ...current[0], quantity: 120, sources: ['manual', 'plan'] }])
+  assert.equal(merged.length, 2)
+  assert.deepEqual(merged[0], current[0])
+  const { source, ...suggestedItem } = suggestions[0]!
+  assert.deepEqual(merged[1], shoppingItem({ id: merged[1]!.id, ...suggestedItem, sources: [source] }))
   assert.deepEqual(mergeShoppingSuggestions(merged, suggestions), merged)
 })
 

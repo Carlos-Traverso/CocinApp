@@ -120,11 +120,12 @@ test('week suggestions send every selected date and preserve relational provenan
   assert.deepEqual(suggestions[0]?.sourceLinks, [{ source: 'plan', plan_id: 'plan-uuid' }])
 })
 
-test('adding a recipe and generating weekly purchases creates a pending item for a previously transferred ingredient', async () => {
+test('generating weekly purchases adds a pending item alongside checked and transferred purchases', async () => {
   const dates = weekDates(new Date(2026, 10, 26, 12))
   const recipe: Recipe = { id: 'rice-recipe', relationalId: 'recipe-uuid', name: 'Arroz', description: '', category: 'Almuerzo', minutes: 20, portions: 2, difficulty: 'Fácil', ingredients: [], steps: [], symbol: '🍚', color: 'green' }
   const transferred = row('transferred-rice', true, '2026-11-26T12:00:00Z')
-  const items = [transferred]
+  const checked = row('checked-rice', true)
+  const items = [transferred, checked]
   let plan: { id: string; week_start: string; version: number } | null = null
   let slots: Array<Record<string, unknown>> = []
   let version = 1
@@ -165,9 +166,10 @@ test('adding a recipe and generating weekly purchases creates a pending item for
   await planner.assign(dates[3], 'Almuerzo', recipe.id, 3)
   await planner.generateShopping(dates)
   const first = await repo.list()
-  const pending = first.find((item) => !item.transferredToPantry)
-  assert.equal(first.length, 2)
+  const pending = first.find((item) => !item.checked)
+  assert.equal(first.length, 3)
   assert.deepEqual(items[0], transferred)
+  assert.deepEqual(items[1], checked)
   assert.equal(pending?.quantity, 3)
   assert.equal(pending?.checked, false)
   assert.deepEqual(pending?.sourceLinks, [{ source: 'plan', plan_id: 'plan-uuid' }])

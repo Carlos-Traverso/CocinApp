@@ -52,7 +52,7 @@ export function ShoppingPage() {
   const activeItems = items.filter((item) => !item.transferredToPantry)
   const categories = [...new Set([...catalog.categories.filter((entry) => entry.active && !entry.isDeleted).map((entry) => entry.name), ...activeItems.map((item) => item.category)])]
   const visible = debouncedSearch.status === 'waiting' ? [] : filterShoppingItems(activeItems, { search: debouncedSearch.query, category, status })
-    .sort((a, b) => categories.indexOf(a.category) - categories.indexOf(b.category) || a.name.localeCompare(b.name, 'es'))
+    .sort((a, b) => Number(a.checked) - Number(b.checked) || a.name.localeCompare(b.name, 'es'))
   const groups = categories.map((name) => ({ name, items: visible.filter((item) => item.category === name) })).filter((group) => group.items.length > 0)
   const checkedCount = activeItems.filter((item) => item.checked).length
   const pendingCount = activeItems.length - checkedCount
@@ -126,8 +126,8 @@ export function ShoppingPage() {
       const baseUnit = catalog.units.find((unit) => unit.id === ingredient.baseUnitId)
       if (!baseUnit || !compatibleUnitAbbreviations(baseUnit.abbreviation, activeUnits).includes(candidate.unit)) { setError('La unidad no es compatible con el ingrediente elegido.'); return }
     }
-    if (activeItems.some((item) => item.id !== candidate.id && shoppingKey(item.name, item.unit, catalog.units) === shoppingKey(candidate.name, candidate.unit, catalog.units))) {
-      setError('Ese artículo con la misma unidad ya está en la lista. Editalo para cambiar su cantidad.'); return
+    if (!candidate.checked && activeItems.some((item) => !item.checked && item.id !== candidate.id && shoppingKey(item.name, item.unit, catalog.units) === shoppingKey(candidate.name, candidate.unit, catalog.units))) {
+      setError('Ese artículo ya está pendiente con la misma unidad. Editalo para cambiar su cantidad.'); return
     }
     const editing = items.some((item) => item.id === candidate.id)
     const next = editing ? items.map((item) => item.id === candidate.id ? candidate : item) : [...items, candidate]
