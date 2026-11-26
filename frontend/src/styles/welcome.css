@@ -35,7 +35,23 @@
 }
 
 .welcome-access-link.button {
-  display: none;
+  display: inline-flex;
+  grid-area: link;
+  gap: 10px;
+  min-height: 46px;
+  border-color: #eaf3ec70;
+  border-radius: 999px;
+  background: #fbfaf6;
+  padding-inline: 20px;
+  color: var(--green-dark);
+}
+
+.welcome-access-link.button:hover {
+  background: var(--green-soft);
+}
+
+.welcome-access-link.button:focus-visible {
+  outline-color: var(--green-soft);
 }
 
 .welcome-brand {
@@ -217,33 +233,63 @@
   .welcome-page::before {
     z-index: -1;
     background:
-      linear-gradient(180deg, #102b20eb, #102b2099 112px, transparent 210px),
-      linear-gradient(0deg, #102b20f5, #102b20a6 37%, transparent 70%);
+      linear-gradient(90deg, transparent 29%, #102b2073 48%, #102b20e8 78%),
+      linear-gradient(0deg, #102b20b3, transparent 38%);
     content: '';
   }
 
   .welcome-layout {
     width: min(100%, 1560px);
-    grid-template-areas: 'brand access' 'intro access';
-    grid-template-columns: minmax(0, 1fr) minmax(320px, 410px);
-    grid-template-rows: auto 1fr;
-    gap: 32px clamp(28px, 5vw, 80px);
-    padding: clamp(30px, 5vh, 60px) clamp(42px, 10vw, 168px) clamp(40px, 7vh, 88px) clamp(28px, 6vw, 96px);
+    grid-template-areas: '. brand' '. intro' '. link';
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 440px);
+    align-content: center;
+    gap: 24px;
+    padding: clamp(30px, 6vh, 64px) clamp(36px, 10vw, 168px);
   }
 
   .welcome-intro h1 {
-    max-width: 15.5ch;
+    max-width: 20ch;
     margin-bottom: 12px;
-    font-size: clamp(36px, 4.05vw, 64px);
-    line-height: 1.06;
+    font-size: clamp(34px, 3.4vw, 49px);
+    line-height: 1.08;
   }
 
   .welcome-intro p {
     font-size: clamp(15px, 1.25vw, 17px);
   }
 
-  .welcome-access {
+  .welcome-access-link.button {
+    justify-self: start;
+  }
+
+  .welcome-access-dialog {
+    position: fixed;
+    width: min(440px, calc(100% - 40px));
+    max-width: none;
+    max-height: calc(100dvh - 40px);
+    margin: auto;
     padding: clamp(22px, 2.3vw, 30px);
+  }
+
+  .welcome-access-dialog::backdrop {
+    background: #102b20a6;
+  }
+
+  .welcome-access-back.button {
+    min-height: 36px;
+    margin: 0 0 15px;
+    padding-inline: 0;
+    background: transparent;
+    color: var(--green-dark);
+    cursor: pointer;
+  }
+
+  .welcome-access-back.button:hover {
+    text-decoration: underline;
+  }
+
+  html:has(.welcome-access-dialog[open]) {
+    overflow: hidden;
   }
 
   .welcome-access .access-form {
@@ -328,20 +374,7 @@
   }
 
   .welcome-access-link.button {
-    display: inline-flex;
-    grid-area: link;
-    gap: 10px;
-    min-height: 46px;
     margin-top: 22px;
-    border-color: #eaf3ec70;
-    border-radius: 999px;
-    background: #fbfaf6;
-    padding-inline: 20px;
-    color: var(--green-dark);
-  }
-
-  .welcome-access-link.button:focus-visible {
-    outline-color: var(--green-soft);
   }
 
   .welcome-access {
