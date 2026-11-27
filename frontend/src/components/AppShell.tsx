@@ -120,7 +120,7 @@ export function AppShell() {
           <span>{loggingOut ? 'Cerrando…' : 'Cerrar sesión'}</span>
         </button>
       </aside>
-      <main className="main-content" data-page-background={background}><NavLink aria-label="CocinAPP, inicio" className="mobile-brand" to="/panel"><BrandLogo /></NavLink><Outlet /></main>
+      <main className="main-content" data-page-background={background}><NavLink aria-label="CocinAPP, Tu cocina, más organizada" className="mobile-brand" to="/panel"><BrandLogo subtitle="Tu cocina, más organizada" /></NavLink><Outlet /></main>
       <ScrollToTopButton />
     </div>
   )

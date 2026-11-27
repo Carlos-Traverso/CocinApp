@@ -35,6 +35,38 @@
     box-shadow: 0 1px 0 var(--line);
   }
 
+  .mobile-brand .brand-logo-compact {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    gap: 1px 9px;
+  }
+
+  .mobile-brand .brand-logo-mark {
+    grid-row: 1 / span 2;
+  }
+
+  .mobile-brand .brand-logo-name {
+    align-self: end;
+  }
+
+  .mobile-brand .brand-logo-subtitle {
+    grid-column: 2;
+    align-self: start;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 12px;
+  }
+
+  .mobile-brand .brand-logo-subtitle::before,
+  .mobile-brand .brand-logo-subtitle::after {
+    content: '—';
+    color: var(--green-dark);
+  }
+
+  .mobile-brand .brand-logo-subtitle::before { margin-right: 4px; }
+  .mobile-brand .brand-logo-subtitle::after { margin-left: 4px; }
+
   .mobile-navigation {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
