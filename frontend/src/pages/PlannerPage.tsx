@@ -1,6 +1,7 @@
 import { LoadingScreen } from '../components/LoadingScreen'
+import { scrollBehavior } from '../components/scrollToTop'
 import { useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { mockPlannerRepository } from '../features/planner/data/MockPlannerRepository'
 import { localDateKey, meals, weekDates, type Meal, type PlannedMeal } from '../features/planner/domain/planner'
@@ -13,6 +14,25 @@ import { useNotifications } from '../shared/notifications/NotificationProvider'
 import { writeFailureMessage } from '../shared/data/writeFailure'
 
 const dayFormatter = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'short' })
+const weekRangeFormatter = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'long' })
+const weekRangeWithYearFormatter = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+
+type PlannerDay = { date: string; headingId: string; label: string }
+
+function jumpToDay(headingId: string) {
+  const heading = document.getElementById(headingId)
+  if (!heading) return
+  heading.focus({ preventScroll: true })
+  heading.scrollIntoView({ behavior: scrollBehavior(window.matchMedia('(prefers-reduced-motion: reduce)').matches), block: 'start' })
+}
+
+function DayShortcuts({ days, disabled, replaced = false }: { days: PlannerDay[]; disabled: boolean; replaced?: boolean }) {
+  return <nav aria-label="Ir a un día de la semana" className="planner-day-shortcuts" inert={replaced}>
+    {days.map(({ date, headingId, label }) => <button aria-label={`Ir a ${label}`} disabled={disabled} key={date} onClick={() => jumpToDay(headingId)} type="button">
+      <span>{label[0].toLocaleUpperCase('es-AR')}</span>
+    </button>)}
+  </nav>
+}
 
 export function PlannerPage() {
   const navigate = useNavigate()
@@ -24,14 +44,43 @@ export function PlannerPage() {
   const [saving, setSaving] = useState(false)
   const [knownRecipes, setKnownRecipes] = useState<Recipe[]>([])
   const [availableRecipes, setAvailableRecipes] = useState<Recipe[]>([])
+  const [shortcutsPinned, setShortcutsPinned] = useState(false)
+  const weekActions = useRef<HTMLDivElement>(null)
   const savingRef = useRef(false)
   const [picker, setPicker] = useState<{ date: string; meal: Meal; label: string } | null>(null)
   const target = new Date()
   target.setDate(target.getDate() + weekOffset * 7)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const dates = weekDates(target)
+  const days = dates.map((date) => ({ date, headingId: `planner-day-${date}`, label: dayFormatter.format(new Date(`${date}T12:00:00`)) }))
   const weekStart = dates[0]
+  const firstDay = new Date(`${weekStart}T12:00:00`)
+  const lastDay = new Date(`${dates[6]}T12:00:00`)
+  const weekYear = firstDay.getFullYear() === lastDay.getFullYear() ? firstDay.getFullYear() : null
+  const weekRange = (weekYear === null ? weekRangeWithYearFormatter : weekRangeFormatter).formatRange(firstDay, lastDay)
   const recipesById = new Map(knownRecipes.map((recipe) => [recipe.id, recipe]))
+
+  useEffect(() => {
+    const actions = weekActions.current
+    const header = actions?.closest('.main-content')?.querySelector('.mobile-brand')
+    if (!actions || !header) return
+
+    let positionObserver: IntersectionObserver | undefined
+    const headerObserver = new ResizeObserver(() => {
+      positionObserver?.disconnect()
+      const headerHeight = header.getBoundingClientRect().height
+      if (!headerHeight) {
+        setShortcutsPinned(false)
+        return
+      }
+      positionObserver = new IntersectionObserver(([entry]) => {
+        setShortcutsPinned(entry.boundingClientRect.top < headerHeight)
+      }, { rootMargin: `-${headerHeight}px 0px 0px`, threshold: [0, 1] })
+      positionObserver.observe(actions)
+    })
+    headerObserver.observe(header)
+    return () => { headerObserver.disconnect(); positionObserver?.disconnect() }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -115,8 +164,20 @@ export function PlannerPage() {
     <section aria-labelledby="planner-week-title" className="planner-calendar">
       <div className="planner-toolbar">
         <div className="planner-week-summary">
-          <h2 id="planner-week-title">Semana del {new Date(`${dates[0]}T12:00:00`).toLocaleDateString('es-AR')} al {new Date(`${dates[6]}T12:00:00`).toLocaleDateString('es-AR')}</h2>
-          <button className="button button-quiet" disabled={saving || loading} onClick={reloadWeek} type="button">Recargar semana</button>
+          <h2 id="planner-week-title">
+            <span className="planner-week-title-desktop">Semana del {firstDay.toLocaleDateString('es-AR')} al {lastDay.toLocaleDateString('es-AR')}</span>
+            <span className="planner-week-title-mobile">
+              <span aria-hidden="true" className="planner-week-title-icon"><CalendarDays size={19} /></span>
+              <span>
+                <span className="planner-week-title-meta">{weekYear === null ? 'Semana' : `Semana · ${weekYear}`}</span>
+                <span className="planner-week-title-range">{weekRange}</span>
+              </span>
+            </span>
+          </h2>
+          <div className="planner-week-actions" ref={weekActions}>
+            <button className="button button-quiet" disabled={saving || loading} onClick={reloadWeek} type="button">Recargar semana</button>
+            <DayShortcuts days={days} disabled={loading || loadFailed} replaced={shortcutsPinned} />
+          </div>
         </div>
         <div className="planner-week-navigation">
           <button aria-label="Semana anterior" disabled={saving} className="button button-quiet" onClick={() => goToWeek(weekOffset - 1)} type="button"><ChevronLeft size={18} /></button>
@@ -124,18 +185,18 @@ export function PlannerPage() {
           <button aria-label="Semana siguiente" disabled={saving} className="button button-quiet" onClick={() => goToWeek(weekOffset + 1)} type="button"><ChevronRight size={18} /></button>
         </div>
       </div>
+      {shortcutsPinned && <div className="planner-pinned-shortcuts"><DayShortcuts days={days} disabled={loading || loadFailed} /></div>}
       {loading ? <LoadingScreen message="Cargando plan semanal…" variant="section" /> : loadFailed ? (
         <p role="alert">No se pudo cargar el plan semanal. Usá «Recargar semana» para volver a intentarlo.</p>
       ) : <>
         {plan.some((item) => item.available === false) && <p role="status">Hay recetas que ya no están disponibles. Para editar la semana, quitá explícitamente esas entradas. <button className="text-link" disabled={saving} onClick={() => void removeUnavailable()} type="button">Quitar recetas no disponibles</button></p>}
         {saving && <p role="status">Guardando cambio…</p>}
         <div className="planner-grid">
-          {dates.map((date) => {
-            const dayLabel = dayFormatter.format(new Date(`${date}T12:00:00`))
+          {days.map(({ date, headingId, label: dayLabel }) => {
             const isToday = date === localDateKey(new Date())
             const isSelected = picker?.date === date
-            return <article aria-labelledby={`planner-day-${date}`} className={`planner-day${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}`} key={date}>
-              <h3 id={`planner-day-${date}`}><span>{dayLabel}</span>{isToday && <span className="planner-today">Hoy</span>}</h3>
+            return <article aria-labelledby={headingId} className={`planner-day${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}`} key={date}>
+              <h3 id={headingId} tabIndex={-1}><span>{dayLabel}</span>{isToday && <span className="planner-today">Hoy</span>}</h3>
               {meals.map((meal) => {
                 const assignment = plan.find((item) => item.date === date && item.meal === meal)
                 const recipeId = assignment?.recipeId ?? ''

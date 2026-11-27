@@ -247,6 +247,118 @@
     flex: 1 1 auto;
   }
 
+  .planner-page { --planner-brand-height: calc(55px + max(16px, env(safe-area-inset-top))); }
+
+  @media (max-width: 620px) {
+    .planner-page { --planner-brand-height: calc(48px + max(16px, env(safe-area-inset-top))); }
+  }
+
+  .planner-week-summary { width: 100%; }
+  .planner-week-summary > h2 { width: 100%; }
+  .planner-week-title-desktop { display: none; }
+
+  .planner-week-title-mobile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 2px;
+    color: var(--green-dark);
+  }
+
+  .planner-week-title-icon {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    flex: none;
+    place-items: center;
+    border: 1px solid #c9dccd;
+    border-radius: 11px;
+    background: #f6faf5;
+  }
+
+  .planner-week-title-meta {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 650;
+  }
+
+  .planner-week-title-range {
+    display: block;
+    font-size: clamp(17px, 4.5vw, 21px);
+    font-weight: 750;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+
+  .planner-week-actions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 106px minmax(0, 1fr);
+    align-items: center;
+    gap: 7px;
+    container-type: inline-size;
+  }
+
+  .planner-week-actions > .button { padding-inline: 6px; font-size: 12px; }
+
+  .planner-day-shortcuts {
+    display: grid;
+    width: min(100%, 310px);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 1px;
+  }
+
+  .planner-day-shortcuts button {
+    display: grid;
+    min-height: 38px;
+    place-items: center;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    padding: 0;
+    color: var(--green-dark);
+    font-size: 12px;
+    font-weight: 750;
+    cursor: pointer;
+  }
+
+  .planner-day-shortcuts button span {
+    display: grid;
+    width: 22px;
+    height: 22px;
+    place-items: center;
+    border: 1px solid #a9c5ae;
+    border-radius: 50%;
+    background: var(--surface);
+  }
+
+  .planner-day-shortcuts button:is(:active, :focus-visible) span { background: var(--green-dark); color: var(--surface); }
+  .planner-day-shortcuts button:disabled { opacity: .55; cursor: default; }
+  .planner-day-shortcuts[inert] { visibility: hidden; }
+
+  .planner-pinned-shortcuts {
+    position: fixed;
+    z-index: 39;
+    inset: var(--planner-brand-height) 0 auto;
+    display: block;
+    border-bottom: 1px solid var(--line);
+    background: #f5f9f3;
+    padding: 2px max(14px, env(safe-area-inset-right)) 2px max(14px, env(safe-area-inset-left));
+    box-shadow: 0 3px 8px #173b2414;
+  }
+
+  .planner-pinned-shortcuts .planner-day-shortcuts { width: min(100%, 340px); margin-inline: auto; }
+  .planner-pinned-shortcuts button { min-height: 44px; }
+  .planner-pinned-shortcuts button span { width: 29px; height: 29px; }
+  .planner-day h3 { scroll-margin-top: calc(var(--planner-brand-height) + 58px); }
+
+  @container (width < 287px) {
+    .planner-day-shortcuts { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .planner-day-shortcuts button span { width: 24px; height: 24px; }
+  }
+
   .planner-slot {
     grid-template-rows: 44px var(--planner-recipe-height) 44px;
   }
