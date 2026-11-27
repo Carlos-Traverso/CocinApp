@@ -37,19 +37,32 @@ export function buildRecipeRecommendations(
   const active = activeRecipes.filter((recipe) => matchesDietaryPreferences(recipe, preferences))
   const known = knownRecipes.filter((recipe) => matchesDietaryPreferences(recipe, preferences))
   const discovery = discoverRecipes(active, known, favoriteIds, history)
-  const featured = discovery.featured.slice(0, 4)
-  const pantryReady = active.filter((recipe) => getIngredientAvailability(recipe, pantry, today, units).missing.length === 0).slice(0, 4)
-  const quick = active.filter((recipe) => recipe.minutes <= 20).sort((a, b) => a.minutes - b.minutes || a.name.localeCompare(b.name, 'es')).slice(0, 4)
+  const pantryReady = active.filter((recipe) => getIngredientAvailability(recipe, pantry, today, units).missing.length === 0)
+  const quick = active.filter((recipe) => recipe.minutes <= 20).sort((a, b) => a.minutes - b.minutes || a.name.localeCompare(b.name, 'es'))
+  const hero = discovery.basedOnHistory[0] ?? pantryReady[0] ?? discovery.featured[0] ?? active[0]
+  const selected = new Set<string>()
+  if (hero) selected.add(hero.id)
+
+  function selectSection(id: RecipeRecommendationSectionId, candidates: Recipe[]): RecipeRecommendationSection {
+    const recipes: Recipe[] = []
+    for (const recipe of candidates) {
+      if (selected.has(recipe.id)) continue
+      selected.add(recipe.id)
+      recipes.push(recipe)
+      if (recipes.length === 4) break
+    }
+    return { id, recipes }
+  }
 
   return {
-    hero: discovery.basedOnHistory[0] ?? pantryReady[0] ?? featured[0] ?? active[0],
+    hero,
     sections: [
-      { id: 'recipe-featured', recipes: featured },
-      { id: 'recipe-pantry-ready', recipes: pantryReady },
-      { id: 'recipe-history-based', recipes: discovery.basedOnHistory },
-      { id: 'recipe-recook', recipes: discovery.recook },
-      { id: 'recipe-favorites', recipes: discovery.favorites },
-      { id: 'recipe-quick', recipes: quick },
+      selectSection('recipe-featured', discovery.featured),
+      selectSection('recipe-pantry-ready', pantryReady),
+      selectSection('recipe-history-based', discovery.basedOnHistory),
+      selectSection('recipe-recook', discovery.recook),
+      selectSection('recipe-favorites', discovery.favorites),
+      selectSection('recipe-quick', quick),
     ],
   }
 }

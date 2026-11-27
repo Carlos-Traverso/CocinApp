@@ -24,6 +24,10 @@
   align-content: start;
 }
 
+.dashboard-highlight-grid > .dashboard-today-section:only-child {
+  grid-column: 1 / -1;
+}
+
 .dashboard-highlight-grid .dashboard-today-grid {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -93,6 +97,78 @@
   }
 }
 
+@media (width > 750px) {
+  .dashboard-recommendations .recipe-hero {
+    grid-template-areas: "intro artwork" "details artwork";
+  }
+
+  .dashboard-recommendations .recipe-hero-intro {
+    grid-area: intro;
+    align-self: end;
+    padding-bottom: 0;
+  }
+
+  .dashboard-recommendations .recipe-hero-details {
+    grid-area: details;
+    align-self: start;
+    padding-top: 0;
+  }
+
+  .dashboard-recommendations .recipe-hero > .recipe-artwork-hero {
+    grid-area: artwork;
+  }
+
+  .dashboard-recommendations .recipe-hero > .recipe-artwork-hero.recipe-photo {
+    height: 100%;
+    contain: size;
+  }
+}
+
+@media (width > 560px) {
+  .dashboard-focus-page .dashboard-recommendation > .dashboard-suggestion-art.recipe-photo {
+    height: 100%;
+    contain: size;
+  }
+}
+
+@media (max-width: 750px) {
+  .dashboard-recommendations .recipe-hero {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 22px 0 18px;
+    row-gap: 16px;
+  }
+
+  .dashboard-recommendations .recipe-hero-copy {
+    padding: 0 22px;
+  }
+
+  .dashboard-recommendations .recipe-hero-intro {
+    align-self: end;
+  }
+
+  .dashboard-recommendations .recipe-hero-details {
+    align-self: start;
+  }
+
+  .dashboard-recommendations .recipe-hero-details > p:not(.recipe-hero-kicker) {
+    margin-bottom: 14px;
+  }
+
+  .dashboard-recommendations .recipe-hero > .recipe-artwork-hero {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: auto;
+    aspect-ratio: 3 / 2;
+    border-radius: 0;
+  }
+
+  .dashboard-recommendations .recipe-hero-meta {
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+}
+
 @media (max-width: 560px) {
   .dashboard-highlight-grid {
     gap: 18px;
@@ -100,6 +176,10 @@
 
   .dashboard-highlight-grid .dashboard-recommendation-featured {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-focus-page .dashboard-recommendation > .dashboard-suggestion-art {
+    grid-row: 1;
   }
 }
 

@@ -4,14 +4,12 @@ import { Clock3, History, PackageCheck, SunMedium } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ErrorScreen } from '../app/ErrorScreen'
 import { dashboardRepository, type DashboardHomeData } from '../features/dashboard/data/DashboardRepository'
-import { buildCookingSuggestions, recentPreparations, recommendRecipeForTime } from '../features/dashboard/domain/dashboard'
+import { buildDashboardRecommendations, recentPreparations } from '../features/dashboard/domain/dashboard'
 import type { Recipe } from '../features/recipes/domain/Recipe'
 import { RecipeImage } from '../features/recipes/ui/RecipeImage'
-import { buildRecipeRecommendations } from '../features/recipes/domain/recipeRecommendations'
 import { RecipeRecommendationsView } from '../features/recipes/ui/RecipeRecommendations'
 import { getPlannedMealsForDate } from '../features/planner/domain/planner'
 import { TodayPlanSection } from '../features/dashboard/ui/TodayPlanSection'
-import { matchesDietaryPreferences } from '../features/recipes/domain/recipeRules'
 import { useNotifications } from '../shared/notifications/NotificationProvider'
 import '../features/dashboard/ui/DashboardLayout.css'
 
@@ -42,24 +40,29 @@ export function HomePage() {
   </ErrorScreen>
   if (!data) return <div className="page dashboard-page"><LoadingScreen message="Cargando tu cocina…" /></div>
   const preferences = data.profile.preferences ?? []
-  const recipes = data.recipes.filter((recipe) => matchesDietaryPreferences(recipe, preferences))
   const history = data.history
   const now = new Date()
   const date = data.summary ? new Date(`${data.summary.asOf}T12:00:00`) : now
-  const suggestions = buildCookingSuggestions(recipes, data.pantry, date, 4, data.units)
-  const timeSuggestion = recommendRecipeForTime(recipes, now.getHours(), { pantry: data.pantry, favoriteIds: data.favoriteIds, history, today: date, units: data.units })
-  const recent = data.summary ? [...history].sort((a, b) => b.cookedAt.localeCompare(a.cookedAt)).slice(0, 4) : recentPreparations(history, recipes.map((recipe) => recipe.id))
-  const recommendations = buildRecipeRecommendations(data.recipes, data.knownRecipes, data.pantry, data.favoriteIds, history, date, preferences, data.units)
+  const { recipes, timeSuggestion, recommendations, suggestions } = buildDashboardRecommendations(
+    data.recipes, data.knownRecipes, now.getHours(),
+    { pantry: data.pantry, favoriteIds: data.favoriteIds, history, today: date, preferences, units: data.units },
+  )
+  const timeRecipe = timeSuggestion.recipe
+  const recentEvents = data.summary ? [...history].sort((a, b) => b.cookedAt.localeCompare(a.cookedAt)) : recentPreparations(history, recipes.map((recipe) => recipe.id))
+  const recent = recentEvents.flatMap((event) => {
+    const recipe = event.recipeSnapshot ?? data.knownRecipes.find((item) => item.id === event.recipeId)
+    return recipe ? [{ event, recipe }] : []
+  }).slice(0, 4)
   const plannedMeals = getPlannedMealsForDate(data.plannedMeals, date)
 
   return <div className="page dashboard-page dashboard-focus-page">
     <div className="dashboard-highlight-layout">
       <div className="dashboard-highlight-grid">
         <TodayPlanSection activeRecipeIds={new Set(data.recipes.map((recipe) => recipe.id))} knownRecipes={data.knownRecipes} plannedMeals={plannedMeals} />
-        <section aria-labelledby="time-title" className="dashboard-panel-section dashboard-time-section">
+        {timeRecipe && <section aria-labelledby="time-title" className="dashboard-panel-section dashboard-time-section">
           <div className="section-header"><div><p className="dashboard-recommendation-kicker"><SunMedium aria-hidden="true" size={17} /> {timeSuggestion.meal} detectado</p><h2 id="time-title">Recomendación según la hora</h2></div></div>
-          {timeSuggestion.recipe ? <article className="dashboard-recommendation dashboard-recommendation-featured"><div className="dashboard-recommendation-copy"><h3>{timeSuggestion.recipe.name}</h3><DietaryTags recipe={timeSuggestion.recipe} /><RecommendationIngredients recipe={timeSuggestion.recipe} /><p>{timeSuggestion.reason}</p><div className="dashboard-recommendation-meta"><span><Clock3 aria-hidden="true" size={15} /> {timeSuggestion.recipe.minutes} min</span><span>{timeSuggestion.recipe.difficulty}</span></div><Link className="button button-dark" to={`/recipes/${timeSuggestion.recipe.id}`}>Ver receta</Link></div><Artwork recipe={timeSuggestion.recipe} /></article> : <div className="recipe-rail-empty"><span>No hay recetas activas para recomendar.</span></div>}
-        </section>
+          <article className="dashboard-recommendation dashboard-recommendation-featured"><div className="dashboard-recommendation-copy"><h3>{timeRecipe.name}</h3><DietaryTags recipe={timeRecipe} /><RecommendationIngredients recipe={timeRecipe} /><p>{timeSuggestion.reason}</p><div className="dashboard-recommendation-meta"><span><Clock3 aria-hidden="true" size={15} /> {timeRecipe.minutes} min</span><span>{timeRecipe.difficulty}</span></div><Link className="button button-dark" to={`/recipes/${timeRecipe.id}`}>Ver receta</Link></div><Artwork recipe={timeRecipe} /></article>
+        </section>}
       </div>
     </div>
 
@@ -69,15 +72,15 @@ export function HomePage() {
       ? <p className="recipe-rail-empty" role="status">Ninguna receta activa coincide con tus preferencias actuales. <Link to="/profile">Ajustar preferencias</Link></p>
       : <RecipeRecommendationsView pantry={data.pantry} recommendations={recommendations} today={now} units={data.units} />}
 
-    <section aria-labelledby="cook-today-title" className="dashboard-panel-section">
+    {suggestions.length > 0 && <section aria-labelledby="cook-today-title" className="dashboard-panel-section">
       <div className="section-header"><div><p className="dashboard-recommendation-kicker"><PackageCheck aria-hidden="true" size={17} /> Según tu despensa</p><h2 id="cook-today-title">Qué podés cocinar hoy</h2></div></div>
-      {suggestions.length === 0 ? <div className="recipe-rail-empty"><PackageCheck aria-hidden="true" size={20} /><span>No hay recetas completas o con hasta dos ingredientes faltantes.</span></div> : <div className="dashboard-suggestion-list">{suggestions.map((suggestion) => <article className="dashboard-recommendation" key={suggestion.recipe.id}><div className="dashboard-recommendation-copy"><h3>{suggestion.recipe.name}</h3><DietaryTags recipe={suggestion.recipe} /><RecommendationIngredients recipe={suggestion.recipe} /><p>{suggestion.reason}</p><div className="dashboard-recommendation-meta"><span>{suggestion.availableCount} disponibles</span><span>{suggestion.missingNames.length} faltantes</span><span><Clock3 aria-hidden="true" size={15} /> {suggestion.recipe.minutes} min</span></div><div className="dashboard-recommendation-actions"><Link className="button button-quiet" to={`/recipes/${suggestion.recipe.id}`}>Ver detalle</Link><Link className="button button-primary" to={`/recipes/${suggestion.recipe.id}/cook`}>Cocinar</Link></div></div><Artwork recipe={suggestion.recipe} /></article>)}</div>}
-    </section>
+      <div className="dashboard-suggestion-list">{suggestions.map((suggestion) => <article className="dashboard-recommendation" key={suggestion.recipe.id}><div className="dashboard-recommendation-copy"><h3>{suggestion.recipe.name}</h3><DietaryTags recipe={suggestion.recipe} /><RecommendationIngredients recipe={suggestion.recipe} /><p>{suggestion.reason}</p><div className="dashboard-recommendation-meta"><span>{suggestion.availableCount} disponibles</span><span>{suggestion.missingNames.length} faltantes</span><span><Clock3 aria-hidden="true" size={15} /> {suggestion.recipe.minutes} min</span></div><div className="dashboard-recommendation-actions"><Link className="button button-quiet" to={`/recipes/${suggestion.recipe.id}`}>Ver detalle</Link><Link className="button button-primary" to={`/recipes/${suggestion.recipe.id}/cook`}>Cocinar</Link></div></div><Artwork recipe={suggestion.recipe} /></article>)}</div>
+    </section>}
 
-    <section aria-labelledby="recent-title" className="dashboard-panel-section">
+    {recent.length > 0 && <section aria-labelledby="recent-title" className="dashboard-panel-section">
       <div className="section-header"><div><p className="dashboard-recommendation-kicker"><History aria-hidden="true" size={17} /> {data.summary ? 'Historial de tu cuenta' : 'Historial local'}</p><h2 id="recent-title">Cocinaste hace poco</h2></div></div>
-      {recent.length === 0 ? <div className="recipe-rail-empty"><History aria-hidden="true" size={20} /><span>Todavía no completaste ninguna receta.</span></div> : <div className="dashboard-recent-list">{recent.map((event) => { const recipe = event.recipeSnapshot ?? data.knownRecipes.find((item) => item.id === event.recipeId); if (!recipe) return null; const active = recipes.some((item) => item.id === recipe.id); return <article className="history-row" key={event.id}><Artwork compact recipe={recipe} /><div className="history-copy"><h3>{recipe.name}</h3><DietaryTags recipe={recipe} /><p>{new Date(event.cookedAt).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' })} · {event.portions} {event.portions === 1 ? 'porción' : 'porciones'}</p></div><div className="history-actions"><Link className="button button-quiet" to={`/recipes/${recipe.id}`}>Ver detalle</Link>{active && <Link className="button button-primary" to={`/recipes/${recipe.id}/cook`}>Volver a cocinar</Link>}</div></article> })}</div>}
-    </section>
+      <div className="dashboard-recent-list">{recent.map(({ event, recipe }) => { const active = recipes.some((item) => item.id === recipe.id); return <article className="history-row" key={event.id}><Artwork compact recipe={recipe} /><div className="history-copy"><h3>{recipe.name}</h3><DietaryTags recipe={recipe} /><p>{new Date(event.cookedAt).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' })} · {event.portions} {event.portions === 1 ? 'porción' : 'porciones'}</p></div><div className="history-actions"><Link className="button button-quiet" to={`/recipes/${recipe.id}`}>Ver detalle</Link>{active && <Link className="button button-primary" to={`/recipes/${recipe.id}/cook`}>Volver a cocinar</Link>}</div></article> })}</div>
+    </section>}
 
   </div>
 }

@@ -2,9 +2,11 @@ import type { PreparationEvent } from '../../cooking/domain/cooking'
 import type { PantryItem } from '../../pantry/domain/pantry'
 import type { Meal, PlannedMeal } from '../../planner/domain/planner'
 import type { Recipe } from '../../recipes/domain/Recipe'
-import { getIngredientAvailability, recipeMealShifts } from '../../recipes/domain/recipeRules'
+import { buildRecipeRecommendations } from '../../recipes/domain/recipeRecommendations'
+import { getIngredientAvailability, matchesDietaryPreferences, recipeMealShifts } from '../../recipes/domain/recipeRules'
 import type { AdminUnit } from '../../admin/domain/adminModels'
 import { normalizePantryName } from '../../pantry/domain/pantry'
+import type { DietaryPreference } from '../../profile/domain/profile'
 
 export interface CookingSuggestion {
   recipe: Recipe
@@ -24,6 +26,31 @@ export interface RecommendationContext {
 }
 
 export interface TimeRecommendation { meal: Meal; recipe?: Recipe; reason?: string }
+
+export function buildDashboardRecommendations(
+  activeRecipes: Recipe[],
+  knownRecipes: Recipe[],
+  hour: number,
+  { pantry, favoriteIds, history, today, preferences, units }: {
+    pantry: PantryItem[]
+    favoriteIds: string[]
+    history: PreparationEvent[]
+    today: Date
+    preferences: DietaryPreference[]
+    units?: AdminUnit[]
+  },
+) {
+  const recipes = activeRecipes.filter((recipe) => matchesDietaryPreferences(recipe, preferences))
+  const timeSuggestion = recommendRecipeForTime(recipes, hour, { pantry, favoriteIds, history, today, units })
+  const remaining = recipes.filter((recipe) => recipe.id !== timeSuggestion.recipe?.id)
+  const recommendations = buildRecipeRecommendations(remaining, knownRecipes, pantry, favoriteIds, history, today, preferences, units)
+  const selected = new Set(recommendations.sections.flatMap((section) => section.recipes.map((recipe) => recipe.id)))
+  if (recommendations.hero) selected.add(recommendations.hero.id)
+  const suggestions = pantry.length > 0
+    ? buildCookingSuggestions(remaining.filter((recipe) => !selected.has(recipe.id)), pantry, today, 4, units)
+    : []
+  return { recipes, timeSuggestion, recommendations, suggestions }
+}
 
 export function findPlannedRecipe(recipes: Recipe[], entry: Pick<PlannedMeal, 'recipeId' | 'relationalId'>): Recipe | undefined {
   const { recipeId, relationalId } = entry

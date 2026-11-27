@@ -22,7 +22,7 @@ export function discoverRecipes(active: Recipe[], known: Recipe[], favoriteIds: 
   const recook = cookedIds.flatMap((id) => {
     const recipe = activeById.get(id)
     return recipe ? [recipe] : []
-  }).slice(0, 4)
+  })
   const cookedSet = new Set(cookedIds)
   const favoriteSet = new Set(favoriteIds)
   const basedOnHistory = active.filter((recipe) => !cookedSet.has(recipe.id) && !favoriteSet.has(recipe.id))
@@ -35,7 +35,6 @@ export function discoverRecipes(active: Recipe[], known: Recipe[], favoriteIds: 
     })
     .filter((entry) => entry.score > 0)
     .sort((a, b) => b.score - a.score || a.recipe.name.localeCompare(b.recipe.name, 'es') || a.recipe.id.localeCompare(b.recipe.id))
-    .slice(0, 4)
     .map((entry) => entry.recipe)
 
   return {

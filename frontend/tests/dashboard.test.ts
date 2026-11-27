@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { sampleRecipes } from '../src/mocks/recipes'
 import type { PantryItem } from '../src/features/pantry/domain/pantry'
-import { buildCookingSuggestions, findPlannedRecipe, mealForHour, recentPreparations, recommendRecipeForTime } from '../src/features/dashboard/domain/dashboard'
+import { buildCookingSuggestions, buildDashboardRecommendations, findPlannedRecipe, mealForHour, recentPreparations, recommendRecipeForTime } from '../src/features/dashboard/domain/dashboard'
 
 const today = new Date(2026, 8, 23)
 
@@ -70,4 +70,36 @@ test('rotation varies equally ranked options and recent history handles empty an
     { id: 'new', recipeId: equal[1].id, cookedAt: '2026-09-22T12:00:00.000Z', portions: 2 },
   ]
   assert.deepEqual(recentPreparations(history, equal.map((recipe) => recipe.id)).map((event) => event.id), ['new', 'old'])
+})
+
+test('panel recommendations backfill eligible recipes without repeating them across sections', () => {
+  const base = sampleRecipes[0]
+  const featured = Array.from({ length: 7 }, (_, index) => ({
+    ...base, id: `featured-${index}`, name: `Destacada ${index}`, mealShifts: index === 0 ? ['Cena'] : ['Almuerzo'],
+    featured: true, minutes: 15, ingredients: [{ name: 'Arroz', quantity: 1, unit: 'g' }],
+  }))
+  const nearlyCookable = {
+    ...base, id: 'nearly-cookable', mealShifts: ['Almuerzo'], featured: false, minutes: 25,
+    ingredients: [...featured[0].ingredients, { name: 'Tomate', quantity: 1, unit: 'u' }],
+  }
+  const pantry: PantryItem[] = [{ id: 'rice', name: 'Arroz', category: 'Almacén', quantity: 100, unit: 'g', minimum: 0, expiry: null }]
+  const recipes = [...featured, nearlyCookable]
+  const options = { pantry, favoriteIds: [], history: [], preferences: [], today }
+  const { timeSuggestion, recommendations, suggestions } = buildDashboardRecommendations(recipes, recipes, 20, options)
+
+  assert.equal(timeSuggestion.recipe?.id, 'featured-0')
+  assert.equal(recommendations.hero?.id, 'featured-1')
+  assert.deepEqual(recommendations.sections.find((section) => section.id === 'recipe-featured')?.recipes.map((recipe) => recipe.id),
+    ['featured-2', 'featured-3', 'featured-4', 'featured-5'])
+  assert.deepEqual(recommendations.sections.find((section) => section.id === 'recipe-pantry-ready')?.recipes.map((recipe) => recipe.id), ['featured-6'])
+  assert.deepEqual(suggestions.map(({ recipe }) => recipe.id), [nearlyCookable.id])
+  const displayed = [timeSuggestion.recipe, recommendations.hero, ...recommendations.sections.flatMap((section) => section.recipes),
+    ...suggestions.map(({ recipe }) => recipe)].map((recipe) => recipe?.id)
+  assert.equal(new Set(displayed).size, displayed.length)
+
+  const single = buildDashboardRecommendations([base], [base], 20, options)
+  assert.equal(single.timeSuggestion.recipe?.id, base.id)
+  assert.equal(single.recommendations.hero, undefined)
+  assert.ok(single.recommendations.sections.every((section) => section.recipes.length === 0))
+  assert.deepEqual(single.suggestions, [])
 })

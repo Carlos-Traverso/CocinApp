@@ -197,7 +197,10 @@ test('recommendations use an optional custom unit catalog while preserving defau
   ]
   const recipe = { ...sampleRecipes[0], featured: true, ingredients: [{ name: 'Harina especial', quantity: 1, unit: 'scoop' }] }
   const stock: PantryItem[] = [{ id: 'flour', name: 'Harina especial', category: 'Almacén', quantity: 100, unit: 'g', minimum: 0, expiry: null }]
-  assert.equal(buildRecipeRecommendations([recipe], [recipe], stock, [], [], today, [], units).sections.find((section) => section.id === 'recipe-pantry-ready')?.recipes[0]?.id, recipe.id)
+  const alternative = { ...recipe, id: 'alternative', featured: false }
+  const recommendations = buildRecipeRecommendations([recipe, alternative], [recipe, alternative], stock, [], [], today, [], units)
+  assert.equal(recommendations.hero?.id, recipe.id)
+  assert.deepEqual(recommendations.sections.find((section) => section.id === 'recipe-pantry-ready')?.recipes.map((item) => item.id), [alternative.id])
   assert.equal(buildCookingSuggestions([recipe], stock, today, 4, units)[0]?.canCook, true)
   assert.equal(buildCookingSuggestions([recipe], stock, today)[0]?.canCook, false)
 })
@@ -262,7 +265,7 @@ test('new recipe actions exclude published recipes that depend on inactive catal
   }
 })
 
-test('recommendations keep their real sections in the panel order without duplicating recipes logic', () => {
+test('recommendations keep their sections in panel order and show each recipe once', () => {
   const history = [{ id: 'history', recipeId: 'quinoa-bowl', cookedAt: '2026-09-23T11:00:00.000Z', portions: 2 }]
   const recommendations = buildRecipeRecommendations(sampleRecipes, sampleRecipes, pantry, ['chickpea-salad'], history, today)
   assert.deepEqual(recommendations.sections.map((section) => section.id), [
@@ -273,7 +276,8 @@ test('recommendations keep their real sections in the panel order without duplic
     'recipe-favorites',
     'recipe-quick',
   ])
-  assert.equal(recommendations.sections.find((section) => section.id === 'recipe-recook')?.recipes[0]?.id, 'quinoa-bowl')
   assert.equal(recommendations.sections.find((section) => section.id === 'recipe-favorites')?.recipes[0]?.id, 'chickpea-salad')
   assert.ok(recommendations.hero)
+  const displayed = [recommendations.hero, ...recommendations.sections.flatMap((section) => section.recipes)].map((recipe) => recipe.id)
+  assert.equal(new Set(displayed).size, displayed.length)
 })
