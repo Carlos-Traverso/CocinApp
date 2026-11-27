@@ -1,14 +1,24 @@
 import type { ProfileDraft, DietaryPreference } from '../domain/profile'
-import { readLocalProfile, saveLocalProfile, parseProfileDraft } from './localProfileStore'
+import { isLocalOnboardingComplete, parseProfileDraft, readLocalProfile, saveLocalOnboarding, saveLocalProfile } from './localProfileStore'
 import { loadPersonalData, savePersonalData } from '../../../shared/data/personalDataRepository'
 import { isRelationalProfilesEnabled, isSupabaseConfigured, supabase } from '../../../shared/data/supabaseClient'
 import { assertPersonalDataSessionCurrent, capturePersonalDataSession, getPersonalDataAuthorization, type PersonalDataSession } from '../../../shared/data/personalDataSession'
-import { getSession, updateSupabaseSessionName } from '../../auth/data/localAuthStore'
+import { getAccounts, getSession, updateSupabaseSessionName } from '../../auth/data/localAuthStore'
 import { nutritionRepository } from './NutritionRepository'
 
 export interface ProfileRepository {
   getProfile(): Promise<ProfileDraft>
   saveProfile(profile: ProfileDraft): Promise<void>
+  getOnboardingRequired(): Promise<boolean>
+  getOnboardingProfile(): Promise<ProfileDraft>
+  completeOnboarding(profile: ProfileDraft): Promise<void>
+}
+
+interface OnboardingWrite {
+  profile: Record<string, unknown>
+  preferences: string[]
+  version: string
+  relational: boolean
 }
 
 interface ProfileRepositoryDependencies {
@@ -19,6 +29,8 @@ interface ProfileRepositoryDependencies {
   getMyProfile?(session: PersonalDataSession): Promise<unknown>
   getCurrentNutritionConfig?(session: PersonalDataSession): Promise<import('../domain/profile').NutritionConfig | null>
   saveMyProfile?(profile: Record<string, unknown>, preferences: string[], version: string, session: PersonalDataSession): Promise<unknown>
+  getMyOnboardingRequired?(session: PersonalDataSession): Promise<unknown>
+  completeMyOnboarding?(write: OnboardingWrite, session: PersonalDataSession): Promise<void>
 }
 
 interface ProfileRow extends Record<string, unknown> { version?: string | number | bigint }
@@ -90,7 +102,22 @@ export function createProfileRepository(dependencies: ProfileRepositoryDependenc
     assertPersonalDataSessionCurrent(session)
     return data
   },
-}) {
+  async getMyOnboardingRequired(session) {
+    const authorization = await getPersonalDataAuthorization(session)
+    const { data, error } = await supabase!.rpc('get_my_onboarding_required').setHeader('Authorization', authorization)
+    if (error) throw error
+    assertPersonalDataSessionCurrent(session)
+    return data
+  },
+  async completeMyOnboarding({ profile, preferences, version, relational }, session) {
+    const authorization = await getPersonalDataAuthorization(session)
+    const { error } = await supabase!.rpc('complete_my_onboarding', {
+      p_profile: profile, p_preference_keys: preferences, p_expected_version: version, p_relational: relational,
+    }).setHeader('Authorization', authorization)
+    if (error) throw error
+    assertPersonalDataSessionCurrent(session)
+  },
+}): ProfileRepository {
   let versionIdentity: string | null = null
   let loadedVersion = '0'
   let hasLoadedBaseline = false
@@ -99,7 +126,7 @@ export function createProfileRepository(dependencies: ProfileRepositoryDependenc
   let profileReadSequence = 0
   const relational = dependencies.relationalProfiles === true
 
-  async function readRelational(session: PersonalDataSession): Promise<{ draft: ProfileDraft; version: string; preferenceKeys: string[]; exists: boolean }> {
+  async function readRelational(session: PersonalDataSession, includeNutritionConfig = true): Promise<{ draft: ProfileDraft; version: string; preferenceKeys: string[]; exists: boolean }> {
     if (!dependencies.getMyProfile) throw new Error('No está disponible el repositorio relacional de perfiles.')
     const result = await dependencies.getMyProfile(session)
     assertPersonalDataSessionCurrent(session)
@@ -116,9 +143,12 @@ export function createProfileRepository(dependencies: ProfileRepositoryDependenc
     if (row && typeof row.user_id === 'string' && ownerId !== row.user_id) throw new Error('La cuenta cambió mientras se procesaban tus datos. Volvé a intentarlo.')
     const version = row === null ? parseVersion(undefined) : parseVersion(row.version)
     if (row && BigInt(version) < 1n) throw new Error('El servidor devolvió una versión de perfil inválida.')
-    const nutritionConfig = dependencies.getCurrentNutritionConfig ? await dependencies.getCurrentNutritionConfig(session) : null
+    const draft = mapRowToDraft(row, envelope.preference_keys as string[])
+    if (includeNutritionConfig) {
+      draft.nutritionConfig = dependencies.getCurrentNutritionConfig ? await dependencies.getCurrentNutritionConfig(session) : null
+    }
     assertPersonalDataSessionCurrent(session)
-    return { draft: { ...mapRowToDraft(row, envelope.preference_keys as string[]), nutritionConfig }, version, preferenceKeys: envelope.preference_keys as string[], exists: row !== null }
+    return { draft, version, preferenceKeys: envelope.preference_keys as string[], exists: row !== null }
   }
 
   function identityFor(session: PersonalDataSession): string {
@@ -141,36 +171,80 @@ export function createProfileRepository(dependencies: ProfileRepositoryDependenc
     loadedVersion = version
   }
 
+  function localOnboardingRequired(email: string): boolean {
+    return getAccounts().some((account) => account.email === email && account.onboardingRequired === true)
+      && !isLocalOnboardingComplete()
+  }
+
+  async function readProfile(forOnboarding: boolean): Promise<ProfileDraft> {
+    const session = capturePersonalDataSession()
+    resetIdentity(session)
+    if (!dependencies.isSupabaseConfigured) return readLocalProfile()
+    if (relational) {
+      const readSequence = ++profileReadSequence
+      const { draft, version, preferenceKeys: keys } = await readRelational(session, !forOnboarding)
+      assertPersonalDataSessionCurrent(session)
+      if (readSequence !== profileReadSequence) throw new Error('El perfil se actualizó mientras se cargaba. Volvé a consultar tus datos.')
+      bindVersion(session, version)
+      hasLoadedBaseline = true
+      conflictNeedsReload = false
+      // Unknown keys may represent inactive tags. Keep them in the next
+      // full snapshot so the server can reject the save instead of deleting them.
+      const known: Set<string> = new Set(Object.values(preferenceKeys))
+      preservedPreferenceKeys = keys.filter((key) => !known.has(key))
+      return { ...draft, email: getSession()?.email }
+    }
+    const remote = await dependencies.loadPersonalData('profile', session)
+    assertPersonalDataSessionCurrent(session)
+    if (remote !== null) {
+      const profile = parseProfileDraft(remote)
+      if (!forOnboarding) saveLocalProfile(profile)
+      return profile
+    }
+    const local = readLocalProfile()
+    if (!forOnboarding && Object.keys(local).length) await dependencies.savePersonalData('profile', local, session)
+    assertPersonalDataSessionCurrent(session)
+    return local
+  }
+
   return {
-    async getProfile() {
+    getProfile: () => readProfile(false),
+    getOnboardingProfile: () => readProfile(true),
+    async getOnboardingRequired() {
+      const account = getSession()
+      if (account?.role !== 'USER') return false
+      if (!dependencies.isSupabaseConfigured) return localOnboardingRequired(account.email)
+      if (!dependencies.getMyOnboardingRequired) throw new Error('No está disponible la configuración inicial.')
       const session = capturePersonalDataSession()
+      const required = await dependencies.getMyOnboardingRequired(session)
+      assertPersonalDataSessionCurrent(session)
+      if (typeof required !== 'boolean') throw new Error('El servidor devolvió un estado de configuración inicial inválido.')
+      return required
+    },
+    async completeOnboarding(profile) {
+      const account = getSession()
+      if (account?.role !== 'USER') throw new Error('Iniciá sesión para completar la configuración inicial.')
+      const session = capturePersonalDataSession()
+      const draft = { ...profile, name: profile.name?.trim() || account.name, email: account.email }
+      if (!draft.goal) throw new Error('Seleccioná un objetivo antes de continuar.')
+      if (!dependencies.isSupabaseConfigured) {
+        if (localOnboardingRequired(account.email)) saveLocalOnboarding(draft)
+        return
+      }
+      if (!dependencies.completeMyOnboarding) throw new Error('No está disponible el guardado de la configuración inicial.')
       resetIdentity(session)
-      if (!dependencies.isSupabaseConfigured) return readLocalProfile()
-      if (relational) {
-        const readSequence = ++profileReadSequence
-        const { draft, version, preferenceKeys: keys } = await readRelational(session)
+      const version = loadedVersion
+      const preferences = [...new Set([...(draft.preferences ?? []).map((preference) => preferenceKeys[preference]), ...preservedPreferenceKeys])]
+      try {
+        await dependencies.completeMyOnboarding({ profile: mapDraftToRow(draft), preferences, version, relational }, session)
         assertPersonalDataSessionCurrent(session)
-        if (readSequence !== profileReadSequence) throw new Error('El perfil se actualizó mientras se cargaba. Volvé a consultar tus datos.')
-        bindVersion(session, version)
-        hasLoadedBaseline = true
-        conflictNeedsReload = false
-        // Unknown keys may represent inactive tags. Keep them in the next
-        // full snapshot so the server can reject the save instead of deleting them.
-        const known: Set<string> = new Set(Object.values(preferenceKeys))
-        preservedPreferenceKeys = keys.filter((key) => !known.has(key))
-        return { ...draft, email: getSession()?.email }
+      } catch (error) {
+        assertPersonalDataSessionCurrent(session)
+        if (isConflict(error)) throw new Error('El perfil cambió en otra sesión. Recargá la página antes de volver a guardar.')
+        throw error
       }
-      const remote = await dependencies.loadPersonalData('profile', session)
-      assertPersonalDataSessionCurrent(session)
-      if (remote !== null) {
-        const profile = parseProfileDraft(remote)
-        saveLocalProfile(profile)
-        return profile
-      }
-      const local = readLocalProfile()
-      if (Object.keys(local).length) await dependencies.savePersonalData('profile', local, session)
-      assertPersonalDataSessionCurrent(session)
-      return local
+      profileReadSequence += 1
+      hasLoadedBaseline = false
     },
     async saveProfile(profile: ProfileDraft) {
       const session = capturePersonalDataSession()

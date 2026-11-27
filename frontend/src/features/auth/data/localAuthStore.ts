@@ -16,6 +16,7 @@ export interface LocalAccount {
   role: 'USER'
   /** Older stored accounts omit this field and are treated as active. */
   active?: boolean
+  onboardingRequired?: boolean
 }
 
 const authKey = 'cocinapp.auth.v1'
@@ -55,7 +56,7 @@ export function registerAccount(name: string, email: string, password: string): 
   if (password.length < 8) throw new Error('La contraseña debe tener al menos 8 caracteres.')
   const accounts = getAccounts()
   if (cleanEmail === demoAdminEmail || accounts.some((account) => account.email.toLocaleLowerCase('es') === cleanEmail)) throw new Error('Ya existe una cuenta con ese correo.')
-  const account: LocalAccount = { name: cleanName, email: cleanEmail, password, role: 'USER', active: true }
+  const account: LocalAccount = { name: cleanName, email: cleanEmail, password, role: 'USER', active: true, onboardingRequired: true }
   localStorage.setItem(accountsKey, JSON.stringify([...accounts, account]))
   return account
 }

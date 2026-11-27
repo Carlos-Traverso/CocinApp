@@ -3,7 +3,7 @@ import test from 'node:test'
 import { calculateAge, calculateEnergyEstimate, estimateForProfile, profileIsComplete, recipeGoalPercentageRange } from '../src/features/profile/domain/profile'
 import { readLocalProfile, saveLocalProfile } from '../src/features/profile/data/localProfileStore'
 import { createProfileRepository } from '../src/features/profile/data/ProfileRepository'
-import { endSession, getSession, startSupabaseUserSession } from '../src/features/auth/data/localAuthStore'
+import { authenticateUser, endSession, getSession, registerAccount, startSupabaseUserSession, startUserSession } from '../src/features/auth/data/localAuthStore'
 import type { PersonalDataSession } from '../src/shared/data/personalDataSession'
 
 test('calculates age from the birth date without adding a year before the birthday', () => {
@@ -87,6 +87,41 @@ test('profile storage survives valid data and ignores malformed older values', (
   assert.equal(readLocalProfile(storage).goal, 'gain')
   saveLocalProfile({ name: 'Carla', goal: 'gain-muscle' }, storage)
   assert.equal(readLocalProfile(storage).goal, 'gain-muscle')
+})
+
+test('local onboarding is required for new accounts and remains complete after profile edits and re-login', async () => {
+  localStorage.clear()
+  const repository = createProfileRepository({
+    isSupabaseConfigured: false,
+    loadPersonalData: async () => null,
+    savePersonalData: async () => {},
+  })
+  const ana = registerAccount('Ana', 'ana@example.com', 'password')
+  const luis = registerAccount('Luis', 'luis@example.com', 'password')
+  localStorage.setItem('cocinapp.accounts.v1', JSON.stringify([ana, { ...luis, onboardingRequired: undefined }]))
+
+  startUserSession(ana)
+  assert.equal(await repository.getOnboardingRequired(), true)
+  await assert.rejects(repository.completeOnboarding({}), /Seleccioná un objetivo/)
+  assert.equal(await repository.getOnboardingRequired(), true)
+  await repository.completeOnboarding({ heightCm: 165, goal: 'maintain', preferences: ['vegan'] })
+  assert.equal(await repository.getOnboardingRequired(), false)
+  assert.equal((await repository.getProfile()).name, 'Ana')
+  assert.deepEqual((await repository.getProfile()).preferences, ['vegan'])
+  assert.equal((await repository.getProfile()).heightCm, 165)
+
+  await repository.completeOnboarding({ goal: 'lose' })
+  assert.equal((await repository.getProfile()).goal, 'maintain')
+  await repository.saveProfile({ ...await repository.getProfile(), goal: 'gain' })
+  endSession()
+  startUserSession(authenticateUser(ana.email, 'password'))
+  assert.equal(await repository.getOnboardingRequired(), false)
+  assert.equal((await repository.getProfile()).goal, 'gain')
+
+  startUserSession(authenticateUser(luis.email, 'password'))
+  assert.equal(await repository.getOnboardingRequired(), false)
+  assert.equal((await repository.getProfile()).goal, undefined)
+  localStorage.clear()
 })
 
 test('discards an in-flight profile load from account A after switching to account B', async () => {

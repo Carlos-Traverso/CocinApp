@@ -5,12 +5,24 @@ const storageKey = 'cocinapp.profile.v1'
 interface StorageLike { getItem(key: string): string | null; setItem(key: string, value: string): void }
 
 export function readLocalProfile(storage?: StorageLike): ProfileDraft {
+  return parseProfileDraft(readStoredProfile(storage ?? personalStorage))
+}
+
+function readStoredProfile(storage: StorageLike): Record<string, unknown> | null {
   try {
-    const value: unknown = JSON.parse((storage ?? personalStorage).getItem(storageKey) ?? '{}')
-    return parseProfileDraft(value)
+    const value: unknown = JSON.parse(storage.getItem(storageKey) ?? '{}')
+    return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
   } catch {
-    return {}
+    return null
   }
+}
+
+export function isLocalOnboardingComplete(storage: StorageLike = personalStorage): boolean {
+  return readStoredProfile(storage)?.onboardingCompleted === true
+}
+
+export function saveLocalOnboarding(profile: ProfileDraft, storage: StorageLike = personalStorage): void {
+  storage.setItem(storageKey, JSON.stringify({ ...profile, onboardingCompleted: true }))
 }
 
 export function parseProfileDraft(value: unknown): ProfileDraft {
@@ -29,6 +41,10 @@ export function parseProfileDraft(value: unknown): ProfileDraft {
   }
 }
 
-export function saveLocalProfile(profile: ProfileDraft, storage?: StorageLike): void {
-  (storage ?? personalStorage).setItem(storageKey, JSON.stringify(profile))
+export function saveLocalProfile(profile: ProfileDraft, storage: StorageLike = personalStorage): void {
+  if (isLocalOnboardingComplete(storage)) {
+    saveLocalOnboarding(profile, storage)
+    return
+  }
+  storage.setItem(storageKey, JSON.stringify(profile))
 }

@@ -14,6 +14,7 @@ import { WelcomePage } from '../pages/WelcomePage'
 import { RequestPasswordRecoveryPage, ResetPasswordPage } from '../pages/PasswordRecoveryPage'
 import { AdminShell } from '../components/AdminShell'
 import { RequireRole, RequireSession, RedirectIfAuthenticated } from './AuthGuards'
+import { RequireUserSetup } from './RequireUserSetup'
 import { RouteErrorPage, UnexpectedErrorPage } from './RouteErrorPage'
 import { NotificationProvider } from '../shared/notifications/NotificationProvider'
 import { adminAuditAvailable, adminNutritionAvailable } from '../features/admin/ui/adminNavigation'
@@ -45,19 +46,21 @@ const router = createBrowserRouter(createRoutesFromElements(
       </Route>
 
       <Route element={<RequireRole role="USER" />}>
-        <Route path="onboarding" element={<Navigate replace to="/profile" />} />
-        <Route path="recipes/:id/cook" element={<CookingPage />} />
-        <Route element={<AppShell />}>
-          <Route path="panel" element={<HomePage />} />
-          <Route path="recipes" element={<RecipesPage />} />
-          <Route path="recipes/:id" element={<RecipeDetailPage />} />
-          <Route path="favorites" element={<RecipesPage favoritesOnly />} />
-          <Route path="history" element={<HistoryPage />} />
-          <Route path="cooking" element={<Navigate replace to="/recipes" />} />
-          <Route path="profile" element={<ProfilePage />} />
-          <Route path="pantry" element={<PantryPage />} />
-          <Route path="planner" element={<PlannerPage />} />
-          <Route path="shopping" element={<ShoppingPage />} />
+        <Route element={<RequireUserSetup />}>
+          <Route path="onboarding" element={<Navigate replace to="/panel" />} />
+          <Route path="recipes/:id/cook" element={<CookingPage />} />
+          <Route element={<AppShell />}>
+            <Route path="panel" element={<HomePage />} />
+            <Route path="recipes" element={<RecipesPage />} />
+            <Route path="recipes/:id" element={<RecipeDetailPage />} />
+            <Route path="favorites" element={<RecipesPage favoritesOnly />} />
+            <Route path="history" element={<HistoryPage />} />
+            <Route path="cooking" element={<Navigate replace to="/recipes" />} />
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="pantry" element={<PantryPage />} />
+            <Route path="planner" element={<PlannerPage />} />
+            <Route path="shopping" element={<ShoppingPage />} />
+          </Route>
         </Route>
       </Route>
     </Route>

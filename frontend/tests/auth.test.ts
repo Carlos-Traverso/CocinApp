@@ -68,7 +68,7 @@ describe('local access flows', () => {
 
   test('registration validates identity, duplicate email and password', () => {
     const account = registerAccount(' Ana ', 'ANA@example.com', 'clave-segura')
-    assert.deepEqual(account, { name: 'Ana', email: 'ana@example.com', password: 'clave-segura', role: 'USER', active: true })
+    assert.deepEqual(account, { name: 'Ana', email: 'ana@example.com', password: 'clave-segura', role: 'USER', active: true, onboardingRequired: true })
     assert.throws(() => registerAccount('Ana', 'ana@example.com', 'clave-segura'), /Ya existe/)
     assert.throws(() => registerAccount('Ana', 'correo-inválido', 'clave-segura'), /correo electrónico válido/)
     assert.throws(() => registerAccount('Ana', 'otra@example.com', 'corta'), /8 caracteres/)

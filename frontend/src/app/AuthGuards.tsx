@@ -1,7 +1,7 @@
 import { LoadingScreen } from '../components/LoadingScreen'
 import { Navigate, Outlet, useLocation, useOutletContext } from 'react-router-dom'
 import { useAuth } from '../features/auth/data/AuthRepository'
-import type { UserRole } from '../features/auth/data/localAuthStore'
+import type { SessionInfo, UserRole } from '../features/auth/data/localAuthStore'
 import { roleHome } from '../features/auth/domain/routeAccess'
 import { RouteErrorPage } from './RouteErrorPage'
 import { SessionError } from './SessionError'
@@ -13,14 +13,14 @@ export function RequireSession() {
   if (loading) return <LoadingScreen message="Comprobando sesión…" variant="fullscreen" />
   if (!session) return <Navigate to="/" replace />
   return <NotificationProvider key={JSON.stringify([session.token, session.email, session.role])} privateScope>
-    <Outlet context={session.role} />
+    <Outlet context={session} />
   </NotificationProvider>
 }
 
 export function RequireRole({ role }: { role: UserRole }) {
-  const sessionRole = useOutletContext<UserRole>()
-  if (sessionRole !== role) return <RouteErrorPage role={sessionRole} status={403} />
-  return <Outlet />
+  const session = useOutletContext<SessionInfo>()
+  if (session.role !== role) return <RouteErrorPage role={session.role} status={403} />
+  return <Outlet context={session} />
 }
 
 export function RedirectIfAuthenticated() {
