@@ -501,7 +501,9 @@ h2 { margin-bottom: 7px; font-size: 19px; line-height: 1.3; }
 .history-page .history-actions .pantry-icon-button { width: 40px; height: 40px; margin-left: auto; }
 @media (max-width: 1050px) {
   .history-page .history-row { flex-wrap: wrap; }
-  .history-page .history-actions { width: 100%; border-top: 1px solid var(--line); padding-top: 12px; }
+  .history-page .history-actions { width: 100%; align-items: center; flex-wrap: nowrap; border-top: 1px solid var(--line); padding-top: 12px; }
+  .history-page .history-actions .button { min-width: 0; flex: 1 1 0; }
+  .history-page .history-actions .pantry-icon-button { flex: 0 0 40px; margin-left: 0; }
 }
 @media (max-width: 750px) {
   .cooking-page { position: fixed; inset: 12px; width: auto; height: auto; margin: 0; }
