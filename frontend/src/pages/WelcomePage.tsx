@@ -34,6 +34,7 @@ function validationMessage(field: HTMLInputElement): string {
 export function WelcomePage() {
   const isDesktop = useSyncExternalStore(subscribeToDesktopLayout, isDesktopLayout)
   const accessDialog = useRef<HTMLDialogElement>(null)
+  const termsDialog = useRef<HTMLDialogElement>(null)
   const [mode, setMode] = useState<AccessMode>('login')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -151,6 +152,44 @@ export function WelcomePage() {
             </section>
           </div>
         )}
+        <footer className="welcome-footer">
+          <button aria-haspopup="dialog" className="welcome-footer-link" onClick={() => termsDialog.current?.showModal()} type="button">
+            Términos y condiciones
+          </button>
+          <a className="welcome-footer-link" href="/manual-de-usuario.pdf" target="_blank" rel="noopener noreferrer">
+            Manual de usuario (PDF)
+          </a>
+        </footer>
+        <dialog aria-labelledby="welcome-terms-title" className="welcome-terms-dialog" ref={termsDialog}>
+          <div className="welcome-terms-heading">
+            <h2 id="welcome-terms-title">Términos y condiciones</h2>
+            <form method="dialog">
+              <button className="button button-quiet" type="submit">Cerrar</button>
+            </form>
+          </div>
+          <div className="welcome-terms-content">
+            <section>
+              <h3>Uso de CocinAPP</h3>
+              <p>CocinAPP te permite organizar tu despensa y tus compras, planificar comidas, consultar recetas y registrar preparaciones. Revisá las cantidades y los datos de tu despensa antes de usar una lista o descontar ingredientes.</p>
+            </section>
+            <section>
+              <h3>Tu cuenta</h3>
+              <p>Usá un correo al que tengas acceso y mantené tu contraseña en privado. Si perdés el acceso, usá la recuperación de contraseña disponible en la pantalla de ingreso.</p>
+            </section>
+            <section>
+              <h3>Recetas y sugerencias</h3>
+              <p>Las porciones, los tiempos y los valores nutricionales son orientativos. Las etiquetas dietéticas describen los ingredientes declarados. Revisá los rótulos y las condiciones de preparación para evitar la contaminación cruzada.</p>
+            </section>
+            <section>
+              <h3>Uso responsable</h3>
+              <p>Usá tu propia cuenta y respetá la privacidad de otras personas. Evitá interferir con el funcionamiento de la aplicación o intentar acceder a cuentas o datos ajenos.</p>
+            </section>
+            <section>
+              <h3>Tus derechos</h3>
+              <p>Conservás los derechos que te reconoce la legislación aplicable.</p>
+            </section>
+          </div>
+        </dialog>
       </div>
     </main>
   )

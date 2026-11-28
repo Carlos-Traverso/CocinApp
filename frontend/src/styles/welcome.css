@@ -33,6 +33,105 @@
   display: contents;
 }
 
+.welcome-footer {
+  grid-area: footer;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.welcome-footer-link {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  border: 1px solid #eaf3ec70;
+  border-radius: 999px;
+  background: #102b20;
+  padding-inline: 12px;
+  color: #fbfaf6;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.welcome-footer-link:hover {
+  background: var(--green-dark);
+}
+
+.welcome-footer-link:focus-visible {
+  outline-color: var(--green-soft);
+}
+
+.welcome-terms-dialog {
+  width: min(560px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  padding: 0;
+  color: var(--ink);
+  box-shadow: 0 24px 60px #102b204d;
+}
+
+.welcome-terms-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.welcome-terms-dialog::backdrop {
+  background: #102b20a6;
+}
+
+html:has(.welcome-terms-dialog[open]) {
+  overflow: hidden;
+}
+
+.welcome-terms-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 16px clamp(16px, 4vw, 24px);
+}
+
+.welcome-terms-heading h2 {
+  margin: 0;
+  color: var(--green-dark);
+  font-size: clamp(18px, 4vw, 23px);
+}
+
+.welcome-terms-heading .button {
+  min-height: 36px;
+}
+
+.welcome-terms-content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px clamp(16px, 4vw, 24px);
+}
+
+.welcome-terms-content section + section {
+  margin-top: 18px;
+}
+
+.welcome-terms-content h3 {
+  margin: 0 0 5px;
+  font-size: 15px;
+}
+
+.welcome-terms-content p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
 .welcome-access-link.button {
   display: inline-flex;
   grid-area: link;
@@ -224,6 +323,11 @@
 }
 
 @media (width > 1024px) {
+  .welcome-page {
+    height: 100dvh;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
   .welcome-photo {
     /* Match the bowl's top and bottom margins to the margin at its left rim. */
     inset: -4.9% auto auto 0;
@@ -242,11 +346,11 @@
 
   .welcome-layout {
     width: min(100%, 1560px);
-    grid-template-areas: '. brand' '. intro' '. link';
+    grid-template-areas: '. .' '. brand' '. intro' '. link' '. .' 'footer footer';
     grid-template-columns: minmax(0, 1fr) minmax(280px, 440px);
-    align-content: center;
-    gap: 24px;
-    padding: clamp(30px, 6vh, 64px) clamp(36px, 10vw, 168px);
+    grid-template-rows: minmax(0, 1fr) auto auto auto minmax(0, 1fr) auto;
+    gap: clamp(8px, 3vh, 24px) 24px;
+    padding: 0 clamp(36px, 10vw, 168px) 14px;
   }
 
   .welcome-intro h1 {
@@ -305,9 +409,14 @@
     --welcome-gutter: clamp(16px, 5vw, 28px);
 
     width: 100%;
-    grid-template-areas: 'hero' 'access';
+    grid-template-areas: 'hero' 'access' 'footer';
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .welcome-footer {
+    justify-content: center;
+    padding: 12px var(--welcome-gutter) max(16px, env(safe-area-inset-bottom));
   }
 
   .welcome-hero {
